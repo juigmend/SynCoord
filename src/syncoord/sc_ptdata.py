@@ -1,26 +1,14 @@
-#!/usr/bin/env python
-# coding: utf-8
+'''Data class PtData and functions that have ptdata objects as input.'''
 
-'''Data processing.'''
-
-import importlib
 from copy import deepcopy
 
-from scipy import signal
 import numpy as np
-from scipy.interpolate import CubicSpline
-from scipy.fft import rfft, fftfreq
+from scipy import signal
+from scipy.fft import fftfreq
+import matplotlib.pyplot as plt
 
-def print_ptdata_properties(ptdata):
-    print(f'names:\n{vars(ptdata.names)}\n')
-    print(f'labels:\n{vars(ptdata.labels)}\n')
-    if ptdata.data:
-        print('data:')
-        for k in ptdata.data.keys():
-            print('k = ',k,', shape =',ptdata.data[k].shape)
-        print()
-    if ptdata.vis: print(f'vis:\n{ptdata.vis}\n')
-    if ptdata.other: print(f'other:\n{ptdata.other}\n')
+from . import sc_ndarr
+from . import sc_utils
 
 class PtData:
     '''
@@ -57,10 +45,18 @@ class PtData:
         self.other = {}
 
     def print(self):
-        print_ptdata_properties(self)
+        print(f'names:\n{vars(self.names)}\n')
+        print(f'labels:\n{vars(self.labels)}\n')
+        if self.data:
+            print('data:')
+            for k in self.data.keys():
+                print('k = ',k,', shape =',self.data[k].shape)
+            print()
+        if self.vis: print(f'vis:\n{self.vis}\n')
+        if self.other: print(f'other:\n{self.other}\n')
 
-def position_ptdata( preproc_data_folder, prop_path, annot_path=None,
-                        max_n_files=None, print_durations=True, print_dim=True, **kwargs ):
+def position( preproc_data_folder, prop_path, annot_path=None,
+                        max_n_files=None, print_durations=True, **kwargs ):
     '''
     Args:
         preproc_data_folder: folder of preprocessed position data parquet files (e.g., r"~\preprocessed").
@@ -74,20 +70,20 @@ def position_ptdata( preproc_data_folder, prop_path, annot_path=None,
         PtData object with position data (dictionary of mutlti dimensional numpy arrays).
     '''
     position_data, dim_names, dim_labels, dimel_labels, topinfo =\
-        load_data( preproc_data_folder, prop_path, annot_path=annot_path, max_n_files=max_n_files,
-                   print_durations=print_durations, print_dim=print_dim, **kwargs )
+        sc_utils.load_data( preproc_data_folder, prop_path, annot_path=annot_path, max_n_files=max_n_files,
+                   print_durations=print_durations, **kwargs )
 
-    position = PtData(topinfo)
-    position.names.main = 'Position'
-    position.names.dim = dim_names
-    position.labels.main = 'Pos.'
-    position.labels.dim = dim_labels
-    position.labels.dimel = dimel_labels
-    position.data = position_data
-    position.vis['y_label'] = None
-    return position
+    pos = PtData(topinfo)
+    pos.names.main = 'Position'
+    pos.names.dim = dim_names
+    pos.labels.main = 'Pos.'
+    pos.labels.dim = dim_labels
+    pos.labels.dimel = dimel_labels
+    pos.data = position_data
+    pos.vis['y_label'] = None
+    return pos
 
-def select_data(ptdata,*args,**kwargs):
+def select(ptdata,*args,**kwargs):
     '''
     Args:
         ptdata: PtData object
@@ -205,7 +201,7 @@ def select_data(ptdata,*args,**kwargs):
                         ts[k] = ts[k][loc_dim[i]]
     return sel
 
-def smooth_ptdata(ptdata,**kwargs):
+def smooth(ptdata,**kwargs):
     '''
     Apply filter to ptdata, row-wise, to a dimension of N-D arrays (default is last dimension).
     Args:
@@ -315,65 +311,7 @@ def smooth_ptdata(ptdata,**kwargs):
     filtered.other = other
     return filtered
 
-def peaks_to_phase(ndarr,axis=-1):
-    '''
-    Generate ramps between signal peaks, with amplitude {-pi,pi}
-    Args:
-        N-D array
-        Options:
-            axis: int, default = -1
-                  Note: axis is a dimension of the N-D array. The rightmost axis is the fastest changing.
-    Returns:
-        N-D array
-    '''
-    def pks2ph(sig):
-        phi = np.zeros(len(sig))
-        idx_pks = signal.find_peaks(sig)
-        for i in range(len(idx_pks[0])-1):
-            i_start = idx_pks[0][i]
-            i_end = idx_pks[0][i+1]
-            ramp_length = int(np.diff(idx_pks[0][i:i+2])[0])
-            phi[i_start:i_end] = np.linspace( start = -np.pi, stop = np.pi, num = ramp_length )
-        return phi
-    return np.apply_along_axis(pks2ph,axis,ndarr)
-
-def tder2D(ndarr_in,order=1):
-    '''
-    Differentiation per point. First order difference is euclidean distance
-    among consecutive two-dimensional points [x,y]. Second order difference is simple difference.
-    The operation is applied per consecutive pairs of rows in dimension -2 among dimension -1,
-    and the output has the same shape as the input, except dimension -2 has half the size.
-    Args:
-        N-D array where length of dimension -2 is 2 (x,y) or a multiple of 2 (x1,y1,x2,y2,...)
-        Optional:
-            order: 1 (default) or 2
-    Returns:
-        N-D array
-    '''
-    if ndarr_in.ndim > 2: ndarr_out = np.empty(ndarr_in.shape)
-    n_points = ndarr_in.shape[-2]//2
-    dim_out = list(ndarr_in.shape)
-    dim_out[-2] = n_points
-    ndarr_out = np.empty(tuple(dim_out))
-    diff_arr = np.empty(tuple(dim_out[-2:]))
-    for idx in np.ndindex(ndarr_in.shape[:-2]):
-        if ndarr_in.ndim == 2: ndarr_slc = ndarr_in
-        else: ndarr_slc = np.squeeze(ndarr_in[idx,:,:])
-        for i_point in range(n_points):
-            i_row = i_point*2
-            coldiff = np.diff(ndarr_slc[i_row:i_row+2,:])
-            diff_arr[i_row,1:] = np.linalg.norm( coldiff, axis=0) # absolute 1st. order diff. (speed)
-            diff_arr[i_row,0] = diff_arr[i_row,1]
-            if order == 2:
-                diff_arr[i_row,1:] = np.diff(diff_arr[i_row,:]) # 2nd. order diff. (acceleration)
-                diff_arr[i_row,0] = diff_arr[i_row,1]
-        if ndarr_in.ndim == 2:
-            ndarr_out = diff_arr
-        else:
-            ndarr_out[idx,:,:] = diff_arr
-    return np.squeeze(ndarr_out)
-
-def apply_to_ptdata(ptdata, func,*args, **kwargs):
+def apply(ptdata, func,*args, **kwargs):
     '''
     Apply a function to every N-D array of the data dictionary in a PtData object.
     Note that ptdata.dim will be copied from the input and may not correspond to the output,
@@ -440,7 +378,7 @@ def apply_to_ptdata(ptdata, func,*args, **kwargs):
             s = list(arr_in.shape[:])
             s[axis-1] = 1
             arr_out = np.empty(tuple(s))
-            for slc,_,midx in nd_iter(arr_in,lockdim=[axis-1,axis]):
+            for slc,_,midx in sc_ndarr.iter(arr_in,lockdim=[axis-1,axis]):
                 midx[axis-1] = 0
                 midx_str = str(midx).replace("'","")
                 exec('arr_out'+midx_str+'= func(slc,*args,**kwargs) ')
@@ -459,76 +397,7 @@ def apply_to_ptdata(ptdata, func,*args, **kwargs):
     processed.other = ptdata.other.copy()
     return processed
 
-def kuramoto_r(ndarr):
-    '''
-    Row-wise kuramoto order parameter r.
-    Args:
-        N-D array of phase angles,
-        where dim = -2 is rows for points and dim = -1 is columns for observations.
-        Singleton dimensions will be removed firstly.
-    Returns:
-        1-D array of Kuramoto order parameter r.
-    '''
-    if 1 in ndarr.shape: ndarr_sqz = np.squeeze(ndarr)
-    else: ndarr_sqz = ndarr
-    n_pts = ndarr_sqz.shape[-2]
-    r_list = []
-    for phi in ndarr_sqz.T:
-        r_list.append( abs( sum([(np.e ** (1j * angle)) for angle in phi]) / n_pts ) )
-    return np.array(r_list)
-
-def isochronal_sections(data_list,idx_sections,axis=-1):
-    '''
-    Time-rescale 1-D data so that data fits into sections of the same size.
-    The length of the resulting sections will be the length of the largest array index of sections.
-    Args:
-        data_list: a list of N-D arrays with the data.
-        idx_sections: corresponding list of lists with the index of sections.
-        axis: axis to apply the process.
-              Note: axis is a dimension of the N-D array. The rightmost axis (-1) is the fastest changing.
-    Returns:
-        isochr_data: list of arrays with the processed data.
-        idx_isochr_sections: list with the index of isochronal sections.
-    '''
-    n_sections = np.inf
-    for i in range(len(idx_sections)):
-        l = len(idx_sections[i])
-        if l < n_sections: n_sections = l
-    max_length = 0
-    for i in range(len(data_list)):
-        if data_list[i].shape[axis] > max_length: max_length = data_list[i].shape[axis]
-    length_section = round(max_length/n_sections)
-    length_total = length_section * n_sections
-    isochr_data = []
-
-    def isochrsec_(arr_in,idx_sec,length_total,length_section,n_sections):
-        arr_out = np.empty(length_total)
-        i_r_start = 0 # index raw
-        i_w_start = 0 # index time-rescaled by interpolation
-        for i_section in range(n_sections):
-            if i_section == n_sections-1: i_r_end = -1
-            else: i_r_end = idx_sec[i_section]
-            section_raw = arr_in[i_r_start : i_r_end ]
-            i_r_start = i_r_end
-            t_raw = np.linspace(0, len(section_raw)-1,  len(section_raw))
-            interpol = CubicSpline(t_raw, section_raw)
-            t_rescaled = np.linspace(0, len(section_raw)-1, num = int(length_section))
-            i_w_end = i_w_start + length_section
-            arr_out[ i_w_start : i_w_end ] = interpol(t_rescaled)
-            i_w_start = i_w_end
-        return arr_out
-
-    for i_arr in range(len(data_list)):
-        idx_sec = idx_sections[i_arr]
-        arr_in = data_list[i_arr]
-        isochrsec_result = np.apply_along_axis( isochrsec_, axis, arr_in, idx_sec, length_total, 
-                                                length_section, n_sections )
-        isochr_data.append( isochrsec_result )
-
-    idx_isochr_sections = list(range(length_section,length_section*n_sections+1,length_section))
-    return isochr_data, idx_isochr_sections
-
-def isochrsec_ptdata(ptdata,axis=-1):
+def isochrsec(ptdata,axis=-1):
     '''
     Wrapper for isochronal_sections.
     Time-rescale data so that it fits into sections of the same length.
@@ -547,7 +416,7 @@ def isochrsec_ptdata(ptdata,axis=-1):
     for ndarr in ptdata.data.values():
         data_list.append(ndarr)
     idx_sections = ptdata.topinfo['trimmed_sections_frames'].values.tolist()
-    isochr_data, idx_isochr_sections = isochronal_sections(data_list,idx_sections,axis)
+    isochr_data, idx_isochr_sections = sc_ndarr.isochronal_sections(data_list,idx_sections,axis)
     ddict = {}
     sec_list = []
     i_l = 0
@@ -557,18 +426,18 @@ def isochrsec_ptdata(ptdata,axis=-1):
         sec_list.append(idx_isochr_sections)
     new_topinfo = ptdata.topinfo.copy()
     new_topinfo['trimmed_sections_frames'] = sec_list
-    isochrsec = PtData(new_topinfo)
-    isochrsec.names.main = ptdata.names.main+'\n(time-rescaled isochronal sections)'
-    isochrsec.names.dim = ptdata.names.dim.copy()
-    isochrsec.labels.main = ptdata.labels.main
-    isochrsec.labels.dim = ptdata.labels.dim.copy()
-    isochrsec.labels.dimel = ptdata.labels.dimel.copy()
-    isochrsec.data = ddict
-    isochrsec.vis = ptdata.vis
-    isochrsec.other = ptdata.other.copy()
-    return isochrsec
+    isec = PtData(new_topinfo)
+    isec.names.main = ptdata.names.main+'\n(time-rescaled isochronal sections)'
+    isec.names.dim = ptdata.names.dim.copy()
+    isec.labels.main = ptdata.labels.main
+    isec.labels.dim = ptdata.labels.dim.copy()
+    isec.labels.dimel = ptdata.labels.dimel.copy()
+    isec.data = ddict
+    isec.vis = ptdata.vis
+    isec.other = ptdata.other.copy()
+    return isec
 
-def aggrsec_ptdata( ptdata, aggregate_axes=[-2,-1], sections_axis=1,
+def aggrsec( ptdata, aggregate_axes=[-2,-1], sections_axis=1,
                     omit=None, function='mean' ):
     '''
     Aggregate sections.
@@ -643,65 +512,21 @@ def aggrsec_ptdata( ptdata, aggregate_axes=[-2,-1], sections_axis=1,
     aggr_lbl = f'({function_lbl} sections)'
     if isochr_lbl in main_name: main_name = main_name.replace(isochr_lbl,aggr_lbl)
     else: main_name = main_name + aggr_lbl
-    aggrsec = PtData(ptdata.topinfo)
-    aggrsec.names.main = main_name
-    aggrsec.names.dim = ptdata.names.dim.copy()
-    aggrsec.labels.main = ptdata.labels.main
-    aggrsec.labels.dim = ptdata.labels.dim.copy()
-    aggrsec.labels.dimel = ptdata.labels.dimel.copy()
-    aggrsec.data = dd_out
-    aggrsec.vis = ptdata.vis.copy()
-    aggrsec.vis = {**aggrsec.vis, 'sections':False,'x_ticklabelling':'33.3%'}
-    aggrsec.other = ptdata.other.copy()
-    return aggrsec
+    asec = PtData(ptdata.topinfo)
+    asec.names.main = main_name
+    asec.names.dim = ptdata.names.dim.copy()
+    asec.labels.main = ptdata.labels.main
+    asec.labels.dim = ptdata.labels.dim.copy()
+    asec.labels.dimel = ptdata.labels.dimel.copy()
+    asec.data = dd_out
+    asec.vis = ptdata.vis.copy()
+    asec.vis = {**asec.vis, 'sections':False,'x_ticklabelling':'33.3%'}
+    asec.other = ptdata.other.copy()
+    return asec
 
-def fourier( ndarr, window_length, fps=None, output='spectrum', window_shape=None,
-             mode='same', first_fbin=1, axis=-1 ):
+def fourier(ptdata, window_length, **kwargs):
     '''
-    Wrapper for scipy.fft.rfft
-    Fast Fourier transform for a signal of real numbers.
-    Args:
-        ndarr: N-D array
-        window_length: length of the FFT window vector, in seconds if the fps parameter is given.
-        Options:
-            fps
-            output: 'spectrum' or 'phase'(radians).
-            window_shape: main_name of the window shape (eg.'hann'). See help(scipy.signal.windows) or
-                          https://docs.scipy.org/doc/scipy/reference/signal.windows.html
-            mode: 'same' (zero-padded, same size of input) or 'valid' (only FFT result).
-            first_fbin: Remove frequency bins under this number. Default = 1 (removes DC offset).
-            axis: int, default = -1 (last dimension of the N-D array).
-                  Note: axis is a dimension of the N-D array. The rightmost axis (-1) is the fastest changing.
-    Returns:
-        N-D array, whose two last two dimensions are the result of this function.
-    '''
-    if fps: window_length = round(window_length * fps)
-    fft_window = 1
-    if window_shape:
-        windows_module = importlib.import_module('scipy.signal.windows')
-        window_func = eval('windows_module.'+window_shape)
-        fft_window = window_func(window_length)
-    zpad = mode=='same'
-
-    def fourier_( sig, fft_window, window_length, zpad, first_fbin, output ):
-        fft_result = []
-        for i_window in range(len(sig)-window_length):
-            this_window = sig[ i_window : i_window+window_length] * fft_window
-            this_spectrum = rfft(this_window)[first_fbin:]
-            if output == 'spectrum': fft_result.append(this_spectrum)
-            elif output == 'phase': fft_result.append( np.angle(this_spectrum) )
-        fft_result = np.array(fft_result).T
-        if zpad:
-            dif = len(sig) - fft_result.shape[1]
-            margin = np.floor(dif/2).astype(int)
-            fft_result = np.pad( fft_result, ( (0,0),(margin, margin + int(dif%2) )) )
-        return fft_result
-    return np.apply_along_axis( fourier_, axis, ndarr, fft_window, window_length, zpad,
-                                first_fbin, output )
-
-def fourier_ptdata(ptdata, window_length, **kwargs):
-    '''
-    Wrapper for fourier. See help(fourier).
+    Wrapper for fourier_transform. See help(fourier_transform).
     Args:
         ptdata: PtData object, see help(PtData).
         window_length: length of the FFT window in seconds unless optional parameter fps = None.
@@ -715,7 +540,7 @@ def fourier_ptdata(ptdata, window_length, **kwargs):
     dimel_labels = ptdata.labels.dimel.copy()
     dd_in = ptdata.data
 
-    if ('output' in kwargs) and (kwargs['output'] == 'phase'): 
+    if ('output' in kwargs) and (kwargs['output'] == 'phase'):
         main_name = 'Phase'
         dim_names.insert(-1,'frequency')
         main_label = r'$\phi$'
@@ -735,7 +560,7 @@ def fourier_ptdata(ptdata, window_length, **kwargs):
     for k in dd_in:
         fps = ptdata.topinfo.loc[k,'fps']
         if 'fps' not in kwargs: wl = round(window_length * fps)
-        dd_out[k] = fourier(dd_in[k], wl,**kwargs)
+        dd_out[k] = sc_ndarr.fourier_transform(dd_in[k], wl,**kwargs)
         freq_bins[k] = np.abs(( fftfreq(wl)*fps )[first_fbin:np.floor(wl/2 + 1).astype(int)])
         freq_bins_rounded = np.round(freq_bins[k],2)
         rdif = abs(np.mean(freq_bins_rounded-np.round(freq_bins_rounded)))
@@ -755,137 +580,8 @@ def fourier_ptdata(ptdata, window_length, **kwargs):
     fft_result.other = other
     return fft_result
 
-def slwin(arrs, window_length, func, mode='same', **kwargs):
-    '''
-    Apply a function to a sliding window over the last dimension (-1) of one or two numpy arrays.
-    Args:
-        arrs: 1-D or N-D array or a list with two of such arrays having the same dimensions.
-        window_length: length of the window vector.
-        func: function to apply, with one or two required inputs (consistent with arrs).
-        Optional:
-            mode: 'same' (zero-padded, same size of input) or 'valid' (only func result).
-            **kwargs = keyword arguments to be passed to func.
-    Returns:
-        Array whose dimensions depend on func.
-    '''
-    if isinstance(arrs,list): len_arr = arrs[0].shape[-1]
-    else: len_arr = arrs.shape[-1]
-    slwin_result = []
-    m_bit = 0
-    for i_window in range(len_arr-window_length):
-        if isinstance(arrs,np.ndarray):
-            this_window = arrs[ ..., i_window : i_window + window_length ]
-            this_result = func(this_window,**kwargs)
-        elif isinstance(arrs,list):
-            this_window_i = arrs[0][ ..., i_window : i_window + window_length ]
-            this_window_j = arrs[1][ ..., i_window : i_window + window_length ]
-            this_result = func(this_window_i,this_window_j,**kwargs)
-        slwin_result.append(this_result)
-    slwin_result = np.array(slwin_result).T
-    if mode == 'same':
-        dif = len_arr - slwin_result.shape[1]
-        margin = np.floor(dif/2).astype(int)
-        slwin_result = np.pad( slwin_result, ( (0,0),(margin, margin + int(dif%2) )) )
-    return slwin_result
-
-def pfndarr(ndarr, func, pairs_axis, fixed_axes=-1, verbose=True, **kwargs):
-    '''
-        Apply a function to pairs of dimensions of an N-D array.
-        Args:
-            ndarr: N-D array.
-            func: function to apply, whose first argument is a list with each N-D array of the pair.
-            pairs_axis: axis to run the pairwise process.
-            Optional:
-                fixed_axes: axis (int) or axes (list) that are the input to func. Default is last axis *.
-                verbose: Display progress.
-                **kwargs = optional arguments and keyword arguments to be passed to func.
-        Returns:
-            N-D array. The length of the pairs dimension originanlly of length N, is ((N*N)-N)/2.
-            List of pairs.
-        * axes = dimensions of the N-D array, where the rightmost axis is the fastest changing.
-    '''
-    shape_in = list(ndarr.shape)
-    iter_shape = shape_in.copy()
-    n_pair_el = iter_shape.pop(pairs_axis)
-    n_pairs = (n_pair_el**2 - n_pair_el)//2
-    loc_idx_iter = list(range(len(shape_in)))
-    del loc_idx_iter[pairs_axis]
-    if not isinstance(fixed_axes,list): fixed_axes = [fixed_axes]
-    idx_shape_o = [None for _ in shape_in]
-    for i in fixed_axes:
-        del iter_shape[i]
-        del loc_idx_iter[i]
-        idx_shape_o[i] = ':'
-    idx_shape_i = idx_shape_o.copy()
-    idx_shape_j = idx_shape_o.copy()
-    shape_out = shape_in.copy()
-    shape_out[pairs_axis] = (shape_in[pairs_axis]**2 - shape_in[pairs_axis])//2
-    ouput_ndarr = np.empty(tuple(shape_out))
-    len_pairs_axis = ndarr.shape[pairs_axis]
-    i_pair = 0
-    pairs_idx = []
-    for i in range(len_pairs_axis):
-        idx_shape_i[pairs_axis] = i
-        for j in range(i+1, len_pairs_axis):
-            idx_shape_j[pairs_axis] = j
-            idx_shape_o[pairs_axis] = i_pair
-            if verbose: print(f'pair {i_pair+1} of {n_pairs}')
-            pairs_idx.append([i,j])
-            i_pair += 1
-            for idx_iter in np.ndindex(tuple(iter_shape)):
-                for i_loc,i_idx in zip(loc_idx_iter,idx_iter):
-                    idx_shape_i[i_loc] = i_idx
-                    idx_shape_j[i_loc] = i_idx
-                    idx_shape_o[i_loc] = i_idx
-                idx_shape_i_str = str(idx_shape_i).replace("'","")
-                idx_shape_j_str = str(idx_shape_j).replace("'","")
-                idx_shape_o_str = str(idx_shape_o).replace("'","")
-                slice_i = eval('ndarr'+idx_shape_i_str)
-                slice_j = eval('ndarr'+idx_shape_j_str)
-                exec('ouput_ndarr'+idx_shape_o_str+' = func([slice_i,slice_j],**kwargs)')
-    return ouput_ndarr, pairs_idx
-
-def phasediff(phi_1,phi_2):
-    '''
-    Args:
-        phi_1, phi_2: scalars of vectors that are phase angles.
-    Returns:
-        Phase difference.
-    '''
-    return np.arctan2( np.cos(phi_1) * np.sin(phi_2) - np.sin(phi_1) * np.cos(phi_2),
-                       np.cos(phi_1) * np.cos(phi_2) + np.sin(phi_1) * np.sin(phi_2) )
-
-def plv(a1,a2,axis=0):
-    '''
-    Args:
-        a1, a2: phase angles.
-        Optional:
-            axis
-            Note: axis is a dimension of the N-D array. The rightmost axis (-1) is the fastest changing.
-    Returns:
-        Phase-locking value.
-    '''
-    diff_complex = np.exp(complex(0,1)*(a1-a2))
-    plv_result = np.abs(np.sum(diff_complex,axis=axis))/len(diff_complex)
-    return plv_result
-
-def wplv(arrs, window_length=None, mode='same', axis=1):
-    '''
-    Phase-locking value on a sliding window over two numpy arrays.
-    Args:
-        arrs: 1-D array or a list with two 1-D arrays with the same length.
-        window_length: length of the window vector.
-        Optional:
-            mode: 'same' (zero-padded, same size of input) or 'valid' (only func result).
-            axis to apply plv
-                Note: axis is a dimension of the N-D array. The rightmost axis (-1) is the fastest changing.
-    Returns:
-        Array whose dimensions depend on func.
-    '''
-    return slwin( arrs, window_length, plv, mode=mode, axis=axis)
-
-def wplv_ptdata( ptdata, window_duration, pairs_axis=0, fixed_axes=[-2,-1],
-                 plv_axis=1, mode='same', verbose=False ):
+def winplv( ptdata, window_duration, pairs_axis=0, fixed_axes=[-2,-1], 
+            plv_axis=1, mode='same', verbose=False ):
     '''
     Pairwise windowed Phase-Locking Value.
     Args:
@@ -918,9 +614,10 @@ def wplv_ptdata( ptdata, window_duration, pairs_axis=0, fixed_axes=[-2,-1],
             print(f'processing array {k} ({c} of {len(ptdata.data.keys())})')
             c+=1
         window_length = round(window_duration * ptdata.topinfo.loc[k,'fps'])
-        dd_out[k], pairs_idx = pfndarr( dd_in[k], wplv, pairs_axis, window_length=window_length,
-                                        fixed_axes=fixed_axes, mode=mode, axis=plv_axis,
-                                        verbose=verbose )
+        dd_out[k], pairs_idx = sc_ndarr.apply_to_pairs( dd_in[k], sc_ndarr.windowed_plv,
+                                                        pairs_axis, window_length=window_length,
+                                                        fixed_axes=fixed_axes, mode=mode, axis=plv_axis,
+                                                        verbose=verbose )
     dim_names = ptdata.names.dim.copy()
     dim_labels = ptdata.labels.dim.copy()
     dimel_labels = ptdata.labels.dimel.copy()
@@ -940,20 +637,20 @@ def wplv_ptdata( ptdata, window_duration, pairs_axis=0, fixed_axes=[-2,-1],
     n_pairs = (n_pair_el**2 - n_pair_el)//2
     dimel_labels[pairs_axis] = ['pair '+str(p) for p in pairs_idx]
 
-    winplv = PtData(ptdata.topinfo)
-    winplv.names.main = 'Pairwise Windowed Phase-Locking Value'
-    winplv.names.dim = dim_names
-    winplv.labels.main = 'PLV'
-    winplv.labels.dim = dim_labels
-    winplv.labels.dimel = dimel_labels
-    winplv.data = dd_out
-    winplv.vis = {'groupby':fixed_axes[0], 'vistype':'imshow', 'vlattr':'r:3f'}
+    wplv = PtData(ptdata.topinfo)
+    wplv.names.main = 'Pairwise Windowed Phase-Locking Value'
+    wplv.names.dim = dim_names
+    wplv.labels.main = 'PLV'
+    wplv.labels.dim = dim_labels
+    wplv.labels.dimel = dimel_labels
+    wplv.data = dd_out
+    wplv.vis = {'groupby':fixed_axes[0], 'vistype':'imshow', 'vlattr':'r:3f'}
     if 'freq_bins' in ptdata.other:
-        winplv.vis['y_ticks'] = ptdata.other['freq_bins'].copy()
-    winplv.other = ptdata.other.copy()
-    return winplv
+        wplv.vis['y_ticks'] = ptdata.other['freq_bins'].copy()
+    wplv.other = ptdata.other.copy()
+    return wplv
 
-def aggrax_ptdata( ptdata, axis=0, function='mean' ):
+def aggrax( ptdata, axis=0, function='mean' ):
     '''
     Wrapper for np.sum or np.mean
     Args:
@@ -982,14 +679,289 @@ def aggrax_ptdata( ptdata, axis=0, function='mean' ):
     del dim_names[axis]
     dim_labels = ptdata.labels.dim.copy()
     del dim_labels[axis]
-    aggrax = PtData(ptdata.topinfo)
-    aggrax.names.main = main_name
-    aggrax.names.dim = dim_names
-    aggrax.labels.main = ptdata.labels.main
-    aggrax.labels.dim = dim_labels
-    aggrax.labels.dimel = dim_labels
-    aggrax.data = dd_out
-    aggrax.vis = ptdata.vis.copy()
-    aggrax.vis = {**aggrax.vis, 'groupby':axis, 'sections':False,'x_ticklabelling':'33.3%'}
-    aggrax.other = ptdata.other.copy()
-    return aggrax
+    agg = PtData(ptdata.topinfo)
+    agg.names.main = main_name
+    agg.names.dim = dim_names
+    agg.labels.main = ptdata.labels.main
+    agg.labels.dim = dim_labels
+    agg.labels.dimel = dim_labels
+    agg.data = dd_out
+    agg.vis = ptdata.vis.copy()
+    agg.vis = {**agg.vis, 'groupby':axis, 'sections':False,'x_ticklabelling':'33.3%'}
+    agg.other = ptdata.other.copy()
+    return agg
+
+def visualise( ptdata, **kwargs ):
+    '''
+    Visualise data of a PtData object. Normally the object should contain information to generate the
+    visualisation, mostly in the 'vis' field. Default settings may be changed with optional arguments.
+    Args:
+        ptdata: PtData object, see help(PtData).
+        Optional:
+            vistype: 'line', 'spectrogram', or 'imshow'
+            groupby: int, str, or list, indicating N-D array's dimensions to group.
+                     'default' = use defaults: line = 0, spectrogram = -2
+            vscale: float, vertical scaling.
+            dlattr: string, data lines' attributes colour, style, and width (e.g. 'k-0.6')
+            sections: display vertical lines for sections. True or False.
+            vlattr: vertical lines' attributes, see help(overlay_vlines).
+            snum_hvoff: list with horizontal and vertical offset factor for section numbers.
+            y_label: label for vertical axis. 'default' uses ptdata.labels.main
+            y_ticks: labels for vertical axis ticks, useful only when vistype = 'imshow'
+            x_ticklabelling: labelling of horizontal axis;
+                             'default´'
+                             's' = 'time (seconds)',
+                             '25%' = xticks as percentage
+                             'dim x' = use ptdata.labels.dim[x], or None.
+            figtitle: figure title. If None, ptdata.name.main will be used.
+            axes: dimensions to visualise. One axis for 'line' and'spectrogram', two axes for 'imshow'.
+            sel_list: selection to display with list, see help(select_data).
+            savepath: full path (directories and filename with extension) to save as PNG
+            **kwargs: selection to display with keywords, see help(select_data).
+    '''
+    def xticks_minsec(n_frames,fps,interval_sec=20,start_sec=0):
+        '''
+        Convert xticks expressed in frames to format "minutes:seconds".
+        '''
+        interval_f = interval_sec*fps
+        xticks_loc = list(range(round(start_sec),round(n_frames),round(interval_f)))
+        if xticks_loc[-1] > (n_frames-interval_f/2): xticks_loc[-1] = n_frames
+        else: xticks_loc.append(n_frames)
+        xticks_lbl = []
+        for f in xticks_loc: xticks_lbl.append( sc_utils.frames_to_minsec_str(f,fps) )
+        return xticks_loc, xticks_lbl
+
+    def xticks_percent(x_percent,length_x):
+        '''
+        Make xticks as percentage.
+        '''
+        frac = 100/float(x_percent)
+        length_section = round(length_x / frac)
+        x_ticks = [t*length_section for t in range(round(frac)+1)]
+        x_labels = [ round(t*x_percent) for t in range(round(frac)+1)]
+        plt.xticks(x_ticks,x_labels)
+
+    def overlay_vlines(ax, loc, vlattr, numcolour='k', num_hvoffset=None):
+        '''
+        Args:
+            ax: pyplot axis object where to overlay vertical lines.
+            loc: list with the location of the lines, in horizontal axis units.
+            vlatrr: string with one character for each of these:
+                    colour, style, width, f (full vertical) or b (bits at the top and bottom). 
+                    For example: 'r:2f' means red, dotted, width=2, full vertical line.
+            Optional:
+                numcolor: Colour for numbers. None for no numbers.
+                num_hvoffset: horizontal and vertical offset for the numbers, as percentage of axes lengths.
+        Returns:
+            none
+        '''
+        if not vlattr: vlattr='r:2f'
+        ylims = ax.get_ylim()
+        if vlattr[3] == 'f':
+            n_iters = 1
+            ymin = [ylims[0]]; ymax = [ylims[1]]
+        elif vlattr[3] == 'b':
+            n_iters = 2
+            the_bit = (abs(ylims[0]) + abs(ylims[1]))*0.1
+            ymin = [ylims[0], ylims[1]-the_bit]
+            ymax = [ylims[0]+the_bit, ylims[1]]
+        else:
+            raise Exception(f'Rightmost chracater in "vlattr" should be "f" or "b", but got "{vlattr[3]}".')
+        for i in range(n_iters):
+            ax.vlines( x = loc, ymin=ymin[i], ymax=ymax[i],
+                       colors = vlattr[0],
+                       linestyles = vlattr[1],
+                       linewidths = int(vlattr[2]) )
+        if numcolour:
+            hv_offset = [0,0]
+            n_sec = len(loc)
+            if num_hvoffset:
+                xlims = ax.get_xlim()
+                h_unit = (xlims[1] - xlims[0])/n_sec
+                hv_offset[0] = h_unit * num_hvoffset[0]
+                v_unit = ylims[1] - ylims[0]
+                hv_offset[1] = v_unit * num_hvoffset[1]
+            for i_s in range(n_sec):
+                ax.text( loc[i_s] + hv_offset[0],
+                         ylims[0] + hv_offset[1],
+                         i_s, rotation=0, color=numcolour,
+                         horizontalalignment='center')
+
+    kwargs = {**ptdata.vis,**kwargs}
+    vistype = kwargs.pop('vistype','line')
+    groupby = kwargs.pop('groupby','default')
+    y_max = kwargs.pop('y_max',None)
+    vscale = kwargs.pop('vscale',1)
+    dlattr = kwargs.pop('dlattr',None)
+    sections = kwargs.pop('sections',True)
+    vlattr = kwargs.pop('vlattr','k:2f')
+    snum_hvoff = kwargs.pop('snum_hvoff',[0,1.13])
+    y_label = kwargs.pop('y_label','default')
+    y_ticks = kwargs.pop('y_ticks',None)
+    x_ticklabelling = kwargs.pop('x_ticklabelling','s')
+    figtitle = kwargs.pop('figtitle',None)
+    axes = kwargs.pop('axes',-1)
+    sel_list = kwargs.pop('sel_list',None)
+    savepath = kwargs.pop('savepath',None)
+
+    if y_label == 'default': ylabel = ptdata.labels.main
+    else: ylabel = y_label
+    dlattr_ = [None,None,0.6]
+    if dlattr is not None:
+        dstr = ''
+        for c in dlattr:
+            if c.isalpha(): dlattr_[0] = c
+            elif c.isdigit() or (c == '.'): dstr += c
+            else: dlattr_[1] = c
+        if dstr: dlattr_[2] = float(dstr)
+    ptdata = select(ptdata,sel_list,**kwargs)
+    data_dict = ptdata.data
+    data_dict_keys = tuple(data_dict.keys())
+    if not isinstance(axes,list): axes = [axes]
+    lastaxis_lbl = ptdata.names.dim[axes[-1]]
+# TO-DO: case no sections in annotations
+    sections_lastaxis_exist = f'trimmed_sections_{lastaxis_lbl}s' in ptdata.topinfo.columns
+    if (lastaxis_lbl in kwargs) and sections and sections_lastaxis_exist:
+        print(f'Warning: sections are disabled for {lastaxis_lbl} selection.')
+        sections = False
+# TO-DO:
+    # select time maybe by xlims instead of select_data.
+    # sections could follow frame selection.
+    if figtitle is None: figtitle = ptdata.names.main
+    super_title = ''
+    if vistype == 'line':
+        if (groupby == 'default') and (data_dict[data_dict_keys[0]].ndim > len(axes)):
+            groupby = [0]
+    elif vistype in ('spectrogram','imshow'):
+        if 'spectrogram' in vistype:
+            super_title = 'Frequency Spectrum\n'
+        ylabel = 'Hz'
+    if groupby == 'default':
+        if 'imshow' in vistype: groupby = -2
+        else: groupby = None
+    spt_y = 1
+    if sections and sections_lastaxis_exist: spt_y = snum_hvoff[1]*1.1
+    data_shape = list(data_dict[data_dict_keys[0]].shape)
+    sing_dims = False
+    i_1 = []
+    if 1 in data_shape: # singleton dimensions
+        i_1 = [i for i, x in enumerate(data_shape) if x == 1]
+        if not isinstance(groupby,list): groupby = [groupby]
+        groupby.extend(i_1)
+        sing_dims = True
+    if groupby is None: groupby = axes
+    if not isinstance(groupby,list): groupby = [groupby]
+    groupby = groupby + axes
+    for i,v in enumerate(groupby):
+        if v<0: groupby[i] = data_dict[data_dict_keys[0]].ndim+v
+    groupby = list(dict.fromkeys(groupby)) # remove redundancy
+    for i,gb in enumerate(groupby):
+        if isinstance(gb,str):
+            groupby[i] = ptdata.names.dim.index(gb)
+    s = data_shape
+    for ii in sorted(groupby, reverse=True):
+        if s: del s[ii]
+    if len(s) > 1: raise Exception(   'Maximum 2 dimensions allowed for display, ' \
+                                    + 'therefore groupby should be for more dimensions.' )
+    default_xtick_percentage_str = '25%'
+    if x_ticklabelling is None:
+        if 'isochronal' in figtitle:
+            x_ticklabelling = default_xtick_percentage_str
+    else:
+        if ('%' not in x_ticklabelling) and ('isochronal' in figtitle):
+            x_ticklabelling = default_xtick_percentage_str
+    if x_ticklabelling is None:
+        xlabel = ''
+        x_ticklabelling = 'blank'
+    elif x_ticklabelling == 's':
+        xlabel = 'time (m:s)'
+    elif 'dim' in x_ticklabelling:
+        xlabel = ptdata.labels.dim[int(x_ticklabelling.split(' ')[1])]
+    elif '%' in x_ticklabelling:
+        xlabel = '%'
+        xpercent = float(x_ticklabelling.replace('%',''))
+    n_sel_top = len(data_dict)
+    n_sp = int(np.prod(s)*n_sel_top)
+    fig_height = n_sp*2.4*vscale
+    i_sp = 1
+    fig = plt.figure(figsize=(12,fig_height))
+    if y_ticks:
+        sp_yticks = []
+        sp_axes = []
+    for i_top in range(n_sel_top):
+        fps = ptdata.topinfo['fps'].iloc[i_top]
+        top_arr = data_dict[data_dict_keys[i_top]]
+        new_i_top = True
+        array_iterator = sc_ndarr.iter( top_arr, lockdim=groupby )
+        for vis_arr,i_ch,i_nd in array_iterator:
+            if new_i_top: sp_title = '"'+ptdata.topinfo['Name'].iloc[i_top]+'"'
+            else: sp_title = ''
+            plt.subplot(n_sp,1,i_sp)
+            if sing_dims: vis_arr = np.squeeze(vis_arr)
+            if vistype in ('line','imshow'):
+                len_lastdim = vis_arr.shape[-1]
+                if 'line' in vistype:
+                    plt.plot( vis_arr.T, color=dlattr_[0], linestyle=dlattr_[1],
+                              linewidth=dlattr_[2] )
+                elif 'imshow' in vistype:
+                    if vis_arr.ndim != 2:
+                        check_gb = abs(2-vis_arr.ndim)
+                        raise Exception(''.join(['The number of dimensions for imshow is currently ',\
+                                                 f'{vis_arr.ndim} but should be 2. To correct it ',\
+                                                 'please check keyword argument groupby has ',
+                                                 f'length = {check_gb}']))
+                    plt.imshow(vis_arr,aspect='auto')
+                    plt.gca().invert_yaxis()
+                if x_ticklabelling == 's':
+                    plt.xticks( *xticks_minsec(len_lastdim,fps) )
+                elif xlabel == '%':
+                    xticks_percent(xpercent,vis_arr.shape[axes[-1]])
+                plt.xlim((0,len_lastdim))
+            elif 'spectrogram' in vistype:
+                _,_,t,_ = plt.specgram(vis_arr,Fs=fps,detrend='linear',scale='linear')
+                if x_ticklabelling == 's':
+                    plt.xticks( *xticks_minsec(t[-1],1,start_sec=t[0]) )
+                elif xlabel == '%':
+                    xticks_percent(xpercent,len(t))
+            if x_ticklabelling == 'blank':
+                plt.xticks([],[])
+            if y_max: plt.ylim((None,y_max))
+            if y_ticks and (vis_arr.ndim == 2):
+                if isinstance(y_ticks,list): sp_yticks.append(y_ticks)
+                elif isinstance(y_ticks,dict): sp_yticks.append(y_ticks[ data_dict_keys[i_top] ])
+                sp_axes.append( plt.gca() )
+            plt.ylabel(ylabel)
+            if sections and sections_lastaxis_exist:
+                overlay_vlines( plt.gca(), ptdata.topinfo['trimmed_sections_frames'].iloc[i_top],
+                                vlattr, numcolour=[0.6,0.1,0.2], num_hvoffset=snum_hvoff )
+            for i in i_ch:
+                if isinstance(ptdata.labels.dimel[i],dict): # dict: different labels for each top array
+                    sp_lbl = ptdata.labels.dimel[i][i_top][i_nd[i]]
+                elif isinstance(ptdata.labels.dimel[i],list):
+                    sp_lbl = ptdata.labels.dimel[i][i_nd[i]] # list: same labels for all top arrays
+                else:
+                    sp_lbl = ptdata.labels.dimel[i] # (singleton dim.) same labels for all top arrays
+                sp_title = ''.join([sp_title,'\n',sp_lbl])
+            plt.title(sp_title,y=spt_y)
+            if new_i_top: new_i_top = False
+            i_sp += 1
+    fig.supxlabel(xlabel)
+    plt.suptitle( super_title + figtitle , fontsize=16 )
+    plt.tight_layout(rect=[0, 0.005, 1, 0.98])
+    if y_ticks and (vis_arr.ndim == 2): # TO-DO: this leaves a bit too much space in between ticks
+        for i_ax,spax in enumerate(sp_axes):
+            yticks_loc = spax.get_yticks()
+            if min(yticks_loc) < 0: yticks_loc = np.delete(yticks_loc,0)
+            if max(yticks_loc) > (len(sp_yticks[i_ax])-1): yticks_loc = np.delete(yticks_loc,-1)
+            yticks_lbl = [ str(round(sp_yticks[i_ax][int(i)],1)).rstrip('0').rstrip('.') \
+                           for i in yticks_loc ]
+            max_ytick = len(sp_yticks[i_ax])-1
+            if max_ytick not in yticks_loc:
+                yticks_loc = np.append(yticks_loc,max_ytick)
+                yticks_lbl.append(str(round(sp_yticks[i_ax][-1],1)).rstrip('0').rstrip('.'))
+                if (yticks_loc[-1] - yticks_loc[-2]) <= 1:
+                    yticks_loc = np.delete(yticks_loc,-2)
+                    del yticks_lbl[-2]
+            sp_axes[i_ax].set_yticks(yticks_loc,labels=yticks_lbl)
+    if savepath:
+        plt.savefig(savepath + '.png')

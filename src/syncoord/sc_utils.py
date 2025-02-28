@@ -1,12 +1,59 @@
-#!/usr/bin/env python
-# coding: utf-8
+'''Miscellaneous functionality.'''
 
-'''Load and save data.'''
-
-import pandas as pd
 import numpy as np
+import pandas as pd
 
-from .utilities import trim_sections_to_frames, frames_to_minsec_str
+def halt(*arg):
+    if not arg: arg = ('*** halt ***',)
+    raise Exception(arg[0])
+
+def frames_to_minsec_str(frames,fps):
+    '''
+    Convert frames (int) into a string with format "minutes:seconds".
+    '''
+    mins, sec = divmod(round(frames/fps), 60)
+    if sec == 0: lbl = f'{mins}:00'
+    elif sec < 10: lbl = f'{mins}:0{sec}'
+    else: lbl = f'{mins}:{sec}'
+    return lbl
+
+def minsec_str_to_frames(ts_str_in,fps):
+    '''
+    Args:
+        ts_str_in: comma-separated string of times as seconds, minutes:seconds, or minutes:seconds.decimals
+        fps
+    Returns:
+        list of int: frames
+    '''
+    if not ts_str_in[-1].isnumeric():
+        ts_str_in = ts_str_in[:-1]
+    ts_str_in = ts_str_in.replace(' ','')
+    ts_str_lst = ts_str_in.split(',')
+    ts_f_lst = []
+    for ts_str in ts_str_lst:
+        if ':' not in ts_str:
+            s = float(ts_str)
+        else:
+            s = sum(x * float(t) for x, t in zip([60, 1], ts_str.split(":")))
+        ts_f_lst.append( round(s*fps) )
+    return ts_f_lst
+
+def trim_sections_to_frames(topinfo):
+    '''
+    Args:
+        DataFrame with columns 'Start', 'Sections' and 'fps'.
+        help(minsec_str_to_frames) for the format of cells in column 'Sections'.
+    Returns:
+        List with processed values.
+    '''
+    ts_f = []
+    for i in topinfo.index:
+        s_f = minsec_str_to_frames( topinfo['Sections'].iloc[i] , topinfo['fps'].iloc[i] )
+        offset_s = topinfo['Start'].iloc[i]
+        if np.isnan(offset_s): offset_s = 0
+        offset_f = offset_s * topinfo['fps'].iloc[i]
+        ts_f.append( [ round(f - offset_f) for f in s_f ] )
+    return ts_f
 
 def load_data( preproc_data_folder, prop_path, annot_path=None, topdata_Name='idx',
                max_n_files=None, print_durations=True ):
