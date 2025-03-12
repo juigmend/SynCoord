@@ -53,22 +53,190 @@ def trim_sections_to_frames(topinfo):
         ts_f.append( [ round(f - offset_f) for f in s_f ] )
     return ts_f
 
-def load_data( preproc_data_folder, prop_path, annot_path=None, topdata_Name=None,
+def supersine(argdict):
+    '''
+    Produce a sine wave with optional variables for distortion.
+    Arg:
+            wavargs = dict()
+        Required values:
+            wavargs['frequency'] = f
+            wavargs['phase_shift'] = ps
+            wavargs['amplitude'] = a
+            wavargs['sampling_frequency'] = sf
+            wavargs['length'] = l
+        Optional values:
+            wavargs['vertical_offset'] = vo
+            wavargs['irregularity'] = irr
+            wavargs['noise_strength'] = ns
+            wavargs['seed'] = s
+    Returns:
+        array
+    '''
+    from scipy.interpolate import CubicSpline
+
+    f = argdict.get('frequency')
+    ps = argdict.get('phase_shift')
+    amp = argdict.get('amplitude')
+    fps = argdict.get('sampling_frequency')
+    l = argdict.get('length')
+    v_offset = argdict.get('vertical_offset',0)
+    irregularity = argdict.get('irregularity',0)
+    noise_strength = argdict.get('noise_strength',0)
+    noise_strength = noise_strength
+    seed = argdict.get('seed',None)
+
+    rangen = np.random.default_rng(seed=seed)
+    t = np.arange(0, l)/fps
+    y = np.sin(2*np.pi*f*t + ps/2)
+    if irregularity:
+        if irregularity >= 1:
+            y = np.zeros(l)
+        else:
+            n_ran = int(np.ceil((l-2) * (1-irregularity)**2))
+            if n_ran < 1: n_ran = 1
+            ran_idx = np.sort(rangen.choice(np.arange(1,l), size=n_ran, replace=False))
+            ip_x = np.insert(ran_idx, [0,n_ran], [0,l])
+            ip_y = y[ran_idx]
+            ip_y = ip_y - ip_y * rangen.random(size=ip_y.shape[0]) * irregularity**2
+            ip_y = np.insert(ip_y, [0,n_ran], [0,0])
+            ipf = CubicSpline(ip_x,ip_y)
+            y = ipf(np.arange(l))
+    noiz = rangen.uniform(-0.9,0.9,l)
+    y = (y - (y * noiz * noise_strength ))
+    y = (y * amp) / (np.max( [ abs(y.min()) , y.max() ] ) * 2)
+    y = y + v_offset
+    return y
+
+def init_testdatavars(**kwargs):
+    '''
+    Initialise values for the function 'testdata', which produces signals of oscillating points
+    with optional distortion.
+    All arguments are keywords. If no arguments are given, a dictionary with default values
+    will be produced (e.g., for quick testing).
+    Args:
+        Optional:
+            fps: scalar
+            durations_sections: list, durations of sections in seconds
+            n_points: number of oscillating points
+            n_axes: number of spatial axes
+            seed: None or int; seed for the pseudorandom generator (e.g., for reproducibility)
+            nan: True returns array 'data_vars' as NaN. False returns default values.
+    Returns:
+        Dictionary of variables to serve as input for function 'testdata', with all the optional
+        arguments plus an array 'data_vars' with dimensions [sections,points,axes,vars], where
+        vars are frequency, phase_shift, amplitude, vertical_offset, irregularity, noise_strength.
+    '''
+
+    fps = kwargs.get('fps',30)
+    durations_sections = kwargs.get('durations_sections',[7,7,7])
+    n_points = kwargs.get('n_points',4)
+    n_axes = kwargs.get('n_axes',2)
+    seed = kwargs.get('seed',None)
+
+    n_sections = len(durations_sections)
+    total_duration = sum(durations_sections)*fps
+    point_vars = np.empty((n_sections,n_points,n_axes,6)) # dim = [sections,points,axes,vars]
+    point_vars[:] = np.nan
+
+    data_vars = { 'fps':fps,'durations_sections':durations_sections,'total_duration':total_duration,
+                   'n_points':n_points,'n_axes':n_axes,'point_vars':point_vars,'seed':seed }
+
+    if ('nan' in kwargs) and kwargs['nan']: return data_vars
+
+    # vars = frequency, phase_shift, amplitude, vertical_offset, irregularity, noise_strength
+    # ax 0 ..........................................
+    # section 0:
+    point_vars[0,0,0] = 1, 0,   40, 100, 0.1,  0.5
+    point_vars[0,1,0] = 1, 0,   35, 200, 0.1,  0.5
+    point_vars[0,2,0] = 1, 0,   37, 400, 0.1,  0.5
+    point_vars[0,3,0] = 1, 0,   33, 500, 0.1,  0.5
+    # section 1:
+    point_vars[1,0,0] = 1, 0.2, 33, 100, 0.9,  0.5
+    point_vars[1,1,0] = 1, 0.7, 37, 200, 0.7, 0.5
+    point_vars[1,2,0] = 1, 0,   40, 400, 0.9,  0.5
+    point_vars[1,3,0] = 1, 1.5, 35, 500, 0.8,  0.5
+    # section 2:
+    point_vars[2,0,0] = 1, 0,         23, 100, 0, 0.5
+    point_vars[2,1,0] = 1, 3*np.pi/2, 27, 200, 0, 0.5
+    point_vars[2,2,0] = 1, np.pi,     30, 400, 0, 0.5
+    point_vars[2,3,0] = 1, np.pi/2,   25, 500, 0, 0.5
+    # ax 1 ..........................................
+    point_vars[:,:,1,:] = point_vars[:,:,0,:]
+    point_vars[:,:,1,2] = point_vars[:,:,1,2] * 0.6
+    point_vars[:,:,1,3] = 200
+
+    return data_vars
+
+def testdata(*args,**kwargs):
+    '''
+    Synthetic data for testing functions that measure synchronisation.
+    Arguments can be the same keywords for function 'init_testdatavars,
+    or a dictionary resulting from that function.
+    If no arguments are given, default data will be produced with the function 'init_testdatavars'.
+    Args:
+         see help(init_testdatavars)
+    Returns:
+        N-D array with dimensions [points,axes,frames]
+    '''
+    if args:
+        kwargs = args[0]
+
+    if not kwargs:
+        kwargs = init_testdatavars()
+
+    if kwargs:
+        fps = kwargs.get('fps')
+        durations_sections = kwargs.get('durations_sections')
+        total_duration = kwargs.get('total_duration')
+        n_points = kwargs.get('n_points')
+        n_axes = kwargs.get('n_axes')
+        seed = kwargs.get('seed')
+        point_vars = kwargs.get('point_vars') # dim = [sections,points,axes,vars]
+        # vars = frequency, phase_shift, amplitude, vertical_offset, irregularity, noise_strength
+
+    test_data = np.empty((n_points,n_axes,total_duration)) # dim = [points,axes,frames]
+    wavargs = {}
+    wavargs['sampling_frequency'] = fps
+    wavargs['seed'] = seed
+    i_start_section = 0
+    for i_s,s in enumerate(point_vars):
+        n_frames = durations_sections[i_s] * fps
+        i_end_section = i_start_section + n_frames
+        for i_p,p in enumerate(s):
+            for i_ax,ax in enumerate(p):
+                wavargs['frequency'] = ax[0]
+                wavargs['phase_shift'] = ax[1]
+                wavargs['amplitude'] = ax[2]
+                wavargs['length'] = n_frames
+                wavargs['vertical_offset'] = ax[3]
+                wavargs['irregularity']  = ax[4]
+                wavargs['noise_strength'] = ax[5]
+                test_data[i_p,i_ax,i_start_section:i_end_section] = supersine(wavargs)
+        i_start_section = i_end_section
+    return test_data
+
+def load_data( preproc_data, *prop_path, annot_path=None, topdata_Name=None,
                max_n_files=None, print_durations=True ):
     '''
     Args:
-        preproc_data_folder: folder of preprocessed position data parquet files (e.g., r"~\preprocessed").
-        prop_path: path for properties CSV file (e.g., r"~\properties.csv").
+        preproc_data: str, dict or np.ndarray.
+                      If str: folder with parquet files for preprocesed data
+                                 (e.g., r"~\preprocessed"), or "make" to produce synthetic data
+                                 with default values (function 'testdata' used internally).
+                      If dict: as returned by function 'testdata'.
+                      If np.ndarray: as returned by function 'init_testdatavars'.
+        prop_path: path for properties CSV file (e.g., r"~\properties.csv"). Optional or ignored
+                   if preproc_data = "make".
         Optional:
             annot_path: path for annotations CSV file
                         (e.g., r"~\Pachelbel_Canon_in_D_String_Quartet.csv").
             topdata_Name: 'idx' for element index (e.g., anonymise),  list, or None for "Name" in
                            annotation file.
             max_n_files: number of files to extract from the beginning of annotations.
-                         None or Scalar.
+                         None or scalar.
             print_durations: print durations of data. True or False.
     Returns:
-        position_data: dictionary of multidimensional numpy arrays containing preprocessed data
+        pos_data: dictionary of multidimensional numpy arrays containing preprocessed data
         dim_names: names of N-D array's dimensions*
                    (short, used e.g., to select data, in groupby, etc.)
         dim_labels: labels for N-D array's dimensions*
@@ -78,9 +246,20 @@ def load_data( preproc_data_folder, prop_path, annot_path=None, topdata_Name=Non
                  with trimmed sections in frames.
         * dimensions = axes of the N-D Numpy array, where the rightmost is the fastest changing.
     '''
-    properties = pd.read_csv(prop_path)
+    if prop_path[0]:
+        properties = pd.read_csv(prop_path[0][0])
 
-    if annot_path: # If annotations exist, 'ID' of "annotations" will be the main order.
+    if preproc_data == 'make':
+        tdv = init_testdatavars()
+        tsf = []
+        csum = 0
+        for d in tdv['durations_sections'][:-1]:
+            csum += d
+            tsf.append(csum * tdv['fps'])
+        topinfo = pd.DataFrame( columns = ['ID','Name','fps','trimmed_sections_frames'],
+                                data = [['test','Test Data',tdv['fps'],tsf]] )
+    elif annot_path:
+        # If annotations files exist, 'ID' of "annotations" will be the main order.
         annotations = pd.read_csv(annot_path)
         if max_n_files:
             annotations = annotations[:max_n_files]
@@ -90,16 +269,24 @@ def load_data( preproc_data_folder, prop_path, annot_path=None, topdata_Name=Non
         topinfo['trimmed_sections_frames'] = trim_sections_to_frames(topinfo)
     else: topinfo = properties
 
-    position_data = {}
-    for i in range(topinfo.shape[0]):
-        ID = topinfo['ID'].iloc[i]
-        top_df = pd.read_parquet(preproc_data_folder + '\\' + ID + '.parquet')
-        top_ndarr = np.array([ top_df.iloc[:,1::2].T , top_df.iloc[:,::2].T ])
-        top_ndarr = np.transpose(top_ndarr,(1,0,2))
-        position_data[i] = top_ndarr
+    pos_data = {}
+    if isinstance(preproc_data,str):
+        if preproc_data == 'make':
+            pos_data[0] = testdata(tdv)
+        else:
+            for i in range(topinfo.shape[0]):
+                ID = topinfo['ID'].iloc[i]
+                top_df = pd.read_parquet(preproc_data + '\\' + ID + '.parquet')
+                top_ndarr = np.array([ top_df.iloc[:,1::2].T , top_df.iloc[:,::2].T ])
+                top_ndarr = np.transpose(top_ndarr,(1,0,2))
+                pos_data[i] = top_ndarr
+    elif isinstance(preproc_data,dict):
+        pos_data[0] = preproc_data
+    elif isinstance(preproc_data,np.ndarray):
+        pos_data[0] = testdata(preproc_data)
     dim_names = ['point','axis','frame']
     dim_labels = ['point','axes','time (frames)']
-    dimel_labels = [['p. '+str(i) for i in range(top_ndarr.shape[dim_names.index('point')])],
+    dimel_labels = [['p. '+str(i) for i in range(pos_data[0].shape[dim_names.index('point')])],
                   ['$y$','$x$'],None]
     if isinstance(topdata_Name,list):
         topinfo["Name"] = topdata_Name
@@ -111,8 +298,8 @@ def load_data( preproc_data_folder, prop_path, annot_path=None, topdata_Name=Non
     if print_durations:
         print('index; Name; duration:')
         for i in range(topinfo.shape[0]):
-            this_length = position_data[i][0].shape[-1]
+            this_length = pos_data[i][0].shape[-1]
             this_duration_lbl = frames_to_minsec_str(this_length,topinfo['fps'].iloc[i])
             print(f'  {topinfo.index[i]}; {topinfo["Name"].iloc[i]};',this_duration_lbl)
         print()
-    return position_data, dim_names, dim_labels, dimel_labels, topinfo
+    return pos_data, dim_names, dim_labels, dimel_labels, topinfo

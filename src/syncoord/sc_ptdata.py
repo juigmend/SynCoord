@@ -54,12 +54,18 @@ class PtData:
         if self.vis: print(f'vis:\n{self.vis}\n')
         if self.other: print(f'other:\n{self.other}\n')
 
-def position( preproc_data_folder, prop_path, annot_path=None, max_n_files=None,
+def position( preproc_data, *prop_path, annot_path=None, max_n_files=None,
               print_durations=True, **kwargs ):
     '''
     Args:
-        preproc_data_folder: folder of preprocessed position data parquet files (e.g., r"~\preprocessed").
-        prop_path: path for properties CSV file (e.g., r"~\properties.csv").
+        preproc_data: str, dict or np.ndarray.
+                      If str: folder with parquet files for preprocesed data
+                                 (e.g., r"~\preprocessed"), or "make" to produce synthetic data
+                                 with default values (function 'testdata' used internally).
+                      If dict: as returned by function 'testdata'.
+                      If np.ndarray: as returned by function 'init_testdatavars'.
+        prop_path: path for properties CSV file (e.g., r"~\properties.csv"). Optional or ignored
+                   if preproc_data = "make".
         Optional:
             annot_path: path for annotations CSV file (e.g., r"~\Pachelbel_Canon_in_D_String_Quartet.csv").
             max_n_files: number of files to extract from the beginning of annotations. None or Scalar.
@@ -69,7 +75,7 @@ def position( preproc_data_folder, prop_path, annot_path=None, max_n_files=None,
         PtData object with position data (dictionary of mutlti dimensional numpy arrays).
     '''
     position_data, dim_names, dim_labels, dimel_labels, topinfo =\
-        sc_utils.load_data( preproc_data_folder, prop_path, annot_path=annot_path, max_n_files=max_n_files,
+        sc_utils.load_data( preproc_data, prop_path, annot_path=annot_path, max_n_files=max_n_files,
                    print_durations=print_durations, **kwargs )
 
     pos = PtData(topinfo)
