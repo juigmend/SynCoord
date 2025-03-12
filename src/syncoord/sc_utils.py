@@ -3,10 +3,6 @@
 import numpy as np
 import pandas as pd
 
-def halt(*arg):
-    if not arg: arg = ('*** halt ***',)
-    raise Exception(arg[0])
-
 def frames_to_minsec_str(frames,fps):
     '''
     Convert frames (int) into a string with format "minutes:seconds".
@@ -41,31 +37,32 @@ def minsec_str_to_frames(ts_str_in,fps):
 def trim_sections_to_frames(topinfo):
     '''
     Args:
-        DataFrame with columns 'Start', 'Sections' and 'fps'.
-        help(minsec_str_to_frames) for the format of cells in column 'Sections'.
+        DataFrame with columns 'Sections' and 'fps'.
+        Optionally the dataframe can have column 'Start' to indicate trim at the beginning.
+        help(sc_utils.minsec_str_to_frames) for the format of cells in column 'Sections'.
     Returns:
         List with processed values.
     '''
     ts_f = []
     for i in topinfo.index:
         s_f = minsec_str_to_frames( topinfo['Sections'].iloc[i] , topinfo['fps'].iloc[i] )
-        offset_s = topinfo['Start'].iloc[i]
+        if 'Start' in topinfo: offset_s = topinfo['Start'].iloc[i]
+        else: offset_s = 0
         if np.isnan(offset_s): offset_s = 0
         offset_f = offset_s * topinfo['fps'].iloc[i]
         ts_f.append( [ round(f - offset_f) for f in s_f ] )
     return ts_f
 
-def load_data( preproc_data_folder, prop_path, annot_path=None, topdata_Name='idx',
+def load_data( preproc_data_folder, prop_path, annot_path=None, topdata_Name=None,
                max_n_files=None, print_durations=True ):
     '''
     Args:
-        preproc_data_folder: folder of preprocessed position data parquet files
-                             (e.g., r"~\preprocessed").
+        preproc_data_folder: folder of preprocessed position data parquet files (e.g., r"~\preprocessed").
         prop_path: path for properties CSV file (e.g., r"~\properties.csv").
         Optional:
             annot_path: path for annotations CSV file
                         (e.g., r"~\Pachelbel_Canon_in_D_String_Quartet.csv").
-            topdata_Name: 'idx' for element index (e.g., anonymise),  list, or empty for "Name" in
+            topdata_Name: 'idx' for element index (e.g., anonymise),  list, or None for "Name" in
                            annotation file.
             max_n_files: number of files to extract from the beginning of annotations.
                          None or Scalar.
@@ -108,13 +105,14 @@ def load_data( preproc_data_folder, prop_path, annot_path=None, topdata_Name='id
         topinfo["Name"] = topdata_Name
     elif (topdata_Name=='idx') or ("Name" not in topinfo):
         topinfo["Name"] = [ str(c) for c in range(len(topinfo)) ]
+    elif topdata_Name is None: pass
     else:
         raise Exception("invalid value for topdata_Name")
     if print_durations:
-        print('ID; Name; Duration:\n')
+        print('index; Name; duration:')
         for i in range(topinfo.shape[0]):
             this_length = position_data[i][0].shape[-1]
             this_duration_lbl = frames_to_minsec_str(this_length,topinfo['fps'].iloc[i])
-            ID = topinfo.index[i]
-            print(f'{ID}; {topinfo["Name"].iloc[i]};',this_duration_lbl)
+            print(f'  {topinfo.index[i]}; {topinfo["Name"].iloc[i]};',this_duration_lbl)
+        print()
     return position_data, dim_names, dim_labels, dimel_labels, topinfo

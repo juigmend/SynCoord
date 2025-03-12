@@ -258,6 +258,7 @@ def slwin(arrs, window_length, func, mode='same', **kwargs):
     Returns:
         Array whose dimensions depend on func.
     '''
+
     if isinstance(arrs,list): len_arr = arrs[0].shape[-1]
     else: len_arr = arrs.shape[-1]
     slwin_result = []
@@ -273,9 +274,12 @@ def slwin(arrs, window_length, func, mode='same', **kwargs):
         slwin_result.append(this_result)
     slwin_result = np.array(slwin_result).T
     if mode == 'same':
-        dif = len_arr - slwin_result.shape[1]
+        dif = len_arr - slwin_result.shape[-1]
         margin = np.floor(dif/2).astype(int)
-        slwin_result = np.pad( slwin_result, ( (0,0),(margin, margin + int(dif%2) )) )
+        pad_width = [(margin, margin + int(dif%2))]
+        if slwin_result.ndim > 1:
+            for _ in range(slwin_result.ndim-1): pad_width.insert(0,(0,0))
+        slwin_result = np.pad(slwin_result,tuple(pad_width))
     return slwin_result
 
 def apply_to_pairs(ndarr, func, pairs_axis, fixed_axes=-1, verbose=True, **kwargs):
@@ -356,10 +360,10 @@ def plv(a1,a2,axis=0):
         Phase-locking value.
     '''
     diff_complex = np.exp(complex(0,1)*(a1-a2))
-    plv_result = np.abs(np.sum(diff_complex,axis=axis))/len(diff_complex)
+    plv_result = np.abs(np.sum(diff_complex,axis=axis))/diff_complex.shape[axis]
     return plv_result
 
-def windowed_plv(arrs, window_length=None, mode='same', axis=1):
+def windowed_plv(arrs, window_length=None, mode='same', axis=-1):
     '''
     Phase-locking value on a sliding window over two numpy arrays.
     Args:
