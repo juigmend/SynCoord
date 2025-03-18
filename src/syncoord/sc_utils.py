@@ -1,5 +1,7 @@
 '''Miscellaneous functionality.'''
 
+from copy import deepcopy
+
 import numpy as np
 import pandas as pd
 
@@ -52,6 +54,22 @@ def trim_sections_to_frames(topinfo):
         offset_f = offset_s * topinfo['fps'].iloc[i]
         ts_f.append( [ round(f - offset_f) for f in s_f ] )
     return ts_f
+
+def trim_topinfo_start(ptdata,trim_s):
+    '''
+    Modifies ptdata.topinfo such that the sections in frames reflect a negative offset in time.
+    Args:
+        ptdata object
+        trim_s: trim at the beginning, in seconds.
+    '''
+    if 'Start' in ptdata.topinfo.columns:
+        topinfo = deepcopy(ptdata.topinfo)
+        topinfo['Start'] += trim_s
+    else:
+        topinfo = ptdata.topinfo.assign(
+                  Start=[trim_s for _ in range(ptdata.topinfo.shape[0])])
+    topinfo['trimmed_sections_frames'] = trim_sections_to_frames(topinfo)
+    return topinfo
 
 def supersine(argdict):
     '''
@@ -216,7 +234,7 @@ def testdata(*args,**kwargs):
     return test_data
 
 def load_data( preproc_data, *prop_path, annot_path=None, topdata_Name=None,
-               max_n_files=None, print_durations=True ):
+               max_n_files=None, print_info=True ):
     '''
     Args:
         preproc_data: str, dict or np.ndarray.
@@ -234,7 +252,7 @@ def load_data( preproc_data, *prop_path, annot_path=None, topdata_Name=None,
                            annotation file.
             max_n_files: number of files to extract from the beginning of annotations.
                          None or scalar.
-            print_durations: print durations of data. True or False.
+            print_info: show index, name and duration of data. True or False.
     Returns:
         pos_data: dictionary of multidimensional numpy arrays containing preprocessed data
         dim_names: names of N-D array's dimensions*
@@ -295,7 +313,7 @@ def load_data( preproc_data, *prop_path, annot_path=None, topdata_Name=None,
     elif topdata_Name is None: pass
     else:
         raise Exception("invalid value for topdata_Name")
-    if print_durations:
+    if print_info:
         print('index; Name; duration:')
         for i in range(topinfo.shape[0]):
             this_length = pos_data[i][0].shape[-1]
