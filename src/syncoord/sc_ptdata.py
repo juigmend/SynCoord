@@ -453,14 +453,15 @@ def fourier( ptdata, window_duration, **kwargs ):
     fft_result.other = other
     return fft_result
 
-def winplv( ptdata, window_duration,
-            pairs_axis=0, fixed_axes=None, plv_axis=-1, mode='same', verbose=False ):
+def winplv( ptdata, window_duration, window_hop=None, pairs_axis=0, fixed_axes=None,
+            plv_axis=-1, mode='same', verbose=False ):
     '''
-    Pairwise windowed Phase-Locking Value.
+    Pairwise sliding-window Phase-Locking Values.
     Args:
         ptdata: PtData object, see help(sc_ptdata.PtData).
                 N-D arrays should have at least 2 dimensions.
         window_duration: window length in seconds
+        window_hop: window step in seconds. None for a step of 1 frame.
         Optional:
             pairs_axis: axis to form the pairs.
             fixed_axes: axis (int) or axes (list) that are passed to the windowed PLV function.
@@ -485,7 +486,10 @@ def winplv( ptdata, window_duration,
     Returns:
         New PtData object.
     '''
-    dictargs = dict( )
+    if not window_hop: window_step = 1
+    else:
+        window_step = None
+        new_fps = []
     dd_in = ptdata.data
     dd_out = {}
     c = 1
@@ -493,7 +497,11 @@ def winplv( ptdata, window_duration,
         if verbose:
             print(f'processing array {k} ({c} of {len(ptdata.data.keys())})')
             c+=1
-        window_length = round(window_duration * ptdata.topinfo.loc[k,'fps'])
+        fps = ptdata.topinfo.loc[k,'fps']
+        window_length = round(window_duration * fps)
+        if window_hop:
+            window_step = round(window_hop * fps)
+            new_fps.append(fps/window_step)
         if fixed_axes is None:
             if dd_in[k].ndim > 2:
                 fixed_axes = [-2,-1]
@@ -504,19 +512,23 @@ def winplv( ptdata, window_duration,
         dd_out[k], pairs_idx = sc_ndarr.apply_to_pairs( dd_in[k], sc_ndarr.windowed_plv,
                                                         pairs_axis, fixed_axes=fixed_axes,
                                                         window_length=window_length, mode=mode,
+                                                        window_step=window_step,
                                                         axis=plv_axis, verbose=verbose  )
     dim_names = ptdata.names.dim.copy()
     dim_labels = ptdata.labels.dim.copy()
     dimel_labels = ptdata.labels.dimel.copy()
     if mode == 'valid':
-        ## Maybe this could be re-implemented, but currently it collides
-        ## with func. 'visualise' and with ptdata.topinfo['trimmed_sections_frames']:
-        # i_wlbl = plv_axis
-        # if i_wlbl < 0: i_wlbl = len(dim_names) + i_wlbl
-        # dim_names[i_wlbl] = dim_labels[i_wlbl] = 'window'
         topinfo = sc_utils.trim_topinfo_start(ptdata,window_duration/2)
     else:
         topinfo = ptdata.topinfo
+    if window_hop:
+        topinfo = deepcopy(topinfo)
+        if 'trimmed_sections_frames' in topinfo:
+            new_sec = []
+            for o,n,s in zip(topinfo['fps'],new_fps,topinfo['trimmed_sections_frames']):
+                new_sec.append( [ round(v*n/o) for v in s ] )
+        topinfo['trimmed_sections_frames'] = new_sec
+        topinfo['fps'] = new_fps
     if isinstance(fixed_axes,list): i_nlbl = fixed_axes[0]
     else: i_nlbl = fixed_axes
     groupby = i_nlbl

@@ -66,8 +66,8 @@ def trim_topinfo_start(ptdata,trim_s):
         topinfo = deepcopy(ptdata.topinfo)
         topinfo['Start'] += trim_s
     else:
-        topinfo = ptdata.topinfo.assign(
-                  Start=[trim_s for _ in range(ptdata.topinfo.shape[0])])
+        topinfo = ptdata.topinfo.assign( Start =
+                                         [trim_s for _ in range(ptdata.topinfo.shape[0])] )
     topinfo['trimmed_sections_frames'] = trim_sections_to_frames(topinfo)
     return topinfo
 
@@ -239,12 +239,12 @@ def load_data( preproc_data, *prop_path, annot_path=None, topdata_Name=None,
     Args:
         preproc_data: str, dict or np.ndarray.
                       If str: folder with parquet files for preprocesed data
-                                 (e.g., r"~\preprocessed"), or "make" to produce synthetic data
-                                 with default values (function 'testdata' used internally).
+                              (e.g., r"~\preprocessed"), or "make" to produce synthetic data
+                              with default values (function 'testdata' used internally).
                       If dict: as returned by function 'testdata'.
                       If np.ndarray: as returned by function 'init_testdatavars'.
-        prop_path: path for properties CSV file (e.g., r"~\properties.csv"). Optional or ignored
-                   if preproc_data = "make".
+        prop_path: path for properties CSV file (e.g., r"~\properties.csv").
+                   Optional or ignored if preproc_data = "make".
         Optional:
             annot_path: path for annotations CSV file
                         (e.g., r"~\Pachelbel_Canon_in_D_String_Quartet.csv").
@@ -318,6 +318,6 @@ def load_data( preproc_data, *prop_path, annot_path=None, topdata_Name=None,
         for i in range(topinfo.shape[0]):
             this_length = pos_data[i][0].shape[-1]
             this_duration_lbl = frames_to_minsec_str(this_length,topinfo['fps'].iloc[i])
-            print(f'  {topinfo.index[i]}; {topinfo["Name"].iloc[i]};',this_duration_lbl)
+            print(f'  {topinfo.index[i]}; {topinfo["Name"].iloc[i]}; {this_duration_lbl}')
         print()
     return pos_data, dim_names, dim_labels, dimel_labels, topinfo

@@ -141,6 +141,7 @@ def phasediff(phi_1,phi_2):
 
 def plv(a1,a2,axis=0):
     '''
+    Phase-Locking Value for two vectors of phase angles.
     Args:
         a1, a2: phase angles.
         Optional:
@@ -153,12 +154,13 @@ def plv(a1,a2,axis=0):
     plv_result = np.abs(np.sum(diff_complex,axis=axis))/diff_complex.shape[axis]
     return plv_result
 
-def windowed_plv(arrs, window_length=None, mode='same', axis=-1):
+def windowed_plv(arrs, window_length=None, window_step=1, mode='same', axis=-1):
     '''
-    Phase-locking value on a sliding window over two numpy arrays.
+    Sliding-window phase-locking values.
     Args:
         arrs: 1-D array or a list with two 1-D arrays with the same length.
         window_length: length of the window vector.
+        window_setp: window step.
         Optional:
             mode: 'same' (post-ptocess zero-padded, same size of input) or 'valid' (only func result).
             axis to apply plv
@@ -166,7 +168,7 @@ def windowed_plv(arrs, window_length=None, mode='same', axis=-1):
     Returns:
         Array whose dimensions depend on func.
     '''
-    return slwin( arrs, window_length, plv, mode=mode, axis=axis)
+    return slwin( arrs, plv, window_length, window_step, mode=mode, axis=axis)
 
 def isochronal_sections(data_list,idx_sections,last=False,axis=-1):
     '''
@@ -358,15 +360,16 @@ def iter(ndarr,lockdim=None):
                 else: break
         else: dyn_idx[i_end] += 1
 
-def slwin(arrs, window_length, func, mode='same', **kwargs):
+def slwin( arrs, func, window_length, window_step=1, mode='same', **kwargs ):
     '''
     Apply a function to a sliding window over the last dimension (-1) of one or two numpy arrays.
     Args:
         arrs: 1-D or N-D array or a list with two of such arrays having the same dimensions.
-        window_length: length of the window vector.
         func: function to apply, with one or two required inputs (consistent with arrs).
+        window_length: length of the window vector.
+        window_step: window step.
         Optional:
-            mode: 'same' (post-ptocess zero-padded, same size of input) or 'valid' (only func result).
+            mode: 'same' (post-process zero-padded, same size of input) or 'valid' (only func result).
             **kwargs = keyword arguments to be passed to func.
     Returns:
         Array whose dimensions depend on func.
@@ -376,7 +379,7 @@ def slwin(arrs, window_length, func, mode='same', **kwargs):
     else: len_arr = arrs.shape[-1]
     slwin_result = []
     m_bit = 0
-    for i_window in range(len_arr-window_length):
+    for i_window in range(0,len_arr-window_length,window_step):
         if isinstance(arrs,np.ndarray):
             this_window = arrs[ ..., i_window : i_window + window_length ]
             this_result = func(this_window,**kwargs)
@@ -387,7 +390,7 @@ def slwin(arrs, window_length, func, mode='same', **kwargs):
         slwin_result.append(this_result)
     slwin_result = np.array(slwin_result).T
     if mode == 'same':
-        dif = len_arr - slwin_result.shape[-1]
+        dif = len_arr/window_step - slwin_result.shape[-1]
         margin = np.floor(dif/2).astype(int)
         pad_width = [(margin, margin + int(dif%2))]
         if slwin_result.ndim > 1:
