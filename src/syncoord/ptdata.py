@@ -24,10 +24,11 @@ class PtData:
     Attributes:
         names:
             names.main: string for the main name of the object. Descriptive.
+                        It grows the names of processes to the data are added.
             names.dim: list of strings for the dimensions of the object. Concise, used for selection.
         labels:
-            labels.main: string for the main name of the object. Concise.
-            labels.dim: list of strings for the dimensions of the object.
+            labels.main: string for the main label of the object. Concise or abbreviated.
+            labels.dim: list of strings for the dimensions of the object. Concise or abbreviated.
                          Used for visualisations.
             labels.dimel: list of strings for the elements of dimensions. It can also be a dict
                           of lists with one item per data array, if the arrays are inhomogeneous.
@@ -203,12 +204,12 @@ def select( ptdata,*args,**kwargs ):
 
     sel_data_dict ={}
     for i_top in sel_tops: # so inhomogeneous dimensions (except last) result in error
-        ndarr = ptdata.data[i_top]
+        arr_nd = ptdata.data[i_top]
         if loc_dim and ('all' in loc_dim):
             for i in range_loc_dim:
-                if loc_dim[i] == 'all': sel_dim[i] = slice(0,ndarr.shape[i])
+                if loc_dim[i] == 'all': sel_dim[i] = slice(0,arr_nd.shape[i])
                 else: sel_dim[i] = loc_dim[i]
-        sel_data_dict[i_top] = ndarr[tuple(sel_dim)]
+        sel_data_dict[i_top] = arr_nd[tuple(sel_dim)]
 
     sel.names.main = ptdata.names.main
     sel.labels.main = ptdata.labels.main
@@ -258,7 +259,7 @@ def select( ptdata,*args,**kwargs ):
                            if k != idx_top_sel: del tu[k]
 
     # update title:
-    if (ndarr.ndim > 1) and (ndarr.shape[-2] > 1) \
+    if (arr_nd.ndim > 1) and (arr_nd.shape[-2] > 1) \
     and (isinstance(loc_dim[-2],int)):
         if isinstance(ptdata.labels.dimel[-2],list):
             subtitle = ptdata.labels.dimel[-2][loc_dim[-2]]
@@ -276,8 +277,59 @@ def select( ptdata,*args,**kwargs ):
         sel.names.main = sel.names.main + f'\n{subtitle}'
     return sel
 
+def gensec( ptdata, n, print_info=False ):
+    '''
+    Generate equally spaced sections for each data array (along the last dimension).
+    The object will be updated in place.
+    Args:
+        ptdata: a ptdata object. A prompt will ask to replace the following columns
+                of ptdata.topinfo if they exist: ptdata.topinfo['Sections'];
+                                                 ptdata.topinfo['trimmed_sections_frames']
+        n: number of equally spaced sections, conforming to rounding precision.
+        Optional:
+            print_info: Boolean. True will print sections' length and difference in frames.
+    '''
+    check_1 = 'Sections' in ptdata.topinfo
+    check_2 = 'trimmed_sections_frames' in ptdata.topinfo
+    if check_1 or check_2:
+        ask_again = True
+        while ask_again:
+            response = input("".join(["Columns 'Section' or 'trimmed_sections_frames' exist in ,",
+                                      "ptdata.topinfo\n Do you want to replace them? (y,[n])\n"]))
+            if not response: response = 'n'
+            if response in ['y','n']: ask_again = False
+            else:
+                print('Invalid response. Valid responses are: "n" or enter for no; "y" for yes.\n')
+        if response in ('n',''):
+            print('Warning: function exited without updating ptdata.topinfo')
+            return
+    all_equal_sex_f = []
+    all_equal_sex_s = []
+    d_keys = list(ptdata.data.keys())
+    info_title = True
+    for i,k in enumerate(ptdata.topinfo.index):
+        if k != d_keys[i]:
+            raise Exception("".join([f"ptdata.topinfo.index[{k}] doesn't match ",
+                                     f"list(ptdata.data.keys())[{i}]"]))
+        length_sec = ptdata.data[k].shape[-1]/n
+        equal_sex_f = [round(i*length_sec) for i in range(1,n)]
+        all_equal_sex_f.append(equal_sex_f)
+        fps = ptdata.topinfo.loc[k,'fps']
+        equal_sex_s = [v/fps for v in equal_sex_f]
+        all_equal_sex_s.append(equal_sex_s)
+        if print_info:
+            if info_title:
+                print("key; sections' length (frames); difference (frames):")
+                info_title = False
+            ss = [0] + equal_sex_f + [ptdata.data[k].shape[-1]]
+            sl = [ ss[i+1]-ss[i] for i in range(len(ss)-1) ]
+            d = [ sl[i+1]-sl[i] for i in range(len(sl)-1) ]
+            print(f'  {k};  {sl};  {d}')
+    # ptdata.topinfo['Sections'] = all_equal_sex_s
+    ptdata.topinfo['trimmed_sections_frames'] = all_equal_sex_f
+
 # .............................................................................
-# DATA OPERATIONS:
+# ANALYSIS-ORIENTED OPERATIONS:
 
 def smooth( ptdata,**kwargs ):
     '''
@@ -577,8 +629,8 @@ def isochrsec( ptdata, last=False, axis=-1 ):
         New PtData object, with 'trimmed_sections_frames' modified.
     '''
     data_list = []
-    for ndarr in ptdata.data.values():
-        data_list.append(ndarr)
+    for arr_nd in ptdata.data.values():
+        data_list.append(arr_nd)
     idx_sections = ptdata.topinfo['trimmed_sections_frames'].values.tolist()
     isochr_data, idx_isochr_sections = ndarr.isochronal_sections(data_list,idx_sections,last,axis)
     ddict = {}
@@ -751,10 +803,10 @@ def aggrtop( ptdata, function='mean' ):
         collapsed into a single row.
     '''
     dd_in = ptdata.data
-    ndarr_out = np.zeros(dd_in[next(iter(dd_in))].shape)
-    for k in dd_in.keys(): ndarr_out += dd_in[k]
-    if function == 'mean': ndarr_out = ndarr_out/len(dd_in)
-    dd_out = {0:ndarr_out}
+    arr_nd_out = np.zeros(dd_in[next(iter(dd_in))].shape)
+    for k in dd_in.keys(): arr_nd_out += dd_in[k]
+    if function == 'mean': arr_nd_out = arr_nd_out/len(dd_in)
+    dd_out = {0:arr_nd_out}
 
     main_name = ptdata.names.main
     if function == 'sum': function_lbl = 'Added'

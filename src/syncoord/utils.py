@@ -36,26 +36,30 @@ def minsec_str_to_frames(ts_str_in,fps):
         ts_f_lst.append( round(s*fps) )
     return ts_f_lst
 
-def trim_sections_to_frames(topinfo):
+def trim_sections_to_frames( topinfo ):
     '''
     Args:
-        DataFrame with columns 'Sections' and 'fps'.
+        DataFrame with columns 'fps', and 'Sections'. If 'Sections' does not exits, then
+        values in column 'trimmed_sections_frames' will be used.
         Optionally the dataframe can have column 'Start' to indicate trim at the beginning.
         help(utils.minsec_str_to_frames) for the format of cells in column 'Sections'.
     Returns:
         List with processed values.
     '''
     ts_f = []
-    for i in topinfo.index:
-        s_f = minsec_str_to_frames( topinfo['Sections'].iloc[i] , topinfo['fps'].iloc[i] )
-        if 'Start' in topinfo: offset_s = topinfo['Start'].iloc[i]
+    for k in topinfo.index:
+        if 'Sections' in topinfo:
+            s_f = minsec_str_to_frames( topinfo.loc[k,'Sections'] , topinfo.loc[k,'fps'] )
+        else:
+            s_f = topinfo.loc[k,'trimmed_sections_frames']
+        if 'Start' in topinfo: offset_s = topinfo.loc[k,'Start']
         else: offset_s = 0
         if np.isnan(offset_s): offset_s = 0
-        offset_f = offset_s * topinfo['fps'].iloc[i]
+        offset_f = offset_s * topinfo.loc[k,'fps']
         ts_f.append( [ round(f - offset_f) for f in s_f ] )
     return ts_f
 
-def trim_topinfo_start(ptdata,trim_s):
+def trim_topinfo_start( ptdata, trim_s ):
     '''
     Modifies ptdata.topinfo such that the sections in frames reflect a negative offset in time.
     Args:
@@ -296,11 +300,11 @@ def load_data( preproc_data, *prop_path, annot_path=None, topdata_Name=None,
             for i in range(topinfo.shape[0]):
                 ID = topinfo['ID'].iloc[i]
                 top_df = pd.read_parquet(preproc_data + '\\' + ID + '.parquet')
-                top_ndarr = np.array([ top_df.iloc[:,1::2].T , top_df.iloc[:,::2].T ])
-                top_ndarr = np.transpose(top_ndarr,(1,0,2))
-                pos_data[i] = top_ndarr
+                top_arr_nd = np.array([ top_df.iloc[:,1::2].T , top_df.iloc[:,::2].T ])
+                top_arr_nd = np.transpose(top_arr_nd,(1,0,2))
+                pos_data[i] = top_arr_nd
     elif isinstance(preproc_data,dict):
-        pos_data[0] = preproc_data
+        pos_data = preproc_data
     elif isinstance(preproc_data,np.ndarray):
         pos_data[0] = testdata(preproc_data)
     dim_names = ['point','axis','frame']
@@ -314,11 +318,14 @@ def load_data( preproc_data, *prop_path, annot_path=None, topdata_Name=None,
     elif topdata_Name is None: pass
     else:
         raise Exception("invalid value for topdata_Name")
-    if print_info:
-        print('index; Name; duration:')
-        for i in range(topinfo.shape[0]):
-            this_length = pos_data[i][0].shape[-1]
-            this_duration_lbl = frames_to_minsec_str(this_length,topinfo['fps'].iloc[i])
-            print(f'  {topinfo.index[i]}; {topinfo["Name"].iloc[i]}; {this_duration_lbl}')
-        print()
+    d_keys = list(pos_data.keys())
+    if print_info: print('index; key; Name; duration (s):')
+    for i,k in enumerate(topinfo.index):
+        if k != d_keys[i]:
+            raise Exception("".join([f"ptdata.topinfo.index[{k}] doesn't match ",
+                                     f"list(ptdata.data.keys())[{i}]"]))
+        if print_info:
+            this_length = pos_data[k][0].shape[-1]
+            this_duration_lbl = frames_to_minsec_str(this_length,topinfo.loc[k,'fps'])
+            print(f'  {i}; {k}; {topinfo["Name"].iloc[i]}; {this_duration_lbl}')
     return pos_data, dim_names, dim_labels, dimel_labels, topinfo

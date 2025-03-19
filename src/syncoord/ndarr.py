@@ -6,9 +6,9 @@ from scipy.interpolate import CubicSpline
 from scipy.fft import rfft
 
 # .............................................................................
-# DATA OPERATIONS:
+# ANALYSIS-ORIENTED OPERATIONS:
 
-def tder2D(ndarr_in,order=1):
+def tder2D(arr_nd_in,order=1):
     '''
     Differentiation per point. First order difference is euclidean distance
     among consecutive two-dimensional points [x,y]. Second order difference is simple difference.
@@ -21,30 +21,30 @@ def tder2D(ndarr_in,order=1):
     Returns:
         N-D array
     '''
-    if ndarr_in.ndim > 2: ndarr_out = np.empty(ndarr_in.shape)
-    n_points = ndarr_in.shape[-2]//2
-    dim_out = list(ndarr_in.shape)
+    if arr_nd_in.ndim > 2: arr_nd_out = np.empty(arr_nd_in.shape)
+    n_points = arr_nd_in.shape[-2]//2
+    dim_out = list(arr_nd_in.shape)
     dim_out[-2] = n_points
-    ndarr_out = np.empty(tuple(dim_out))
+    arr_nd_out = np.empty(tuple(dim_out))
     diff_arr = np.empty(tuple(dim_out[-2:]))
-    for idx in np.ndindex(ndarr_in.shape[:-2]):
-        if ndarr_in.ndim == 2: ndarr_slc = ndarr_in
-        else: ndarr_slc = np.squeeze(ndarr_in[idx,:,:])
+    for idx in np.ndindex(arr_nd_in.shape[:-2]):
+        if arr_nd_in.ndim == 2: arr_nd_slc = arr_nd_in
+        else: arr_nd_slc = np.squeeze(arr_nd_in[idx,:,:])
         for i_point in range(n_points):
             i_row = i_point*2
-            coldiff = np.diff(ndarr_slc[i_row:i_row+2,:])
+            coldiff = np.diff(arr_nd_slc[i_row:i_row+2,:])
             diff_arr[i_row,1:] = np.linalg.norm( coldiff, axis=0) # absolute 1st. order diff. (speed)
             diff_arr[i_row,0] = diff_arr[i_row,1]
             if order == 2:
                 diff_arr[i_row,1:] = np.diff(diff_arr[i_row,:]) # 2nd. order diff. (acceleration)
                 diff_arr[i_row,0] = diff_arr[i_row,1]
-        if ndarr_in.ndim == 2:
-            ndarr_out = diff_arr
+        if arr_nd_in.ndim == 2:
+            arr_nd_out = diff_arr
         else:
-            ndarr_out[idx,:,:] = diff_arr
-    return np.squeeze(ndarr_out)
+            arr_nd_out[idx,:,:] = diff_arr
+    return np.squeeze(arr_nd_out)
 
-def peaks_to_phase(ndarr,axis=-1):
+def peaks_to_phase(arr_nd,axis=-1):
     '''
     Generate ramps between signal peaks, with amplitude {-pi,pi}
     Args:
@@ -64,15 +64,15 @@ def peaks_to_phase(ndarr,axis=-1):
             ramp_length = int(np.diff(idx_pks[0][i:i+2])[0])
             phi[i_start:i_end] = np.linspace( start = -np.pi, stop = np.pi, num = ramp_length )
         return phi
-    return np.apply_along_axis(pks2ph,axis,ndarr)
+    return np.apply_along_axis(pks2ph,axis,arr_nd)
 
-def fourier_transform( ndarr, window_length, fps=None, output='spectrum', window_shape=None,
+def fourier_transform( arr_nd, window_length, fps=None, output='spectrum', window_shape=None,
                        mode='same', first_fbin=1, axis=-1 ):
     '''
     Wrapper for scipy.fft.rfft
     Fast Fourier transform for a signal of real numbers.
     Args:
-        ndarr: N-D array
+        arr_nd: N-D array
         window_length: length of the FFT window vector, in seconds if the fps parameter is given.
         Options:
             fps
@@ -108,10 +108,10 @@ def fourier_transform( ndarr, window_length, fps=None, output='spectrum', window
             margin = np.floor(dif/2).astype(int)
             fft_result = np.pad( fft_result, ( (0,0),(margin, margin + int(dif%2) )) )
         return fft_result
-    return np.apply_along_axis( fourier_, axis, ndarr, fft_window, window_length, zpad,
+    return np.apply_along_axis( fourier_, axis, arr_nd, fft_window, window_length, zpad,
                                 first_fbin, output )
 
-def kuramoto_r(ndarr):
+def kuramoto_r(arr_nd):
     '''
     Row-wise kuramoto order parameter r.
     Args:
@@ -121,11 +121,11 @@ def kuramoto_r(ndarr):
     Returns:
         1-D array of Kuramoto order parameter r.
     '''
-    if 1 in ndarr.shape: ndarr_sqz = np.squeeze(ndarr)
-    else: ndarr_sqz = ndarr
-    n_pts = ndarr_sqz.shape[-2]
+    if 1 in arr_nd.shape: arr_nd_sqz = np.squeeze(arr_nd)
+    else: arr_nd_sqz = arr_nd
+    n_pts = arr_nd_sqz.shape[-2]
     r_list = []
-    for phi in ndarr_sqz.T:
+    for phi in arr_nd_sqz.T:
         r_list.append( abs( sum([(np.e ** (1j * angle)) for angle in phi]) / n_pts ) )
     return np.array(r_list)
 
@@ -226,12 +226,12 @@ def isochronal_sections(data_list,idx_sections,last=False,axis=-1):
     idx_isochr_sections = list(range(length_section,length_section*n_sections+1,length_section))
     return isochr_data, idx_isochr_sections
 
-def section_stats( ndarr, idx_sections, fps, last=False, margins=None, axis=-1,
+def section_stats( arr_nd, idx_sections, fps, last=False, margins=None, axis=-1,
                    statnames=[ 'mean','median','min','max','std' ] ):
     '''
     Descriptive statistics for sections of an N-D array.
     Args:
-        ndarr: N-D array.
+        arr_nd: N-D array.
         idx_sections: index of the sections.
         fps
         Optional:
@@ -242,15 +242,15 @@ def section_stats( ndarr, idx_sections, fps, last=False, margins=None, axis=-1,
             axis to run the process.
             statnames: str or list of statistics to compute. Default is all.
     Return:
-        N-D array of same dimensions of the input ndarr, except the two last dimensions are
+        N-D array of same dimensions of the input arr_nd, except the two last dimensions are
         [statistic, section]. The order of statistics will be as in the argument 'statnames'.
     '''
 
     if isinstance(statnames,str): statnames = [statnames]
     n_stats = len(statnames)
     if 0 not in idx_sections: idx_sections = [0] + idx_sections
-    if last and (ndarr.shape[axis] not in idx_sections):
-        idx_sections = idx_sections + [ndarr.shape[axis]]
+    if last and (arr_nd.shape[axis] not in idx_sections):
+        idx_sections = idx_sections + [arr_nd.shape[axis]]
     n_sections = len(idx_sections)-1
     if margins is None:
         margins_f = None
@@ -263,54 +263,54 @@ def section_stats( ndarr, idx_sections, fps, last=False, margins=None, axis=-1,
     else:
         mf = round(margins * fps)
         margins_f = [ [mf,mf] for i in range(n_sections) ]
-    def sstats_( arr_1D_in, n_sections, statnames, n_stats, margins_f ):
-        arr_1D_out = np.empty((n_stats,n_sections))
+    def sstats_( arr_1d_in, n_sections, statnames, n_stats, margins_f ):
+        arr_1d_out = np.empty((n_stats,n_sections))
         for i_stat in range(n_stats):
             this_statname = statnames[i_stat]
             for i_sec in range(n_sections):
                 i_sec_start = idx_sections[i_sec]
                 i_sec_end = idx_sections[i_sec+1]
-                this_section = arr_1D_in[i_sec_start:i_sec_end]
+                this_section = arr_1d_in[i_sec_start:i_sec_end]
                 if margins_f:
                     i_trim_start = margins_f[i_sec][0]
                     i_trim_end = len(this_section)-margins_f[i_sec][1]
                     this_section = this_section[i_trim_start:i_trim_end]
                 if this_statname == 'mean':
-                    arr_1D_out[i_stat,i_sec] = np.mean(this_section)
+                    arr_1d_out[i_stat,i_sec] = np.mean(this_section)
                 elif this_statname == 'median':
-                    arr_1D_out[i_stat,i_sec] = np.median(this_section)
+                    arr_1d_out[i_stat,i_sec] = np.median(this_section)
                 elif this_statname == 'min':
-                    arr_1D_out[i_stat,i_sec] = np.min(this_section)
+                    arr_1d_out[i_stat,i_sec] = np.min(this_section)
                 elif this_statname == 'max':
-                    arr_1D_out[i_stat,i_sec] = np.max(this_section)
+                    arr_1d_out[i_stat,i_sec] = np.max(this_section)
                 elif this_statname == 'std':
-                    arr_1D_out[i_stat,i_sec] = np.std(this_section)
-        return arr_1D_out
+                    arr_1d_out[i_stat,i_sec] = np.std(this_section)
+        return arr_1d_out
 
-    return np.apply_along_axis( sstats_, axis, ndarr, n_sections, statnames, n_stats, margins_f )
+    return np.apply_along_axis( sstats_, axis, arr_nd, n_sections, statnames, n_stats, margins_f )
 
 # .............................................................................
 # APPLICATION:
 
-def iter(ndarr,lockdim=None):
+def iter(arr_nd,lockdim=None):
     '''
-    Generator that iterates over dimensions of an N-ndarray array.
+    Generator that iterates over dimensions of an N-D data array.
     Args:
-        ndarr: N-D array (C-style, row major), or tuple with the shape of an array.
+        arr_nd: N-D data array (C-style, row major), or tuple with the shape of an array.
         Optional:
             lockdim: dimension (int) or dimensions (list) to not iterate over.
     Returns:
-        arr_out: slice of d corresponding to the iteration, only if d is np.ndarray. 
+        arr_out: slice of d corresponding to the iteration, only if d is np.ndarray.
                  If d is a tuple this is not returned.
         i_chdim: (list) index of changing dimensions.
-        multi_idx: (list) multi-index of the current slice. If lockdim is not None, 
+        multi_idx: (list) multi-index of the current slice. If lockdim is not None,
                    elements at lockdim are replaced with ':'.
     '''
-    if isinstance(ndarr,tuple):
-        s = list(ndarr)
+    if isinstance(arr_nd,tuple):
+        s = list(arr_nd)
         disarray = False
-    elif isinstance(ndarr,np.ndarray):
-        s = list(ndarr.shape)
+    elif isinstance(arr_nd,np.ndarray):
+        s = list(arr_nd.shape)
         disarray = True
     if lockdim is not None:
         if not isinstance(lockdim,list):
@@ -343,7 +343,7 @@ def iter(ndarr,lockdim=None):
         multi_idx_prev = multi_idx.copy()
         if disarray:
             multi_idx_str = str(multi_idx).replace("'","")
-            arr_out = eval('ndarr'+multi_idx_str)
+            arr_out = eval('arr_nd'+multi_idx_str)
             yield arr_out, i_chdim, multi_idx
         else:
             yield i_chdim, multi_idx
@@ -398,11 +398,11 @@ def slwin( arrs, func, window_length, window_step=1, mode='same', **kwargs ):
         slwin_result = np.pad(slwin_result,tuple(pad_width))
     return slwin_result
 
-def apply_to_pairs( ndarr, func, pairs_axis, fixed_axes=-1, verbose=True, **kwargs ):
+def apply_to_pairs( arr_nd, func, pairs_axis, fixed_axes=-1, verbose=True, **kwargs ):
     '''
         Apply a function to pairs of dimensions of an N-D array.
         Args:
-            ndarr: N-D array.
+            arr_nd: N-D array.
             func: function to apply, whose first argument is a list with each N-D array of the pair.
             pairs_axis: axis to run the pairwise process.
             Optional:
@@ -414,7 +414,7 @@ def apply_to_pairs( ndarr, func, pairs_axis, fixed_axes=-1, verbose=True, **kwar
             List of pairs.
         * axes = dimensions of the N-D array, where the rightmost axis is the fastest changing.
     '''
-    shape_in = list(ndarr.shape)
+    shape_in = list(arr_nd.shape)
     iter_shape = shape_in.copy()
     n_pair_el = iter_shape.pop(pairs_axis)
     n_pairs = (n_pair_el**2 - n_pair_el)//2
@@ -431,12 +431,12 @@ def apply_to_pairs( ndarr, func, pairs_axis, fixed_axes=-1, verbose=True, **kwar
     idx_shape_j = idx_shape_o.copy()
     shape_out = shape_in.copy()
     shape_out[pairs_axis] = (shape_in[pairs_axis]**2 - shape_in[pairs_axis])//2
-    output_ndarr = np.empty(tuple(shape_out))
+    output_arr_nd = np.empty(tuple(shape_out))
     shape_fixed_axes = tuple(shape_out[v] for v in fixed_axes)
-    len_pairs_axis = ndarr.shape[pairs_axis]
+    len_pairs_axis = arr_nd.shape[pairs_axis]
     i_pair = 0
     pairs_idx = []
-    output_ndarr_mutated = False
+    output_arr_nd_mutated = False
     for i in range(len_pairs_axis):
         idx_shape_i[pairs_axis] = i
         for j in range(i+1, len_pairs_axis):
@@ -453,23 +453,23 @@ def apply_to_pairs( ndarr, func, pairs_axis, fixed_axes=-1, verbose=True, **kwar
                 idx_shape_i_str = str(idx_shape_i).replace("'","")
                 idx_shape_j_str = str(idx_shape_j).replace("'","")
                 idx_shape_o_str = str(idx_shape_o).replace("'","")
-                slice_i = eval('ndarr'+idx_shape_i_str)
-                slice_j = eval('ndarr'+idx_shape_j_str)
+                slice_i = eval('arr_nd'+idx_shape_i_str)
+                slice_j = eval('arr_nd'+idx_shape_j_str)
                 func_result = func([slice_i,slice_j],**kwargs)
                 if func_result.shape != shape_fixed_axes:
-                    if output_ndarr_mutated:
+                    if output_arr_nd_mutated:
                         raise Exception('func not returning arrays with consistent shape.')
                     fixed_axes_pos = fixed_axes.copy()
                     for i,a in enumerate(fixed_axes_pos):
-                        if a < 0: fixed_axes_pos[i] = output_ndarr.ndim + a
+                        if a < 0: fixed_axes_pos[i] = output_arr_nd.ndim + a
                     shape_out_new = shape_out.copy()
                     i_fa = 0
-                    for i in range(output_ndarr.ndim):
+                    for i in range(output_arr_nd.ndim):
                         if i == fixed_axes_pos[i_fa]:
                             shape_out_new[i] = func_result.shape[i_fa]
                             i_fa += 1
-                    output_ndarr = np.empty(tuple(shape_out_new))
+                    output_arr_nd = np.empty(tuple(shape_out_new))
                     shape_fixed_axes = tuple(shape_out_new[v] for v in fixed_axes_pos)
-                    output_ndarr_mutated = True
-                exec('output_ndarr'+idx_shape_o_str+' = func([slice_i,slice_j],**kwargs)')
-    return output_ndarr, pairs_idx
+                    output_arr_nd_mutated = True
+                exec('output_arr_nd'+idx_shape_o_str+' = func([slice_i,slice_j],**kwargs)')
+    return output_arr_nd, pairs_idx
