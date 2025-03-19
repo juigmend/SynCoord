@@ -7,7 +7,7 @@ from scipy import signal
 from scipy.fft import fftfreq
 import matplotlib.pyplot as plt
 
-from . import sc_ndarr, sc_utils
+from . import ndarr, utils
 
 # .............................................................................
 # DATA HANDLING:
@@ -22,20 +22,23 @@ class PtData:
     '''
     Data class.
     Attributes:
-        names: Short and concise, used for selection.
-            names.main: string for the main name of the object.
-            names.dim: list of strings for the dimensions of the object.
-        labels: Short and concise, used for labels in visualisations.
-            labels.main: string for the main name of the object.
+        names:
+            names.main: string for the main name of the object. Descriptive.
+            names.dim: list of strings for the dimensions of the object. Concise, used for selection.
+        labels:
+            labels.main: string for the main name of the object. Concise.
             labels.dim: list of strings for the dimensions of the object.
-            labels.dimel: list of strings for the elements of dimensions. It an also be a dict
-                          of strings, is the N-D data arrays are inhomogeneous.
-        data: dict where each entry should be an N-D numpy array containig the data.
-              Each entry is at the top level of the data hierarchy. Its order and index should
-              directly correspond to topinfo.
-        topinfo: information for each entry at the top level. See help(sc_utils.load_data).
-        vis: dict to be used as keyword arguments for default visualisation parameters,
-             when the data object is passsed to sc_ptdata.visualise.
+                         Used for visualisations.
+            labels.dimel: list of strings for the elements of dimensions. It can also be a dict
+                          of lists with one item per data array, if the arrays are inhomogeneous.
+                          Used for visualisations.
+        data: dict where each item should be an N-D data array (type numpy.ndarray) containig data.
+              Each item is at the top level of the data hierarchy. Its order and index should
+              directly correspond to the index of topinfo.
+        topinfo: Pandas dataframe with information for each entry at the top level.
+                 See help(utils.load_data).
+        vis: dict of keyword arguments for default visualisation parameters,
+             when the ptdata object is passsed to ptdata.visualise.
         other: empty dict, for any other information.
     Methods:
         print(): prints attributes and shape of data
@@ -47,7 +50,7 @@ class PtData:
             vars(ptdata.names)
             returns: {'main': 'Niels'}
     Args:
-        topinfo: See help(sc_utils.load_data).
+        topinfo: See help(utils.load_data).
     '''
     def __init__(self,topinfo):
         self.names = SubField()
@@ -89,12 +92,12 @@ def position( preproc_data, *prop_path, annot_path=None, max_n_files=None,
             annot_path: path for annotations CSV file (e.g., r"~\String_Quartet_annot.csv").
             max_n_files: number of files to load. None (all) or scalar.
             print_info: print durations of data. True or False.
-            **kwargs: passed to function 'load_data', see help(sc_utils.load_data).
+            **kwargs: passed to function 'load_data', see help(utils.load_data).
     Returns:
         PtData object with position data (dictionary of mutlti dimensional numpy arrays).
     '''
     position_data, dim_names, dim_labels, dimel_labels, topinfo =\
-        sc_utils.load_data( preproc_data, prop_path, annot_path=annot_path, max_n_files=max_n_files,
+        utils.load_data( preproc_data, prop_path, annot_path=annot_path, max_n_files=max_n_files,
                    print_info=print_info, **kwargs )
 
     pos = PtData(topinfo)
@@ -108,7 +111,7 @@ def position( preproc_data, *prop_path, annot_path=None, max_n_files=None,
     pos.vis['dlattr'] = '1.2'
     return pos
 
-def select(ptdata,*args,**kwargs):
+def select( ptdata,*args,**kwargs ):
     '''
     Args:
         ptdata: PtData object
@@ -127,7 +130,7 @@ def select(ptdata,*args,**kwargs):
         sel = select_data(ptdata, {'top' : 0, 'point' : 1, 'frame' : slice(0,600)})
         # non-contiguous values for dim 1:
             sel = select_data(ptdata, [1,[slice(0,180),slice(300,600)],1,'all'])
-        # if frame is dim 1, keword value 'all' is redundant:
+        # if frame is dim -1, keword-value "frame = 'all'" is redundant:
             sel = select_data(ptdata, top = 2, point = 1, frame = 'all')
     Note: top=int for 0-based index; top=[int] or top=[str] to use the key of the data array.
     '''
@@ -276,11 +279,11 @@ def select(ptdata,*args,**kwargs):
 # .............................................................................
 # DATA OPERATIONS:
 
-def smooth(ptdata,**kwargs):
+def smooth( ptdata,**kwargs ):
     '''
     Apply filter to ptdata, row-wise, to a dimension of N-D arrays (default is last dimension).
     Args:
-        ptdata: PtData object. See help(sc_ptdata.PtData).
+        ptdata: PtData object. See help(ptdata.PtData).
         filter_type: 'butter', 'mean'
         Options:
             axis: int or str, default = -1.
@@ -389,13 +392,13 @@ def smooth(ptdata,**kwargs):
 
 def fourier( ptdata, window_duration, **kwargs ):
     '''
-    Wrapper for sc_ndarr.fourier_transform.
+    Wrapper for ndarr.fourier_transform.
     Args:
-        ptdata: PtData object, see help(sc_ptdata.PtData).
+        ptdata: PtData object, see help(ptdata.PtData).
         window_duration: length of the FFT window in seconds unless optional parameter fps = None.
         Optional:
             **kwargs: input parameters to the fourier_transform function.
-                      See help(sc_ndarr.fourier_transform).
+                      See help(ndarr.fourier_transform).
             Note: If mode='valid', the sections (ptdata.topinfo['Sections'] and
                   ptdata.topinfo['trimmed_sections_frames']) will be shifted accordingly.
     Returns:
@@ -420,7 +423,7 @@ def fourier( ptdata, window_duration, **kwargs ):
     mode = kwargs.get('mode')
 
     if mode and (mode=='valid'):
-        topinfo = sc_utils.trim_topinfo_start(ptdata,window_duration/2)
+        topinfo = utils.trim_topinfo_start(ptdata,window_duration/2)
     else:
         topinfo = ptdata.topinfo
 
@@ -433,7 +436,7 @@ def fourier( ptdata, window_duration, **kwargs ):
     for k in dd_in:
         fps = ptdata.topinfo.loc[k,'fps']
         if 'fps' not in kwargs: wl = round(window_duration * fps)
-        dd_out[k] = sc_ndarr.fourier_transform(dd_in[k], wl,**kwargs)
+        dd_out[k] = ndarr.fourier_transform(dd_in[k], wl,**kwargs)
         freq_bins[k] = np.abs(( fftfreq(wl)*fps )[first_fbin:np.floor(wl/2 + 1).astype(int)])
         freq_bins_rounded = np.round(freq_bins[k],2)
         rdif = abs(np.mean(freq_bins_rounded-np.round(freq_bins_rounded)))
@@ -458,7 +461,7 @@ def winplv( ptdata, window_duration, window_hop=None, pairs_axis=0, fixed_axes=N
     '''
     Pairwise sliding-window Phase-Locking Values.
     Args:
-        ptdata: PtData object, see help(sc_ptdata.PtData).
+        ptdata: PtData object, see help(ptdata.PtData).
                 N-D arrays should have at least 2 dimensions.
         window_duration: window length in seconds
         window_hop: window step in seconds. None for a step of 1 frame.
@@ -509,7 +512,7 @@ def winplv( ptdata, window_duration, window_hop=None, pairs_axis=0, fixed_axes=N
                 fixed_axes = -1
             if dd_in[k].ndim < 2:
                 raise Exception('number of dimensions in data arrays should be at least 2')
-        dd_out[k], pairs_idx = sc_ndarr.apply_to_pairs( dd_in[k], sc_ndarr.windowed_plv,
+        dd_out[k], pairs_idx = ndarr.apply_to_pairs( dd_in[k], ndarr.windowed_plv,
                                                         pairs_axis, fixed_axes=fixed_axes,
                                                         window_length=window_length, mode=mode,
                                                         window_step=window_step,
@@ -518,7 +521,7 @@ def winplv( ptdata, window_duration, window_hop=None, pairs_axis=0, fixed_axes=N
     dim_labels = ptdata.labels.dim.copy()
     dimel_labels = ptdata.labels.dimel.copy()
     if mode == 'valid':
-        topinfo = sc_utils.trim_topinfo_start(ptdata,window_duration/2)
+        topinfo = utils.trim_topinfo_start(ptdata,window_duration/2)
     else:
         topinfo = ptdata.topinfo
     if window_hop:
@@ -559,12 +562,12 @@ def winplv( ptdata, window_duration, window_hop=None, pairs_axis=0, fixed_axes=N
 
 def isochrsec( ptdata, last=False, axis=-1 ):
     '''
-    Wrapper for sc_ndarr.isochronal_sections.
+    Wrapper for ndarr.isochronal_sections.
     Time-rescale data so that it fits into sections of the same length.
     The length of the resulting sections will be the length of the largest input index of sections.
     Args:
         ptdata: PtData object with topinfo containing column 'trimmed_sections_frames'.
-                See help(sc_utils.load_data).
+                See help(utils.load_data).
         Optional:
             last: If True, from the last index of sections to the end will be the last section.
             axis: axis to apply the process.
@@ -577,7 +580,7 @@ def isochrsec( ptdata, last=False, axis=-1 ):
     for ndarr in ptdata.data.values():
         data_list.append(ndarr)
     idx_sections = ptdata.topinfo['trimmed_sections_frames'].values.tolist()
-    isochr_data, idx_isochr_sections = sc_ndarr.isochronal_sections(data_list,idx_sections,last,axis)
+    isochr_data, idx_isochr_sections = ndarr.isochronal_sections(data_list,idx_sections,last,axis)
     ddict = {}
     sec_list = []
     i_l = 0
@@ -604,9 +607,9 @@ def aggrsec( ptdata, aggregate_axes=[-2,-1], sections_axis=1,
     '''
     Aggregate sections.
     Args:
-        ptdata: PtData object, see help(sc_ptdata.PtData).
+        ptdata: PtData object, see help(ptdata.PtData).
                 The field topinfo should have columns 'trimmed_sections_frames',
-                with lists having equally spaced indices. See help(sc_ptdata.isochrsec).
+                with lists having equally spaced indices. See help(ptdata.isochrsec).
         Optional:
             aggregate_axes: scalar or list indicating the axes to aggregate.
             sections_axis: the axes of the aggregated axes where the sections are taken from.
@@ -692,7 +695,7 @@ def aggrax( ptdata, axis=0, function='mean' ):
     Wrapper for np.sum or np.mean.
     Aggregate axes of N-D data arrays.
     Args:
-        ptdata: PtData object, see help(sc_ptdata.PtData).
+        ptdata: PtData object, see help(ptdata.PtData).
         Optional:
             function: 'sum' or 'mean'
             axis to run the operation
@@ -740,7 +743,7 @@ def aggrtop( ptdata, function='mean' ):
     Wrapper for np.sum or np.mean.
     Aggregate top-level homogeneous N-D data arrays.
     Args:
-        ptdata: PtData object, see help(sc_ptdata.PtData).
+        ptdata: PtData object, see help(ptdata.PtData).
         Optional:
             function: 'sum' or 'mean'
     Returns:
@@ -776,10 +779,10 @@ def aggrtop( ptdata, function='mean' ):
 
 def secstats( ptdata, **kwargs ):
     '''
-    Wrapper for sc_ndarr.section_stats.
+    Wrapper for ndarr.section_stats.
     Descriptive statistics for sections of N-D data arrays.
     Args:
-        ptdata: PtData object, see help(sc_ptdata.PtData).
+        ptdata: PtData object, see help(ptdata.PtData).
         Optional:
             last: If True, from the last index of sections to the end will be the last section.
             margins: scalar, list, or dict. Trim at the beginning and ending, in seconds.
@@ -809,7 +812,7 @@ def secstats( ptdata, **kwargs ):
         idx_sections = ptdata.topinfo[lbl_topinfo_sec].loc[k]
         fps = ptdata.topinfo['fps'].loc[k]
         if margins_dict: kwargs['margins'] = kwargs['margins'][k]
-        dd_out[k] = sc_ndarr.section_stats( dd_in[k], idx_sections, fps, **kwargs )
+        dd_out[k] = ndarr.section_stats( dd_in[k], idx_sections, fps, **kwargs )
 
     main_name = ptdata.names.main + '\nsections statistics'
     dim_names = deepcopy(ptdata.names.dim)
@@ -838,9 +841,9 @@ def apply( ptdata, func,*args, **kwargs ):
     '''
     Apply a function to every N-D array of the data dictionary in a PtData object.
     Note: ptdata.dim will be copied from the input and may not correspond to the output,
-    except for these functions from module 'sc_ndarr': tder2D, peaks_to_phase, kuramoto_r, power.
+    except for these functions from module 'ndarr': tder2D, peaks_to_phase, kuramoto_r, power.
     Args:
-        ptdata: PtData object, see help(sc_ptdata.PtData).
+        ptdata: PtData object, see help(ptdata.PtData).
         func: a function to operate on each N-D array of the dictionary.
         Optional:
             axis: dimension to apply process. Default is -1.
@@ -857,7 +860,7 @@ def apply( ptdata, func,*args, **kwargs ):
     dd_in = ptdata.data
     fn = func.__name__
 
-    # TO-DO: Each of these could have their own sc_ptdata wrapper function:
+    # TO-DO: Each of these could have their own ptdata wrapper function:
     if fn == 'tder2D':
         del dim_names[axis-1]
         del dim_labels[axis-1]
@@ -903,7 +906,7 @@ def apply( ptdata, func,*args, **kwargs ):
             s = list(arr_in.shape[:])
             s[axis-1] = 1
             arr_out = np.empty(tuple(s))
-            for slc,_,midx in sc_ndarr.iter(arr_in,lockdim=[axis-1,axis]):
+            for slc,_,midx in ndarr.iter(arr_in,lockdim=[axis-1,axis]):
                 midx[axis-1] = 0
                 midx_str = str(midx).replace("'","")
                 exec('arr_out'+midx_str+'= func(slc,*args,**kwargs) ')
@@ -930,7 +933,7 @@ def visualise( ptdata, **kwargs ):
     Visualise data of a PtData object, which normally contains default visualisation information,
     mostly in the 'labels' and 'vis' fields. These may be modified with the optional arguments.
     Args:
-        ptdata: PtData object, see help(sc_ptdata.PtData).
+        ptdata: PtData object, see help(ptdata.PtData).
         Optional:
             vistype: 'line', 'cline' (circle and line),'spectrogram', or 'imshow'
             groupby: int, str, or list, indicating N-D array's dimensions to group.
@@ -951,9 +954,9 @@ def visualise( ptdata, **kwargs ):
                              'dim x' = use ptdata.labels.dim[x], or None.
             figtitle: figure title. If None, ptdata.name.main will be used.
             axes: dimensions to visualise. One for 'line' and'spectrogram', two for 'imshow'.
-            sel_list: selection to display with list, see help(sc_ptdata.select_data).
+            sel_list: selection to display with list, see help(ptdata.select_data).
             savepath: full path (directories and filename with extension) to save as PNG
-            **kwargs: selection to display with keywords, see help(sc_ptdata.select_data).
+            **kwargs: selection to display with keywords, see help(ptdata.select_data).
     '''
     def xticks_minsec( fps, length_x, vistype, minseps=2 ):
         '''
@@ -977,14 +980,14 @@ def visualise( ptdata, **kwargs ):
             duration = length_x/fps
             lbl_new = [ v - loc_new[0] for v in loc_new]
             lbl_new = [ (v / lbl_new[-1])*duration for v in lbl_new]
-            lbl_new = [sc_utils.frames_to_minsec_str(f,1) for f in lbl_new]
+            lbl_new = [utils.frames_to_minsec_str(f,1) for f in lbl_new]
         else:
             idx_rem = [ i for i,v in enumerate(loc_old)
                         if ( (v.item() < 0) or (v.item() > length_x)) ]
             loc_new = np.delete(loc_old, idx_rem)
             if loc_new[0] != 0: loc_new = np.insert(loc_new, 0, 0)
             if loc_new[-1] != length_x: loc_new = np.insert(loc_new, len(loc_new), length_x)
-            lbl_new = [sc_utils.frames_to_minsec_str(f,fps) for f in loc_new]
+            lbl_new = [utils.frames_to_minsec_str(f,fps) for f in loc_new]
             if (lbl_new[-1] == lbl_new[-2]) or ((loc_new[-1] - loc_new[-2]) < (minseps*fps)):
                 loc_new = np.delete(loc_new,-2)
                 lbl_new = np.delete(lbl_new,-2)
@@ -1207,7 +1210,7 @@ def visualise( ptdata, **kwargs ):
                             loc[data_dict_keys[i_top]]
         x_ticklabelling_dictargs['fps'] = fps
         x_ticklabelling_dictargs['idx_isochrsec'] = idx_isochrsec
-        array_iterator = sc_ndarr.iter( top_arr, lockdim=groupby )
+        array_iterator = ndarr.iter( top_arr, lockdim=groupby )
         for vis_arr,i_ch,i_nd in array_iterator:
 # TO-DO: Arg. 'topidxkey' (boolean) to add index and key of the top array to the title.
             sp_title = ''

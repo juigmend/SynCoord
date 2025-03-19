@@ -129,7 +129,7 @@ def kuramoto_r(ndarr):
         r_list.append( abs( sum([(np.e ** (1j * angle)) for angle in phi]) / n_pts ) )
     return np.array(r_list)
 
-def phasediff(phi_1,phi_2):
+def phasediff( phi_1, phi_2 ):
     '''
     Args:
         phi_1, phi_2: scalars of vectors that are phase angles.
@@ -139,7 +139,7 @@ def phasediff(phi_1,phi_2):
     return np.arctan2( np.cos(phi_1) * np.sin(phi_2) - np.sin(phi_1) * np.cos(phi_2),
                        np.cos(phi_1) * np.cos(phi_2) + np.sin(phi_1) * np.sin(phi_2) )
 
-def plv(a1,a2,axis=0):
+def plv( a1, a2, axis=0 ):
     '''
     Phase-Locking Value for two vectors of phase angles.
     Args:
@@ -154,7 +154,7 @@ def plv(a1,a2,axis=0):
     plv_result = np.abs(np.sum(diff_complex,axis=axis))/diff_complex.shape[axis]
     return plv_result
 
-def windowed_plv(arrs, window_length=None, window_step=1, mode='same', axis=-1):
+def windowed_plv( arrs, window_length=None, window_step=1, mode='same', axis=-1 ):
     '''
     Sliding-window phase-locking values.
     Args:
@@ -168,7 +168,7 @@ def windowed_plv(arrs, window_length=None, window_step=1, mode='same', axis=-1):
     Returns:
         Array whose dimensions depend on func.
     '''
-    return slwin( arrs, plv, window_length, window_step, mode=mode, axis=axis)
+    return slwin( arrs, plv, window_length, window_step, mode=mode, axis=axis )
 
 def isochronal_sections(data_list,idx_sections,last=False,axis=-1):
     '''
@@ -398,7 +398,7 @@ def slwin( arrs, func, window_length, window_step=1, mode='same', **kwargs ):
         slwin_result = np.pad(slwin_result,tuple(pad_width))
     return slwin_result
 
-def apply_to_pairs(ndarr, func, pairs_axis, fixed_axes=-1, verbose=True, **kwargs):
+def apply_to_pairs( ndarr, func, pairs_axis, fixed_axes=-1, verbose=True, **kwargs ):
     '''
         Apply a function to pairs of dimensions of an N-D array.
         Args:
@@ -458,7 +458,7 @@ def apply_to_pairs(ndarr, func, pairs_axis, fixed_axes=-1, verbose=True, **kwarg
                 func_result = func([slice_i,slice_j],**kwargs)
                 if func_result.shape != shape_fixed_axes:
                     if output_ndarr_mutated:
-                        raise Exception('func not returning arrays with conistent shape.')
+                        raise Exception('func not returning arrays with consistent shape.')
                     fixed_axes_pos = fixed_axes.copy()
                     for i,a in enumerate(fixed_axes_pos):
                         if a < 0: fixed_axes_pos[i] = output_ndarr.ndim + a

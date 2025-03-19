@@ -41,7 +41,7 @@ def trim_sections_to_frames(topinfo):
     Args:
         DataFrame with columns 'Sections' and 'fps'.
         Optionally the dataframe can have column 'Start' to indicate trim at the beginning.
-        help(sc_utils.minsec_str_to_frames) for the format of cells in column 'Sections'.
+        help(utils.minsec_str_to_frames) for the format of cells in column 'Sections'.
     Returns:
         List with processed values.
     '''
@@ -260,8 +260,8 @@ def load_data( preproc_data, *prop_path, annot_path=None, topdata_Name=None,
         dim_labels: labels for N-D array's dimensions*
                     (less short, used e.g, as labels for visualisations)
         dimel_labels: labels for each element of N-D array's dimensions*.
-        topinfo: DataFrame with properties and annotations (if they exist)
-                 with trimmed sections in frames.
+        topinfo: Pandas dataframe with properties and annotations (if they exist), and
+                 trimmed sections in frames if column "Sections" exist.
         * dimensions = axes of the N-D Numpy array, where the rightmost is the fastest changing.
     '''
     if prop_path[0]:
@@ -284,7 +284,8 @@ def load_data( preproc_data, *prop_path, annot_path=None, topdata_Name=None,
         if properties.shape[0] != annotations.shape[0]:
             raise Exception('The lengths of properties and annotations are not equal.')
         topinfo = pd.merge(annotations,properties,on='ID')
-        topinfo['trimmed_sections_frames'] = trim_sections_to_frames(topinfo)
+        if 'Sections' in topinfo:
+            topinfo['trimmed_sections_frames'] = trim_sections_to_frames(topinfo)
     else: topinfo = properties
 
     pos_data = {}

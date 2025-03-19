@@ -1,1 +1,3 @@
-__all__ = ["sc_ptdata","sc_ndarr","sc_utils"]
+__all__ = ["ptdata","ndarr","utils"]
+
+from . import ptdata, ndarr
