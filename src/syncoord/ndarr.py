@@ -5,10 +5,12 @@ from scipy import signal
 from scipy.interpolate import CubicSpline
 from scipy.fft import rfft
 
+from . import utils
+
 # .............................................................................
 # ANALYSIS-ORIENTED OPERATIONS:
 
-def tder2D(arr_nd_in,order=1):
+def tder2D( arr_nd_in, order=1 ):
     '''
     Differentiation per point. First order difference is euclidean distance
     among consecutive two-dimensional points [x,y]. Second order difference is simple difference.
@@ -44,7 +46,7 @@ def tder2D(arr_nd_in,order=1):
             arr_nd_out[idx,:,:] = diff_arr
     return np.squeeze(arr_nd_out)
 
-def peaks_to_phase(arr_nd,axis=-1):
+def peaks_to_phase( arr_nd, axis=-1 ):
     '''
     Generate ramps between signal peaks, with amplitude {-pi,pi}
     Args:
@@ -170,7 +172,68 @@ def windowed_plv( arrs, window_length=None, window_step=1, mode='same', axis=-1 
     '''
     return slwin( arrs, plv, window_length, window_step, mode=mode, axis=axis )
 
-def isochronal_sections(data_list,idx_sections,last=False,axis=-1):
+def xwt_nd( arrlist, minmaxf, fps, projout=False, matlabeng=None,
+            gxwt_path=None, xwtnd_path=None, verbose=True ):
+    '''
+    Wrapper for Matlab functions cwt.m, cwtensor.m, genxwt.m, xwtnd.m
+    Multi-Dimensional Cross-Wavelet Transform.
+    Args:
+        arrlist: list with two N-D or 1-D arrays having dimensions [channels,frames]
+                 or [frames], respectively.
+                 Note: 'channels' are individual signals whose covariance will be measured.
+                       For example, in the context of motion, each channel is a spatial
+                       dimension (e.g., x, y).
+        minmaxf: list with minimum and maximum frequency (Hz).
+        fps: sampling rate (fps or Hz).
+        Optional:
+            projout: boolean, to include power projections in returns.
+            matlabeng: matlab.engine object (useful when running multiple times).
+                       Otherwise the following arguments are valid:
+            gxwt_path: path to folder containing functions cwtensor.m, and genxwt.m
+        xwspectr: cross-wavelet spectrum array with dimensions [channels,frames].
+        freqs: frequencies (Hz).
+        Optional:
+            powproj: if projout = True, tuple of arrays (one per input) with power projections.
+                     The arrays have dimensions [channels,frequencies,frames]
+    Non-Python dependencies:
+        Matlab, Wavelet Toolbox for Matlab, cwtensor.m, and genxwt.m
+    Reference:
+        https://doi.org/10.1016/j.humov.2021.102894
+    '''
+    ass_msg = 'First and second arguments should be lists with two elements.'
+    assert isinstance(arrlist,list) and isinstance(minmaxf,list), ass_msg
+    assert (len(arrlist)==2) and (len(minmaxf)==2), ass_msg
+
+    if projout: nout = 4
+    else: nout = 2
+
+    if matlabeng: neweng = False
+    else:
+        neweng = True
+        addpaths = [gxwt_path,xwtnd_path]
+        matlabeng = utils.matlab_eng(addpaths,verbose)
+
+    xwtnd_result = matlabeng.xwtnd( arrlist[0].T, arrlist[1].T, float(fps),
+                                    minmaxf[0], minmaxf[1], nargout=nout )
+    xwspectr = np.flip( np.abs(np.array(xwtnd_result[0])), axis=0 )
+    freqs = np.flip( np.squeeze( np.array(xwtnd_result[1]) ))
+    output = [xwspectr,freqs]
+    if projout:
+        powproj = []
+        for i in range(2,4):
+            np_arr = np.array(xwtnd_result[i])
+            if np_arr.ndim == 3:
+                np_arr = np.moveaxis( np_arr, [0,1,2], [1,2,0] )
+            powproj.append( np.flip( np.abs(np_arr)**2,axis=0 ) )
+        output.append(tuple(powproj))
+
+    if neweng:
+        matlabeng.quit()
+        if verbose: print('Disconnected from Matlab.')
+
+    return tuple(output)
+
+def isochronal_sections( data_list, idx_sections, last=False, axis=-1 ):
     '''
     Time-rescale 1-D data so that data fits into sections of the same size.
     The length of the resulting sections will be the length of the largest process axis of all
@@ -292,7 +355,7 @@ def section_stats( arr_nd, idx_sections, fps, last=False, margins=None, axis=-1,
 # .............................................................................
 # APPLICATION:
 
-def iter(arr_nd,lockdim=None):
+def iter( arr_nd, lockdim=None ):
     '''
     Generator that iterates over dimensions of an N-D data array.
     Args:
@@ -398,21 +461,25 @@ def slwin( arrs, func, window_length, window_step=1, mode='same', **kwargs ):
         slwin_result = np.pad(slwin_result,tuple(pad_width))
     return slwin_result
 
-def apply_to_pairs( arr_nd, func, pairs_axis, fixed_axes=-1, verbose=True, **kwargs ):
+def apply_to_pairs( arr_nd, func, pairs_axis, fixed_axes=-1, imout=0, verbose=False, **kwargs ):
     '''
-        Apply a function to pairs of dimensions of an N-D array.
-        Args:
-            arr_nd: N-D array.
-            func: function to apply, whose first argument is a list with each N-D array of the pair.
-            pairs_axis: axis to run the pairwise process.
-            Optional:
-                fixed_axes: axis (int) or axes (list) that are the input to func. Default is last axis *.
-                verbose: Display progress.
-                **kwargs = optional arguments and keyword arguments to be passed to func.
-        Returns:
-            N-D array. The length of the pairs dimension originanlly of length N, is ((N*N)-N)/2.
-            List of pairs.
-        * axes = dimensions of the N-D array, where the rightmost axis is the fastest changing.
+    Apply a function to pairs of dimensions of an N-D array.
+    Args:
+        arr_nd: N-D array.
+        func: function to apply, whose first argument is a list with each N-D array of the pair.
+        pairs_axis: axis to run the pairwise process.
+        Optional:
+            fixed_axes: axis (int) or axes (list) that are the input to func. Default is last axis *.
+            imout: index of N-D array in returned tuple of func, if func has multiple returns.
+            verbose: Display progress.
+            **kwargs = optional arguments and keyword arguments to be passed to func.
+    Returns:
+        arr_nd_out: N-D array. The length of the pairs dimension originanlly
+                    of length N, is ((N*N)-N)/2.
+        pairs_idx: List of pairs.
+        multi_results: Tuple with func returns other than indicated by argument 'imout',
+                       otherwise empty list. Consecutively equal results will be discarded.
+    * axes = dimensions of the N-D array, where the rightmost axis is the fastest changing.
     '''
     shape_in = list(arr_nd.shape)
     iter_shape = shape_in.copy()
@@ -431,12 +498,18 @@ def apply_to_pairs( arr_nd, func, pairs_axis, fixed_axes=-1, verbose=True, **kwa
     idx_shape_j = idx_shape_o.copy()
     shape_out = shape_in.copy()
     shape_out[pairs_axis] = (shape_in[pairs_axis]**2 - shape_in[pairs_axis])//2
-    output_arr_nd = np.empty(tuple(shape_out))
+    arr_nd_out = np.empty(tuple(shape_out))
     shape_fixed_axes = tuple(shape_out[v] for v in fixed_axes)
     len_pairs_axis = arr_nd.shape[pairs_axis]
     i_pair = 0
     pairs_idx = []
-    output_arr_nd_mutated = False
+    multi_results = []
+    def checkmr_(a,b):
+        if isinstance(a, list): a = a[0]
+        if isinstance(b, list): b = b[0]
+        try: return (a.all() != b.all()) or (a.shape != b.shape)
+        except: return True
+    arr_nd_out_mutated = False
     for i in range(len_pairs_axis):
         idx_shape_i[pairs_axis] = i
         for j in range(i+1, len_pairs_axis):
@@ -444,7 +517,6 @@ def apply_to_pairs( arr_nd, func, pairs_axis, fixed_axes=-1, verbose=True, **kwa
             idx_shape_o[pairs_axis] = i_pair
             if verbose: print(f'pair {i_pair+1} of {n_pairs}')
             pairs_idx.append([i,j])
-            i_pair += 1
             for idx_iter in np.ndindex(tuple(iter_shape)):
                 for i_loc,i_idx in zip(loc_idx_iter,idx_iter):
                     idx_shape_i[i_loc] = i_idx
@@ -456,20 +528,32 @@ def apply_to_pairs( arr_nd, func, pairs_axis, fixed_axes=-1, verbose=True, **kwa
                 slice_i = eval('arr_nd'+idx_shape_i_str)
                 slice_j = eval('arr_nd'+idx_shape_j_str)
                 func_result = func([slice_i,slice_j],**kwargs)
-                if func_result.shape != shape_fixed_axes:
-                    if output_arr_nd_mutated:
+                if isinstance(func_result,np.ndarray):
+                    result_arr = func_result
+                elif isinstance(func_result,tuple):
+                    result_arr = func_result[imout]
+                    other_results = [a for i,a in enumerate(func_result) if i is not imout]
+                    if i_pair != 0:
+                        other_results = [ a for a,b in zip(other_results,multi_results[i_pair-1])
+                                          if checkmr_(a,b) ]
+                    multi_results.append(other_results)
+                if result_arr.shape != shape_fixed_axes:
+                    if arr_nd_out_mutated:
                         raise Exception('func not returning arrays with consistent shape.')
                     fixed_axes_pos = fixed_axes.copy()
                     for i,a in enumerate(fixed_axes_pos):
-                        if a < 0: fixed_axes_pos[i] = output_arr_nd.ndim + a
+                        if a < 0: fixed_axes_pos[i] = arr_nd_out.ndim + a
                     shape_out_new = shape_out.copy()
                     i_fa = 0
-                    for i in range(output_arr_nd.ndim):
+                    for i in range(arr_nd_out.ndim):
                         if i == fixed_axes_pos[i_fa]:
-                            shape_out_new[i] = func_result.shape[i_fa]
+                            shape_out_new[i] = result_arr.shape[i_fa]
                             i_fa += 1
-                    output_arr_nd = np.empty(tuple(shape_out_new))
+                    arr_nd_out = np.empty(tuple(shape_out_new))
                     shape_fixed_axes = tuple(shape_out_new[v] for v in fixed_axes_pos)
-                    output_arr_nd_mutated = True
-                exec('output_arr_nd'+idx_shape_o_str+' = func([slice_i,slice_j],**kwargs)')
-    return output_arr_nd, pairs_idx
+                    arr_nd_out_mutated = True
+                exec('arr_nd_out'+idx_shape_o_str+' = result_arr')
+                i_pair += 1
+    if multi_results:
+        return arr_nd_out, pairs_idx, multi_results
+    else: return arr_nd_out, pairs_idx

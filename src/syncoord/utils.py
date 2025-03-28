@@ -1,9 +1,12 @@
 '''Miscellaneous functionality.'''
 
+import os
 from copy import deepcopy
 
 import numpy as np
 import pandas as pd
+
+np.set_printoptions(suppress=True)
 
 def frames_to_minsec_str(frames,fps):
     '''
@@ -36,13 +39,14 @@ def minsec_str_to_frames(ts_str_in,fps):
         ts_f_lst.append( round(s*fps) )
     return ts_f_lst
 
-def trim_sections_to_frames( topinfo ):
+def trim_sections_to_frames(topinfo):
     '''
     Args:
         DataFrame with columns 'fps', and 'Sections'. If 'Sections' does not exits, then
         values in column 'trimmed_sections_frames' will be used.
         Optionally the dataframe can have column 'Start' to indicate trim at the beginning.
-        help(utils.minsec_str_to_frames) for the format of cells in column 'Sections'.
+        See documentation for syncoord.utils..minsec_str_to_frames, for the format of cells
+        in column 'Sections'.
     Returns:
         List with processed values.
     '''
@@ -131,7 +135,7 @@ def supersine(argdict):
 
 def init_testdatavars(**kwargs):
     '''
-    Initialise values for the function 'testdata', which produces signals of oscillating points
+    Initialise values for syncoord.utils.testdata, which produces signals of oscillating points
     with optional distortion.
     All arguments are keywords. If no arguments are given, a dictionary with default values
     will be produced (e.g., for quick testing).
@@ -143,10 +147,11 @@ def init_testdatavars(**kwargs):
             n_axes: number of spatial axes
             seed: None or int; seed for the pseudorandom generator (e.g., for reproducibility)
             nan: True returns array 'data_vars' as NaN. False returns default values.
+            verbose: display values for variales, except 'data_vars' (see Returns below).
     Returns:
-        Dictionary of variables to serve as input for function 'testdata', with all the optional
-        arguments plus an array 'data_vars' with dimensions [sections,points,axes,vars], where
-        vars are frequency, phase_shift, amplitude, vertical_offset, irregularity, noise_strength.
+        Dictionary of variables for syncoord.utils.testdata with all the optional arguments plus
+        an array 'data_vars'. Such array has dimensions [sections,points,axes,vars], where vars
+        are frequency, phase shift, amplitude, vertical offset, irregularity, noise_strength.
     '''
 
     fps = kwargs.get('fps',30)
@@ -154,34 +159,41 @@ def init_testdatavars(**kwargs):
     n_points = kwargs.get('n_points',4)
     n_axes = kwargs.get('n_axes',2)
     seed = kwargs.get('seed',None)
+    verbose = kwargs.get('verbose',False)
 
     n_sections = len(durations_sections)
-    total_duration = sum(durations_sections)*fps
+    total_duration = sum(durations_sections)
     point_vars = np.empty((n_sections,n_points,n_axes,6)) # dim = [sections,points,axes,vars]
     point_vars[:] = np.nan
 
     data_vars = { 'fps':fps,'durations_sections':durations_sections,'total_duration':total_duration,
                    'n_points':n_points,'n_axes':n_axes,'point_vars':point_vars,'seed':seed }
+    if verbose:
+        print('sampling rate =',data_vars['fps'],'(fps or Hz)')
+        print('duration of sections =',data_vars['durations_sections'],'(s)')
+        print('total duration =',data_vars['total_duration'],'(s)')
+        print('number of signals =', data_vars['n_points'])
+        print('number of dimensions per signal =',data_vars['n_axes'])
 
     if ('nan' in kwargs) and kwargs['nan']: return data_vars
 
     # vars = frequency, phase_shift, amplitude, vertical_offset, irregularity, noise_strength
     # ax 0 ..........................................
     # section 0:
-    point_vars[0,0,0] = 1, 0,   40, 100, 0.1,  0.5
-    point_vars[0,1,0] = 1, 0,   35, 200, 0.1,  0.5
-    point_vars[0,2,0] = 1, 0,   37, 400, 0.1,  0.5
-    point_vars[0,3,0] = 1, 0,   33, 500, 0.1,  0.5
+    point_vars[0,0,0] = 1, 0,   33, 100, 0.1,  0.5
+    point_vars[0,1,0] = 1, 0,   37, 200, 0.1,  0.5
+    point_vars[0,2,0] = 1, 0,    4, 400, 0.1,  0.5
+    point_vars[0,3,0] = 1, 0,    5, 500, 0.1,  0.5
     # section 1:
     point_vars[1,0,0] = 1, 0.2, 33, 100, 0.9,  0.5
     point_vars[1,1,0] = 1, 0.7, 37, 200, 0.7, 0.5
-    point_vars[1,2,0] = 1, 0,   40, 400, 0.9,  0.5
-    point_vars[1,3,0] = 1, 1.5, 35, 500, 0.8,  0.5
+    point_vars[1,2,0] = 1, 0,    4, 400, 0.9,  0.5
+    point_vars[1,3,0] = 1, 1.5,  5, 500, 0.8,  0.5
     # section 2:
-    point_vars[2,0,0] = 1, 0,         23, 100, 0, 0.5
-    point_vars[2,1,0] = 1, 3*np.pi/2, 27, 200, 0, 0.5
-    point_vars[2,2,0] = 1, np.pi,     30, 400, 0, 0.5
-    point_vars[2,3,0] = 1, np.pi/2,   25, 500, 0, 0.5
+    point_vars[2,0,0] = 1, 0,       33, 100, 0, 0.5
+    point_vars[2,1,0] = 1, np.pi/2, 37, 200, 0, 0.5
+    point_vars[2,2,0] = 1, 0,        4, 400, 0, 0.5
+    point_vars[2,3,0] = 1, 2*np.pi,  5, 500, 0, 0.5
     # ax 1 ..........................................
     point_vars[:,:,1,:] = point_vars[:,:,0,:]
     point_vars[:,:,1,2] = point_vars[:,:,1,2] * 0.6
@@ -196,7 +208,7 @@ def testdata(*args,**kwargs):
     or a dictionary resulting from that function.
     If no arguments are given, default data will be produced with the function 'init_testdatavars'.
     Args:
-         see help(init_testdatavars)
+        See documentation for syncoord.utils.init_testdatavars
     Returns:
         N-D array with dimensions [points,axes,frames]
     '''
@@ -209,14 +221,14 @@ def testdata(*args,**kwargs):
     if kwargs:
         fps = kwargs.get('fps')
         durations_sections = kwargs.get('durations_sections')
-        total_duration = kwargs.get('total_duration')
+        total_length = kwargs.get('total_duration')*fps
         n_points = kwargs.get('n_points')
         n_axes = kwargs.get('n_axes')
         seed = kwargs.get('seed')
         point_vars = kwargs.get('point_vars') # dim = [sections,points,axes,vars]
         # vars = frequency, phase_shift, amplitude, vertical_offset, irregularity, noise_strength
 
-    test_data = np.empty((n_points,n_axes,total_duration)) # dim = [points,axes,frames]
+    test_data = np.empty((n_points,n_axes,total_length)) # dim = [points,axes,frames]
     wavargs = {}
     wavargs['sampling_frequency'] = fps
     wavargs['seed'] = seed
@@ -245,8 +257,8 @@ def load_data( preproc_data, *prop_path, annot_path=None, topdata_Name=None,
                       If str: folder with parquet files for preprocesed data
                               (e.g., r"~\preprocessed"), or "make" to produce synthetic data
                               with default values (function 'testdata' used internally).
-                      If dict: as returned by function 'testdata'.
-                      If np.ndarray: as returned by function 'init_testdatavars'.
+                      If dict: as returned by syncoord.utils.init_testdatavars
+                      If np.ndarray: as returned by syncoord.utils.testdata
         prop_path: path for properties CSV file (e.g., r"~\properties.csv").
                    Optional or ignored if preproc_data = "make".
         Optional:
@@ -271,7 +283,7 @@ def load_data( preproc_data, *prop_path, annot_path=None, topdata_Name=None,
     if prop_path[0]:
         properties = pd.read_csv(prop_path[0][0])
 
-    if preproc_data == 'make':
+    def make_topinfo_tdv():
         tdv = init_testdatavars()
         tsf = []
         csum = 0
@@ -280,7 +292,19 @@ def load_data( preproc_data, *prop_path, annot_path=None, topdata_Name=None,
             tsf.append(csum * tdv['fps'])
         topinfo = pd.DataFrame( columns = ['ID','Name','fps','trimmed_sections_frames'],
                                 data = [['test','Test Data',tdv['fps'],tsf]] )
-    elif annot_path:
+        return topinfo, tdv
+
+    # if preproc_data == 'make':
+    #     tdv = init_testdatavars()
+    #     tsf = []
+    #     csum = 0
+    #     for d in tdv['durations_sections'][:-1]:
+    #         csum += d
+    #         tsf.append(csum * tdv['fps'])
+    #     topinfo = pd.DataFrame( columns = ['ID','Name','fps','trimmed_sections_frames'],
+    #                             data = [['test','Test Data',tdv['fps'],tsf]] )
+    # elif annot_path:
+    if annot_path:
         # If annotations files exist, 'ID' of "annotations" will be the main order.
         annotations = pd.read_csv(annot_path)
         if max_n_files:
@@ -290,11 +314,12 @@ def load_data( preproc_data, *prop_path, annot_path=None, topdata_Name=None,
         topinfo = pd.merge(annotations,properties,on='ID')
         if 'Sections' in topinfo:
             topinfo['trimmed_sections_frames'] = trim_sections_to_frames(topinfo)
-    else: topinfo = properties
+    elif prop_path[0]: topinfo = properties
 
     pos_data = {}
     if isinstance(preproc_data,str):
         if preproc_data == 'make':
+            if not annot_path: topinfo, tdv = make_topinfo_tdv()
             pos_data[0] = testdata(tdv)
         else:
             for i in range(topinfo.shape[0]):
@@ -304,9 +329,11 @@ def load_data( preproc_data, *prop_path, annot_path=None, topdata_Name=None,
                 top_arr_nd = np.transpose(top_arr_nd,(1,0,2))
                 pos_data[i] = top_arr_nd
     elif isinstance(preproc_data,dict):
-        pos_data = preproc_data
-    elif isinstance(preproc_data,np.ndarray):
         pos_data[0] = testdata(preproc_data)
+        if not annot_path: topinfo, _ = make_topinfo_tdv()
+    elif isinstance(preproc_data,np.ndarray):
+        pos_data[0] = preproc_data
+        if not annot_path: topinfo, _ = make_topinfo_tdv()
     dim_names = ['point','axis','frame']
     dim_labels = ['point','axes','time (frames)']
     dimel_labels = [['p. '+str(i) for i in range(pos_data[0].shape[dim_names.index('point')])],
@@ -329,3 +356,24 @@ def load_data( preproc_data, *prop_path, annot_path=None, topdata_Name=None,
             this_duration_lbl = frames_to_minsec_str(this_length,topinfo.loc[k,'fps'])
             print(f'  {i}; {k}; {topinfo["Name"].iloc[i]}; {this_duration_lbl}')
     return pos_data, dim_names, dim_labels, dimel_labels, topinfo
+
+def matlab_eng( addpaths=None, verbose=True ):
+    '''
+    Connects to Matab and returns a matlab.engine object.
+    Optional args:
+        addpaths: str or list, path(s) to add to Matlab, or None.
+        verbose: True or False.
+    '''
+    if verbose: print('Connecting to Matlab...')
+    import matlab.engine
+    matlabeng = matlab.engine.start_matlab()
+    if verbose: print('...connected to Matlab version',matlabeng.version())
+    full_addpaths = [r"..\src" ]
+    if addpaths:
+        if isinstance(addpaths,str): full_addpaths.append(addpaths)
+        elif isinstance(addpaths,list): full_addpaths.extend(addpaths)
+    for p in full_addpaths:
+        if p:
+            pabs = os.path.abspath(p)
+            matlabeng.addpath( matlabeng.genpath(p), nargout=0 )
+    return matlabeng
