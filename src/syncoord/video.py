@@ -15,7 +15,7 @@ from . import utils
 def download( ID, mode, **kwargs):
     '''
     Download video from Youtube, get information, preview, and write text file 'properties.csv'
-    with ID (identificaion code of the video), and fps (frames per second)
+    with ID (identificaion code of the video), and fps (frames per second).
     Args:
         ID: str, identification code at the end of the video's Youtube page URL.
             The Youtube ID follows this string in the URL: "www.youtube.com/watch?v="
@@ -24,9 +24,10 @@ def download( ID, mode, **kwargs):
             video_folder: path to save the downloaded video file.
             prop_folder: path to save the properties file. Default is video_folder
             fn: name for the resulting file. If None, ID will be used.
-            maxh: maximum height of video to download.
-            maxfps: maximum frame rate of video to download.
+            maxh: maximum height of video to download. Default = 720
+            maxfps: maximum frame rate of video to download. Default = 60
             ext: file extension (encapsulation format) for resulting video.
+            verbose
     Dependency:
         https://github.com/yt-dlp/yt-dlp
     '''
@@ -35,9 +36,10 @@ def download( ID, mode, **kwargs):
     video_folder = kwargs.get('video_folder',None)
     prop_folder = kwargs.get('prop_folder',video_folder)
     fn = kwargs.get('fn',ID)
-    maxh = kwargs.get('maxh',1080)
-    maxfps = kwargs.get('maxfps',30)
+    maxh = kwargs.get('maxh',720)
+    maxfps = kwargs.get('maxfps',60)
     ext = kwargs.get('ext','mp4')
+    verbose = kwargs.get('verbose',False)
 
     if 'preview' in mode: display(YouTubeVideo(ID))
 
@@ -60,9 +62,10 @@ def download( ID, mode, **kwargs):
         ydl_opts = { 'format': video_format_str,
                      'outtmpl': video_ffn_ne,
                      'final_ext': ext,
-                     'verbose': False,
-                     'quiet':True,
-                     'no_warnings':True,
+                     'verbose': verbose,
+                     'quiet':not verbose,
+                     'no_warnings':not verbose,
+                     'no-cache-dir': True,
                      'postprocessors': [{ 'key': 'FFmpegVideoRemuxer',
                                           'preferedformat': ext, }] }
 
@@ -380,9 +383,6 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
     Documentation:
         https://github.com/MVIG-SJTU/AlphaPose/blob/master/docs/output.md
     '''
-    from sklearn.cluster import HDBSCAN
-    import matplotlib.pyplot as plt
-
     assert isinstance(savepaths,dict), 'Keyword argument "savepaths" should be dict.'
     assert savepaths['parquet'], 'savepaths["parquet"] not in input.'
     preproc_path = savepaths['parquet'] # TO-DO: save to numpy file
@@ -392,7 +392,6 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
 
     assert isinstance(vis,dict), 'Argument "vis" should be dict.'
     vis = {'show':True,'markersize':0.8,'lwraw':4,'lwprep':2,**vis}
-
     keypoints = kwargs.get('keypoints',[0,1])
     if len(keypoints) > 2:
         raise Exception(''.join([ f'Currently only one point with two dimensions (x,y) \
@@ -403,6 +402,11 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
     trange = kwargs.get('trange',None)
     drdim = kwargs.get('drdim',None)
     verbose = kwargs.get('verbose',True)
+
+    if drdim:
+        from sklearn.cluster import HDBSCAN
+    if vis['show'] or rawfig_path or prepfig_path:
+        import matplotlib.pyplot as plt
 
     DIM_LABELS = ['x','y']
     if isinstance(drdim,int): drdim = [drdim]
@@ -478,8 +482,8 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                             plot_hlines = True
                         else:
                             limits.append(None)
-                            print(f'Warning: no disjoint ranges for axis \
-                                    {i_s} ({DIM_LABELS[i_s]})')
+                            print( ''.join([ 'Warning: no disjoint ranges for axis',
+                                             f'{i_s}', ' (', f'{DIM_LABELS[i_s]}', ')' ]))
 
                         if plot_hlines: plt.hlines( these_limits[1:-1], 0, len(this_series),
                                                     linestyles='dashed',

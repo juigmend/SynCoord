@@ -1,0 +1,28 @@
+AlphaPose_cQcukN4BWkM_768
+inconsistent frame count in x (1031, 1031, 1031, 14)
+inconsistent frame count in y (1031, 1031, 1031, 14)
+more idx than number of people in raw data
+missing raw data have been interpolated
+
+AlphaPose_cQcukN4BWkM_768
+inconsistent frame count in x (1031, 1031, 1031, 14)
+inconsistent frame count in y (1031, 1031, 1031, 14)
+more idx than number of people in raw data
+missing raw data have been interpolated
+
+AlphaPose_cQcukN4BWkM_768
+inconsistent frame count in x (1031, 1031, 1031, 14)
+inconsistent frame count in y (1031, 1031, 1031, 14)
+more idx than number of people in raw data
+missing raw data have been interpolated
+
+AlphaPose_cQcukN4BWkM_768
+inconsistent frame count in x (2063, 2063, 2028, 2053)
+inconsistent frame count in y (2063, 2063, 2028, 2053)
+missing raw data have been interpolated
+
+AlphaPose_cQcukN4BWkM_768
+inconsistent frame count in x (2063, 2063, 2028, 2053)
+inconsistent frame count in y (2063, 2063, 2028, 2053)
+missing raw data have been interpolated
+
