@@ -23,14 +23,14 @@ class PtData:
     Data class.
     Attributes:
         names:
-            names.main: string for the main name of the object. Descriptive.
+            names.main: str, main name of the object. Descriptive.
                         It may grow as the names of processes to the data are added.
-            names.dim: list of strings for the dimensions of the object. Concise, used for selection.
+            names.dim: list of str, dimensions of the object. Concise, used for selection.
         labels:
-            labels.main: string for the main label of the object. Concise or abbreviated.
-            labels.dim: list of strings for the dimensions of the object. Concise or abbreviated.
+            labels.main: str, main label of the object. Concise or abbreviated.
+            labels.dim: list of str, dimensions of the object. Concise or abbreviated.
                          Used for visualisations.
-            labels.dimel: list of strings for the elements of dimensions. It can also be a dict
+            labels.dimel: list of str, elements of dimensions. It can also be a dict
                           of lists with one item per data array, if the arrays are inhomogeneous.
                           Used for visualisations.
         data: dict where each item should be an N-D data array (type numpy.ndarray) containig data.
@@ -85,17 +85,18 @@ def position( preproc_data, *prop_path, annot_path=None, max_n_files=None,
               print_info=True, **kwargs ):
     '''
     Args:
-        preproc_data: str, dict or np.ndarray.
+        preproc_data: str, dict or np.ndarray
                       If str: folder with parquet files for preprocesed (e.g., r"~\preprocessed"),
                                or "make" to produce synthetic data with default values.
                       If dict: as returned by syncoord.utils.testdata
                       If np.ndarray: as returned by syncoord.utils.init_testdatavars
-        prop_path: path for properties CSV file (e.g., r"~\properties.csv"). Optional or ignored
-                   if preproc_data = "make".
+        prop_path: str, path and filename for properties CSV file (e.g., r"~\properties.csv").
+                   Optional or ignored if preproc_data = "make"
         Optional:
-            annot_path: path for annotations CSV file (e.g., r"~\String_Quartet_annot.csv").
-            max_n_files: number of files to load. None (all) or scalar.
-            print_info: print durations of data. True or False.
+            annot_path: str, path and filename of annotations CSV file
+                        (e.g., r"~\String_Quartet_annot.csv").
+            max_n_files: None (all) or scalar, number of files to load.
+            print_info: bool, print durations of data.
             **kwargs: passed to syncoord.utils.load_data
     Returns:
         PtData object with position data (dictionary of mutlti dimensional numpy arrays).
@@ -363,7 +364,7 @@ def smooth( ptdata,**kwargs ):
         axis_lbl = axis
         axis = ptdata.names.dim.index(axis)
     elif isinstance(axis,int): axis_lbl = ptdata.names.dim[axis]
-    else: raise Exception('axis should be either string or int')
+    else: raise Exception('axis should be either str or int')
 
     if filter_type == 'butter':
         if 'band' in freq_response:
@@ -689,8 +690,8 @@ def xwt( ptdata, minmaxf, pairs_axis, fixed_axes, **kwargs ):
     xwtdata.labels.dim = dim_labels
     xwtdata.labels.dimel = dimel_labels
     xwtdata.data = dd_out
-    xwtdata.vis = {'dlattr':'1.2','groupby':groupby, 'vistype':vistype, 'vlattr':'r:3f'}
-    xwtdata.vis['y_ticks'] = freq_bins_round
+    xwtdata.vis = { 'groupby':groupby, 'vistype':vistype, 'rescale':True,
+                    'dlattr':'1.2', 'vlattr':'r:3f', 'y_ticks':freq_bins_round }
     xwtdata.other['freq_bins'] = freq_bins
     return xwtdata
 
@@ -1073,14 +1074,15 @@ def visualise( ptdata, **kwargs ):
             vistype: 'line', 'cline' (circle and line),'spectrogram', or 'imshow'
             groupby: int, str, or list, indicating N-D array's dimensions to group.
                      'default' = use defaults: line = 0, spectrogram = -2
+            rescale: bool, rescale visualisation (not data) to min-max of all arrays.
             vscale: float, vertical scaling.
-            dlattr: string, data lines' attributes colour, style, and width (e.g. 'k-0.6')
+            dlattr: str, data lines' attributes colour, style, and width (e.g. 'k-0.6')
             sections: display vertical lines for sections. True or False.
-            vlattr: vertical lines' attributes. String with one character for
+            vlattr: vertical lines' attributes. str with one character for
                     colour, style, width, f (full vertical) or b (bits at the top and bottom).
                     For example: 'r:2f' means red, dotted, width=2, full vertical line.
             snum_hvoff: list with horizontal and vertical offset factor for section numbers.
-            y_lim: list with minimum and maximum for vertical axes.
+            y_lim: list with minimum and maximum for vertical axes. Overrides arg. 'rescale'.
             y_label: label for vertical axis. 'default' uses ptdata.labels.main
             y_ticks: labels for vertical axis ticks, useful only when vistype = 'imshow'
             x_ticklabelling: labelling of horizontal axis;
@@ -1182,7 +1184,7 @@ def visualise( ptdata, **kwargs ):
         Args:
             ax: pyplot axis object where to overlay vertical lines.
             loc: list with the location of the lines, in horizontal axis units.
-            vlatrr: string with one character for each of these:
+            vlatrr: str with one character for each of these:
                     colour, style, width, f (full vertical) or b (bits at the top and bottom).
                     For example: 'r:2f' means red, dotted, width=2, full vertical line.
             Optional:
@@ -1228,6 +1230,7 @@ def visualise( ptdata, **kwargs ):
     kwargs = {**ptdata.vis,**kwargs}
     vistype = kwargs.pop('vistype','line')
     groupby = kwargs.pop('groupby','default')
+    rescale = kwargs.pop('rescale',False)
     vscale = kwargs.pop('vscale',1)
     dlattr = kwargs.pop('dlattr',None)
     sections = kwargs.pop('sections',True)
@@ -1255,6 +1258,14 @@ def visualise( ptdata, **kwargs ):
     ptdata = select(ptdata,sel_list,**kwargs)
     data_dict = ptdata.data
     data_dict_keys = tuple(data_dict.keys())
+    if rescale:
+        minmax = [float('inf'),-float('inf')]
+        for _,arr in data_dict.items():
+            arr_max = arr.max()
+            arr_min = arr.min()
+            if arr_min < minmax[0]: minmax[0] = arr_min
+            if arr_max > minmax[1]: minmax[1] = arr_max
+    else: minmax = [None,None]
     if not isinstance(axes,list): axes = [axes]
     appaxis_lbl = ptdata.names.dim[axes[-1]]
 # TO-DO: case no sections in annotations
@@ -1270,6 +1281,7 @@ def visualise( ptdata, **kwargs ):
     if vistype in ('line','cline'):
         if (groupby == 'default') and (data_dict[data_dict_keys[0]].ndim > len(axes)):
             groupby = [0]
+        if (y_lim is None) and rescale: y_lim = minmax
     elif vistype in ('spectrogram','imshow'):
         if 'spectrogram' in vistype:
             super_title = 'Frequency Spectrum\n'
@@ -1375,7 +1387,7 @@ def visualise( ptdata, **kwargs ):
                         exmsg = f'Number of dimensions for imshow is {vis_arr.ndim} but should \
                                 be 2. Check that argument "groupby" has length = {check_gb}'
                         raise Exception(exmsg)
-                    plt.imshow(vis_arr,aspect='auto')
+                    plt.imshow(vis_arr,aspect='auto',vmin=minmax[0],vmax=minmax[1])
                     plt.gca().invert_yaxis()
                 plt.xlim((0,hax_len))
             elif 'spectrogram' in vistype:
@@ -1410,7 +1422,8 @@ def visualise( ptdata, **kwargs ):
     fig.supxlabel(xlabel)
     plt.suptitle( super_title + figtitle , fontsize=16 )
     plt.tight_layout(rect=[0, 0.005, 1, 0.98])
-    if (y_ticks is not None) and (vis_arr.ndim == 2): # TO-DO: this might leave a bit too much space in between ticks
+# TO-DO: this might leave a bit too much space in between ticks:
+    if (y_ticks is not None) and (vis_arr.ndim == 2):
         for i_ax,spax in enumerate(sp_axes):
             yticks_loc = spax.get_yticks()
             if min(yticks_loc) < 0: yticks_loc = np.delete(yticks_loc,0)
