@@ -249,6 +249,27 @@ def testdata(*args,**kwargs):
         i_start_section = i_end_section
     return test_data
 
+def listfiles(path):
+        '''
+        Check if path is dir or file.
+        If dir, return list of file names in folder.
+        If file, return file name as list.
+        Arg:
+            path: str, path of folder or file
+        Returns:
+            fnames: list, file names with extensions
+        '''
+        if os.path.isdir(path):
+            fnames = []
+            _join = os.path.join
+            _isfile = os.path.isfile
+            for fn in os.listdir(path):
+                if _isfile( _join(path, fn) ):
+                    fnames.append(fn)
+        elif os.path.isfile(path):
+            fnames = [os.path.basename(path)]
+        return fnames
+
 def load_data( preproc_data, *prop_path, annot_path=None, topdata_Name=None,
                max_n_files=None, print_info=True ):
     '''
@@ -294,16 +315,6 @@ def load_data( preproc_data, *prop_path, annot_path=None, topdata_Name=None,
                                 data = [['test','Test Data',tdv['fps'],tsf]] )
         return topinfo, tdv
 
-    # if preproc_data == 'make':
-    #     tdv = init_testdatavars()
-    #     tsf = []
-    #     csum = 0
-    #     for d in tdv['durations_sections'][:-1]:
-    #         csum += d
-    #         tsf.append(csum * tdv['fps'])
-    #     topinfo = pd.DataFrame( columns = ['ID','Name','fps','trimmed_sections_frames'],
-    #                             data = [['test','Test Data',tdv['fps'],tsf]] )
-    # elif annot_path:
     if annot_path:
         # If annotations files exist, 'ID' of "annotations" will be the main order.
         annotations = pd.read_csv(annot_path)
