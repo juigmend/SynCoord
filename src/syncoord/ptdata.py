@@ -39,10 +39,11 @@ class PtData:
         topinfo: Pandas dataframe with information for each entry at the top level.
                  See documentation for syncoord.utils.load_data
         vis: dict of keyword arguments for default visualisation parameters,
-             when the ptdata object is passsed to ptdata.visualise.
+             when the ptdata object is passsed to ptdata.visualise
         other: empty dict, for any other information.
     Methods:
         print(): prints attributes and shape of data
+        visualise(**kwargs): calls syncoord.ptdata.visualise with the same optional arguments
     Note:
         Use command vars to see content of subfields.
         Examples:
@@ -66,7 +67,6 @@ class PtData:
         self.vis = {}
         self.other = {}
 
-    # TO-DO: add method 'visualise'
     def print(self):
         print(f'names:\n{vars(self.names)}\n')
         print(f'labels:\n{vars(self.labels)}\n')
@@ -77,6 +77,9 @@ class PtData:
             print()
         if self.vis: print(f'vis:\n{self.vis}\n')
         if self.other: print(f'other:\n{self.other}\n')
+
+    def visualise(self,**kwargs):
+        visualise(self,**kwargs)
 
 def position( preproc_data, *prop_path, annot_path=None, max_n_files=None,
               print_info=True, **kwargs ):
@@ -1089,8 +1092,7 @@ def visualise( ptdata, **kwargs ):
             axes: dimensions to visualise. One for 'line' and'spectrogram', two for 'imshow'.
             sel_list: selection to display with list *
             savepath: full path (directories and filename with extension) to save as PNG
-            **kwargs: selection to display with keywords *
-                      * see documentation for syncoord.ptdata.select_data
+            more **kwargs: selection to display, passed to syncoord.ptdata.select_data
     '''
     def xticks_minsec( fps, length_x, vistype, minseps=2 ):
         '''
