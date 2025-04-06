@@ -8,14 +8,30 @@ import pandas as pd
 
 np.set_printoptions(suppress=True)
 
-def frames_to_minsec_str(frames,fps):
+def frames_to_minsec_str( frames, fps, ms=False ):
     '''
-    Convert frames (int) into a string with format "minutes:seconds".
+    Convert frames (int) into a string with format "minutes:seconds" (default)
+    or "minutes:seconds.miliseconds".
+    Args:
+        frames (scalar): number of frames
+        fps (int): frames per second
+        Optional:
+            ms (bool): include miliseconds
+    Returns:
+        Formatted string.
     '''
-    mins, sec = divmod(round(frames/fps), 60)
-    if sec == 0: lbl = f'{mins}:00'
-    elif sec < 10: lbl = f'{mins}:0{sec}'
-    else: lbl = f'{mins}:{sec}'
+    if ms: rounder_ = int
+    else: rounder_= round
+    mins, sec = divmod((frames/fps), 60)
+    sec_r = rounder_(sec)
+    if sec == 0:
+        lbl = f'{int(mins)}:00'
+    elif sec < 10:
+        lbl = f'{int(mins)}:0{sec_r}'
+    else:
+        lbl = f'{int(mins)}:{sec_r}'
+    if ms:
+        lbl = f'{lbl}.{int(round(sec-sec_r,3)*1000)}'
     return lbl
 
 def minsec_str_to_frames(ts_str_in,fps):
@@ -72,11 +88,14 @@ def trim_topinfo_start( ptdata, trim_s ):
     '''
     if 'Start' in ptdata.topinfo.columns:
         topinfo = deepcopy(ptdata.topinfo)
-        topinfo['Start'] += trim_s
+        old_start = topinfo['Start']
+        topinfo['Start'] = trim_s
+        topinfo['trimmed_sections_frames'] = trim_sections_to_frames(topinfo)
+        topinfo['Start'] = old_start + trim_s
     else:
         topinfo = ptdata.topinfo.assign( Start =
                                          [trim_s for _ in range(ptdata.topinfo.shape[0])] )
-    topinfo['trimmed_sections_frames'] = trim_sections_to_frames(topinfo)
+        topinfo['trimmed_sections_frames'] = trim_sections_to_frames(topinfo)
     return topinfo
 
 def supersine(argdict):
@@ -289,7 +308,7 @@ def load_data( preproc_data, *prop_path, annot_path=None, topdata_Name=None,
                            annotation file.
             max_n_files: number of files to extract from the beginning of annotations.
                          None or scalar.
-            print_info: show index, name and duration of data. True or False.
+            print_info (bool): show index, name and duration of data.
     Returns:
         pos_data: dictionary of multidimensional numpy arrays containing preprocessed data
         dim_names: names of N-D array's dimensions*
@@ -364,7 +383,7 @@ def load_data( preproc_data, *prop_path, annot_path=None, topdata_Name=None,
                                      f"list(ptdata.data.keys())[{i}]"]))
         if print_info:
             this_length = pos_data[k][0].shape[-1]
-            this_duration_lbl = frames_to_minsec_str(this_length,topinfo.loc[k,'fps'])
+            this_duration_lbl = frames_to_minsec_str(this_length,topinfo.loc[k,'fps'],ms=True)
             print(f'  {i}; {k}; {topinfo["Name"].iloc[i]}; {this_duration_lbl}')
     return pos_data, dim_names, dim_labels, dimel_labels, topinfo
 

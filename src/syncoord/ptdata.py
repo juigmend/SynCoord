@@ -174,10 +174,13 @@ def select( ptdata,*args,**kwargs ):
         if 'top' in name_sel:
             idx_top_sel = name_sel.pop('top')
         loc_dim = [None for _ in range(len(ptdata.names.dim))]
-        for i,dim_name in enumerate(ptdata.names.dim):
+        for i_dim,dim_name in enumerate(ptdata.names.dim):
             if dim_name in name_sel:
-                loc_dim[i] = name_sel[dim_name]
-            else: loc_dim[i] = 'all'
+                dim_val = name_sel[dim_name]
+                if isinstance(dim_val,str):
+                    dim_val = ptdata.labels.dimel[i_dim].index(dim_val)
+                loc_dim[i_dim] = dim_val
+            else: loc_dim[i_dim] = 'all'
 
     if loc_sel:
         for el in loc_sel: checktype_(el)
@@ -512,8 +515,8 @@ def fourier( ptdata, window_duration, **kwargs ):
     fft_result.other = other
     return fft_result
 
-def winplv( ptdata, window_duration, window_hop=None, pairs_axis=0, fixed_axes=None,
-            plv_axis=-1, mode='same', verbose=False ):
+def winplv( ptdata, window_duration, window_hop=None, pairs_axis=0,
+            fixed_axes=None, plv_axis=-1, mode='same', verbose=False ):
     '''
     Pairwise sliding-window Phase-Locking Values.
     Args:
