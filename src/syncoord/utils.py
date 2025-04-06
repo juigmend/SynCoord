@@ -197,26 +197,26 @@ def init_testdatavars(**kwargs):
     if ('nan' in kwargs) and kwargs['nan']: return data_vars
 
     # vars = frequency, phase_shift, amplitude, vertical_offset, irregularity, noise_strength
-    # axis 0 ..........................................
-    # section 0:
-    point_vars[0,0,0] = 1, 0,   33, 100, 0.1,  0.5
-    point_vars[0,1,0] = 1, 0,   37, 200, 0.1,  0.5
-    point_vars[0,2,0] = 1, 0,    4, 400, 0.1,  0.5
-    point_vars[0,3,0] = 1, 0,    5, 500, 0.1,  0.5
-    # section 1:
-    point_vars[1,0,0] = 1, 0.2, 33, 100, 0.9,  0.5
-    point_vars[1,1,0] = 1, 0.7, 37, 200, 0.7, 0.5
-    point_vars[1,2,0] = 1, 0,    4, 400, 0.9,  0.5
-    point_vars[1,3,0] = 1, 1.5,  5, 500, 0.8,  0.5
-    # section 2:
-    point_vars[2,0,0] = 1, 0,       33, 100, 0, 0.5
-    point_vars[2,1,0] = 1, np.pi/2, 37, 200, 0, 0.5
-    point_vars[2,2,0] = 1, 0,        4, 400, 0, 0.5
-    point_vars[2,3,0] = 1, 2*np.pi,  5, 500, 0, 0.5
     # axis 1 ..........................................
-    point_vars[:,:,1,:] = point_vars[:,:,0,:]
-    point_vars[:,:,1,2] = point_vars[:,:,1,2] * 0.6
-    point_vars[:,:,1,3] = 200
+    # section 0:
+    point_vars[0,0,1] = 1, 0,   33, 100, 0,  0.5
+    point_vars[0,1,1] = 1, 0,   37, 200, 0,  0.5
+    point_vars[0,2,1] = 1, 0,    4, 400, 0,  0.5
+    point_vars[0,3,1] = 1, 0,    5, 500, 0,  0.5
+    # section 1:
+    point_vars[1,0,1] = 1, 0.2, 33, 100, 0.9,  0.5
+    point_vars[1,1,1] = 1, 0.7, 37, 200, 0.7, 0.5
+    point_vars[1,2,1] = 1, 0,    4, 400, 0.9,  0.5
+    point_vars[1,3,1] = 1, 1.5,  5, 500, 0.8,  0.5
+    # section 2:
+    point_vars[2,0,1] = 1, 0,       33, 100, 0, 0.5
+    point_vars[2,1,1] = 1, np.pi/2, 37, 200, 0, 0.5
+    point_vars[2,2,1] = 1, 0,        4, 400, 0, 0.5
+    point_vars[2,3,1] = 1, 2*np.pi,  5, 500, 0, 0.5
+    # axis 0 ..........................................
+    point_vars[:,:,0,:] = point_vars[:,:,1,:]
+    point_vars[:,:,0,2] = point_vars[:,:,0,2] * 0.6
+    point_vars[:,:,0,3] = 200
 
     return data_vars
 
