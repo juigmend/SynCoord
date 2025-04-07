@@ -282,7 +282,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
 
             if verbosity or log_path:
                 toc = round(time.time() - tic,3)
-                toc_str = f"computing time = {timedelta( seconds=toc )} (H:M:S)\n"
+                toc_str = f"computing time = {str(timedelta(seconds=toc))[:-3]} (H:M:S)\n"
                 if verbosity: print(toc_str,'\n')
 
             # Set audio to output video:
