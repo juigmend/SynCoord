@@ -227,27 +227,28 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
     else: flip_cmd = ''
 
     fnames = utils.listfiles(video_in_path)
+
     def one_posetrack_( idim_, thre_, conf_ ):
 
         for fn in fnames:
-
             ffn = os.path.join(video_in_path,fn)
             split_fn = os.path.splitext(fn)
             fn_ne = split_fn[0] + trim_lbl
             json_fn = f'AlphaPose_{fn_ne}{suffix}.json'
             new_file = True
             if skip_done: new_file = json_fn not in json_saved_fn
-            if verbosity: print(f'{fn} :')
+            if parlbl or log_path or verbosity:
+                par_str_long = f'idim = {idim_}; thre = {thre_}; conf = {conf_}'
+            if verbosity:
+                print(f'{fn} :\n{par_str_long}')
 
             if (not skip_done) or new_file:
 
-                if parlbl or log_path: param_str = f'[{idim_},{thre_},{conf_}]'
-                if parlbl: suffix_cmd = ['--suffix',f'_{param_str}{suffix}']
-                if verbosity:
-                    param_str_2 = f'idim = {idim_}; thre = {thre_}; conf = {conf_}'
-                    print(f'{param_str_2}\nProcessing...',end=' ')
+                if parlbl or log_path: par_str_short = f'[{idim_},{thre_},{conf_}]'
+                if parlbl: suffix_cmd = ['--suffix',f'_{par_str_short}{suffix}']
+                if verbosity: print('Processing...',end=' ')
                 if verbosity or log_path: tic = time.time()
-                if log_path: tracking_log_txt = [f'{fn} {param_str} \n']
+                if log_path: tracking_log_txt = [f'{fn}\n{par_str_long}\n']
 
                 # Trim video:
                 if do_trim_video:
