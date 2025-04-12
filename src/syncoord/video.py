@@ -134,10 +134,8 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
     '''
     Detect and track human pose in video files.
     Note:
-        Check detector parameters in file AlphaPose\detector\yolo_cfg.py
-        Alternatively use function posetest to dynamically change the file.
-        More information:
-            https://github.com/MVIG-SJTU/AlphaPose/blob/master/docs/speed_up.md
+        Thsi function overrides detector parameters in file AlphaPose\detector\yolo_cfg.py
+        See documentation for more information (links at the bottom).
     Args:
         video_in_path: str, path for input video file or folder with input video files.
         json_path: str, path of folder for resulting json tracking files.
@@ -148,30 +146,44 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
             trim_range = list, [start,end] in seconds or 'end'.
             log_path: str, path of folder for log file.
             skip_done: skip if corresponding json file exists in json_path, default = False
+            idim: int or list. Size of the detection network, multiple of 32.
+            thre: float or list. NMS threshold for detection in (0...1]
+            conf: float or list. Confidence threshold for detection in (0...1]
+            parlbl: bool, add [idim,thre,conf] to the names of the resulting files.
             suffix: str, label to be added to the names of the resulting files.
-            model_paths: dict;
-                model_paths['model']: str, path for pretrained model.
-                model_paths['config']: str, path pretrained model's configuration file.
             audio: bool, extract audio from tracking video and add to AlphaPose video files.
                    Audio files will be saved in video_in_path, video files with added audio
                    will be saved in video_out_path.
-            verbosity: 0, 1, or 2; default = 1
+            sp: bool. Run on a single process. Forcefully True if operating system is Windows.
+            flip: bool. Enable flip testing. It might improve accuracy.
+            model_paths: dict;
+                model_paths['model']: str, path for pretrained model.
+                model_paths['config']: str, path pretrained model's configuration file.
+            verbosity: 0, 1, or 2. Only for notebook view, otherwise full verbosity.
     Dependencies:
         AlphaPose fork: https://github.com/juigmend/AlphaPose
         ffmpeg installed in system (callable by command line)
     Documentation:
+        https://github.com/MVIG-SJTU/AlphaPose/blob/master/docs/run.md
+        https://github.com/MVIG-SJTU/AlphaPose/blob/master/docs/speed_up.md
         https://github.com/MVIG-SJTU/AlphaPose/blob/master/docs/MODEL_ZOO.md
     '''
     video_out_path = kwargs.get('video_out_path',None)
     trim_range = kwargs.get('trim_range',None)
     log_path = kwargs.get('log_path',None)
     skip_done = kwargs.get('skip_done',True)
-    suffix = kwargs.get('suffix',None)
+    idim = kwargs.get('idim',608)
+    thre = kwargs.get('thre',0.6)
+    conf = kwargs.get('conf',0.1)
+    parlbl = kwargs.get('parlbl',False)
+    suffix = kwargs.get('suffix','')
+    audio = kwargs.get('audio',True)
+    sp = kwargs.get('sp',False)
+    flip = kwargs.get('flip',True)
     model_path = kwargs.get('model',AlphaPose_path
                             + r'\pretrained_models\fast_421_res152_256x192.pth')
     model_config_path = kwargs.get('config',AlphaPose_path
                                     + r'\configs\coco\resnet\256x192_res152_lr1e-3_1x-duc.yaml')
-    audio = kwargs.get('audio',True)
     verbosity = kwargs.get('verbosity',1)
 
     if video_in_path: video_in_path = os.path.abspath(video_in_path)
@@ -195,10 +207,6 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
         trim_lbl = ''
         video_out_folder = video_in_path
 
-    if audio:
-        audio_out_folder = os.path.join(video_out_folder,'audio')
-        if not os.path.exists(audio_out_folder): os.makedirs(audio_out_folder)
-
     if skip_done:
         json_saved_fn = []
         for fn in os.listdir(json_path):
@@ -208,148 +216,131 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
     if suffix: suffix_cmd = ['--suffix',suffix]
     else: suffix_cmd = ['','']
 
+    if audio:
+        audio_out_folder = os.path.join(video_out_folder,'audio')
+        if not os.path.exists(audio_out_folder): os.makedirs(audio_out_folder)
+
+    if sp: sp_cmd = '--sp'
+    else: sp_cmd = ''
+
+    if flip: flip_cmd = '--flip'
+    else: flip_cmd = ''
+
     fnames = utils.listfiles(video_in_path)
-    for fn in fnames:
+    def one_posetrack_( idim_, thre_, conf_ ):
 
-        ffn = os.path.join(video_in_path,fn)
-        split_fn = os.path.splitext(fn)
-        fn_ne = split_fn[0] + trim_lbl
-        json_fn = f'AlphaPose_{fn_ne}{suffix}.json'
-        new_file = True
-        if skip_done: new_file = json_fn not in json_saved_fn
-        if verbosity: print(f'{fn} :',end=' ')
+        for fn in fnames:
 
-        if (not skip_done) or new_file:
+            ffn = os.path.join(video_in_path,fn)
+            split_fn = os.path.splitext(fn)
+            fn_ne = split_fn[0] + trim_lbl
+            json_fn = f'AlphaPose_{fn_ne}{suffix}.json'
+            new_file = True
+            if skip_done: new_file = json_fn not in json_saved_fn
+            if verbosity: print(f'{fn} :')
 
-            if verbosity: print('Processing...',end=' ')
-            if verbosity or log_path: tic = time.time()
-            if log_path: AP_log_txt = [fn + '\n']
+            if (not skip_done) or new_file:
 
-            # Trim video:
-            if do_trim_video:
-                if trim_range[1] == 'end':
-                    vsp_args = [ "ffprobe", "-v", "error", "-show_entries", "format=duration",
-                                 "-of", "default=noprint_wrappers=1:nokey=1", ffn ]
-                    video_duration = int(float(subprocess.run( vsp_args,
-                                                               stdout=subprocess.PIPE,
-                                                               stderr=subprocess.STDOUT).stdout) )
-                    trim_end = video_duration + 1 # overshoot to ensure its the end of the video
-                else: trim_end = trim_range[1]
-                video_to_track_ffn = video_out_folder + '\\' + split_fn[0] + trim_lbl + split_fn[1]
-                if not os.path.isfile(video_to_track_ffn):
-                    ffmpeg_cmd = [ 'ffmpeg','-y','-loglevel','error','-i',ffn,'-ss',
-                                    f'{trim_range[0]}','-to',f'{trim_end}',
-                                    '-q:a',str(0),'-q:v',str(0),video_to_track_ffn ]
-                    subprocess.run( ffmpeg_cmd )
-            else:
-                video_to_track_ffn = ffn
+                if parlbl or log_path: param_str = f'[{idim_},{thre_},{conf_}]'
+                if parlbl: suffix_cmd = ['--suffix',f'_{param_str}{suffix}']
+                if verbosity:
+                    param_str_2 = f'idim = {idim_}; thre = {thre_}; conf = {conf_}'
+                    print(f'{param_str_2}\nProcessing...',end=' ')
+                if verbosity or log_path: tic = time.time()
+                if log_path: tracking_log_txt = [f'{fn} {param_str} \n']
 
-            # Get audio from input video:
-            if video_out_path and audio:
-                audio_ffn = os.path.join(audio_out_folder,fn_ne)
-                audio_ext = getaudio( video_to_track_ffn, audio_ffn )
+                # Trim video:
+                if do_trim_video:
+                    if trim_range[1] == 'end':
+                        vsp_args = [ "ffprobe", "-v", "error", "-show_entries",
+                                     "format=duration", "-of",
+                                     "default=noprint_wrappers=1:nokey=1", ffn ]
+                        video_duration = subprocess.run( vsp_args,
+                                                         stdout=subprocess.PIPE,
+                                                         stderr=subprocess.STDOUT)
+                        # overshoot to ensure its the end of the video:
+                        trim_end = int(float(video_duration.stdout)) + 1
+                    else: trim_end = trim_range[1]
+                    video_to_track_ffn = ''.join([ video_out_folder, '\\', split_fn[0],
+                                                   trim_lbl, split_fn[1] ])
+                    if not os.path.isfile(video_to_track_ffn):
+                        ffmpeg_cmd = [ 'ffmpeg','-y','-loglevel','error','-i',ffn,'-ss',
+                                        f'{trim_range[0]}','-to',f'{trim_end}',
+                                        '-q:a',str(0),'-q:v',str(0),video_to_track_ffn ]
+                        subprocess.run( ffmpeg_cmd )
+                else:
+                    video_to_track_ffn = ffn
 
-            # AlphaPose:
-            AlphaPose_cmd = [ 'cd',AlphaPose_path,'&&','python',r'scripts\demo_inference.py',
-                              '--sp','--video',video_to_track_ffn,'--jsonoutdir',json_path,
-                               save_video_cmd[0],save_video_cmd[1],save_video_cmd[2],
-                              '--checkpoint',model_path,'--cfg',model_config_path,
-                              '--pose_track',suffix_cmd[0],suffix_cmd[1],'--vis_fast' ]
+                # Get audio from input video:
+                if video_out_path and audio:
+                    audio_ffn = os.path.join(audio_out_folder,fn_ne)
+                    audio_ext = getaudio( video_to_track_ffn, audio_ffn )
 
-            def run_AP_(cmd):
-                clear_line = True
-                AP_out = subprocess.Popen( cmd, shell=True,
-                                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                           text=True)
-                for l in iter(AP_out.stdout.readline,''):
-                    if l:
-                        if clear_line:
-                            for _ in range(14): print('\b',end='',flush=True)
-                            print()
-                            clear_line = False
-                        yield l
-                AP_out.stdout.close()
-                rc = AP_out.wait()
-                if rc: raise subprocess.CalledProcessError(rc, cmd)
-                if AP_out.stderr: print('\nstderr:\n',AP_out.stderr)
+                # AlphaPose:
+                AlphaPose_cmd = [ 'cd',AlphaPose_path,'&&','python',r'scripts\demo_inference.py',
+                                  '--sp','--video',video_to_track_ffn,'--jsonoutdir',json_path,
+                                   save_video_cmd[0],save_video_cmd[1],save_video_cmd[2],
+                                  '--checkpoint',model_path,'--cfg',model_config_path,
+                                  '--pose_track',suffix_cmd[0],suffix_cmd[1],'--vis_fast',
+                                  '--param',str(idim_),str(thre_),str(conf_),sp_cmd,flip_cmd ]
+                AlphaPose_cmd = [s for s in AlphaPose_cmd if s != '']
 
-            if verbosity==2:
-                for l in run_AP_(AlphaPose_cmd): print(l)
-            else:
-                subprocess.run( AlphaPose_cmd, shell=True )
-                for _ in range(14): print('\b',end='',flush=True)
-                print('')
+                def run_AP_(cmd):
+                    clear_line = True
+                    AP_out = subprocess.Popen( cmd, shell=True,
+                                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                               text=True)
+                    for l in iter(AP_out.stdout.readline,''):
+                        if l:
+                            if clear_line and verbosity:
+                                for _ in range(14): print('\b',end='',flush=True)
+                                print()
+                                clear_line = False
+                            yield l
+                    AP_out.stdout.close()
+                    rc = AP_out.wait()
+                    if rc: raise subprocess.CalledProcessError(rc, cmd)
+                    if AP_out.stderr: print('\nstderr:\n',AP_out.stderr)
 
-            if verbosity or log_path:
-                toc = round(time.time() - tic,3)
-                toc_str = f"computing time = {str(timedelta(seconds=toc))[:-3]} (H:M:S)\n"
-                if verbosity: print(toc_str,'\n')
+                if verbosity==2:
+                    for l in run_AP_(AlphaPose_cmd): print(l)
+                else:
+                    subprocess.run( AlphaPose_cmd, shell=True )
+                    if verbosity:
+                        for _ in range(14): print('\b',end='',flush=True)
+                        print('')
 
-            # Set audio to output video:
-            if video_out_path and audio:
-                tracked_out_fn = 'AlphaPose_' \
-                                  + split_fn[0] + trim_lbl + suffix_cmd[1] + split_fn[1]
-                tracked_video_ffn = os.path.join(save_video_cmd[1],tracked_out_fn)
-                setaudio( tracked_video_ffn, audio_ffn + '.' + audio_ext )
+                if verbosity or log_path:
+                    toc = round(time.time() - tic,3)
+                    toc_str = f"computing time = {str(timedelta(seconds=toc))[:-3]} (H:M:S)\n"
+                    if verbosity: print(toc_str,'\n')
 
-            # save log:
-            if log_path:
-                AP_log_txt.append(toc_str)
-                txtlog_ffn = log_path + '\\' + 'posetrack_log.txt'
-                AP_log_txt.append('\n')
-                with open(txtlog_ffn, 'a') as output:
-                    for t in AP_log_txt:
-                        output.write(t)
+                # Set audio to output video:
+                if video_out_path and audio:
+                    tracked_out_fn = 'AlphaPose_' \
+                                      + split_fn[0] + trim_lbl + suffix_cmd[1] + split_fn[1]
+                    tracked_video_ffn = os.path.join(save_video_cmd[1],tracked_out_fn)
+                    setaudio( tracked_video_ffn, audio_ffn + '.' + audio_ext )
 
-        elif verbosity: print('skipped')
+                # save log:
+                if log_path:
+                    tracking_log_txt.append(toc_str)
+                    txtlog_ffn = log_path + '\\' + 'posetrack_log.txt'
+                    tracking_log_txt.append('\n')
+                    with open(txtlog_ffn, 'a') as output:
+                        for t in tracking_log_txt:
+                            output.write(t)
 
-def posetest(*args,**kwargs):
-    '''
-    Parameter-grid testing of pose detection and tracking.
-    Note: This function will dynamically edit the file \detector\yolo_cfg.py
-          Consider making a backup copy of the file before using this function.
-    Args:
-        *args:
-              video_in_path: str, path for input video file or folder with input video files.
-              json_path: str, path of folder for resulting AlphaPose tracking files.
-              AlphaPose_path: str, path of folder where AlphaPose code is.
-              params: dict of lists of scalars, values for parameter grid;
-                     params[idim]: size of detection network, multiples of 32.
-                     params[thre]: NMS threshold for detection in (0...1]
-                     params[conf]: confidence thershold for detection in (0...1]
-        **kwargs:
-                 Optional keyword arguments to syncoord.video.posetrack
-                 pause: scalar (seconds), default = 1
-    Documentation:
-        https://github.com/MVIG-SJTU/AlphaPose/blob/master/docs/run.md
-    '''
-    DETECTOR_CONFIG_PY = args[2] + r"\detector\yolo_cfg.py" # full path
-    DETECTOR_CONFIG_CFG = '"detector/yolo/cfg/yolov3-spp.cfg"' # embedded str, relative path
-    DETECTOR_WEIGHTS = '"detector/yolo/data/yolov3-spp.weights"' # embedded str, relative path
-    suffix = kwargs.pop('suffix',None)
-    verbose = kwargs.get('verbose',False)
-    sleep_time = kwargs.pop('pause',1)
+            elif verbosity: print('skipped')
 
-    for idim in args[3]['idim']:
-        for thre in args[3]['thre']:
-            for conf in args[3]['conf']:
-                text_str ="".join([
-                                    "'''This file is created dynamically by\n",
-                                    "syncoord.video.posetest'''\n",
-                                    "from easydict import EasyDict as edict\n",
-                                    "cfg = edict()\n",
-                                    f"cfg.CONFIG = {DETECTOR_CONFIG_CFG}\n",
-                                    f"cfg.WEIGHTS = {DETECTOR_WEIGHTS}\n",
-                                    f"cfg.INP_DIM = {idim}\n",
-                                    f"cfg.NMS_THRES = {thre}\n",
-                                    f"cfg.CONFIDENCE = {conf}\n",
-                                    "cfg.NUM_CLASSES = 80"
-                                    ])
-                with open(DETECTOR_CONFIG_PY, 'w') as output:
-                    output.write(text_str)
-                time.sleep(sleep_time)
-                kwargs['suffix'] =  f'_[{idim},{thre},{conf}]{suffix}'
-                posetrack( args[0], args[1], args[2], **kwargs )
+    if not isinstance(idim,list): idim = [idim]
+    if not isinstance(thre,list): thre = [thre]
+    if not isinstance(conf,list): conf = [conf]
+
+    for idim_ in idim:
+        for thre_ in thre:
+            for conf_ in conf:
+                one_posetrack_( idim_, thre_, conf_ )
 
 def poseprep( json_path, savepaths, vis={}, **kwargs ):
     '''
@@ -442,7 +433,7 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
             # Inspect and make plot of raw data:
             if drdim: limits = []
             if vis['show'] or rawfig_path or log_path or drdim:
-                if log_path: log_txt = [fn_ne + '\n']
+                if log_path: prep_log_txt = [fn_ne + '\n']
                 if (trange is None) or (trange == 'all'):
                     t_loc = [0,data_red_df.image_id.max()]
                 else:
@@ -500,7 +491,7 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                             if p != mean_persons:
                                 warning_frames = ''.join([ 'inconsistent frame count in '
                                                           f'{DIM_LABELS[i_s]} {tuple(n_frames)}' ])
-                                log_txt.append( warning_frames+'\n' )
+                                prep_log_txt.append( warning_frames+'\n' )
                                 if verbose: print('Warning:',warning_frames)
                                 break
                 if rawfig_path or vis['show']:
@@ -516,7 +507,7 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                     if (data_red_df.idx.max()) != n_persons:
                         warning_idx = 'more idx than number of people in raw data'
                         if verbose: print('Warning:',warning_idx)
-                        if log_path: log_txt.append(warning_idx+'\n')
+                        if log_path: prep_log_txt.append(warning_idx+'\n')
 
             # Rearrange such that each row is a frame (image_id):
             data_rar_df = pd.DataFrame( list(range(data_red_df.image_id.max() + 1)) ,
@@ -570,14 +561,14 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                     if verbose:
                         print('Warning:',warning_interp)
                     if log_path:
-                        log_txt.append(warning_interp+'\n')
+                        prep_log_txt.append(warning_interp+'\n')
 
             # save log:
             if log_path:
                 txtlog_ffn = log_path + '\\' + 'poseprep_log.txt'
-                log_txt.append('\n')
+                prep_log_txt.append('\n')
                 with open(txtlog_ffn, 'a') as output:
-                    for t in log_txt:
+                    for t in prep_log_txt:
                         output.write(t)
 
             # Make plot of pre-processed data:

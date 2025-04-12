@@ -1099,7 +1099,7 @@ def visualise( ptdata, **kwargs ):
             savepath: full path (directories and filename with extension) to save as PNG
             more **kwargs: selection to display, passed to syncoord.ptdata.select_data
     '''
-    def xticks_minsec( fps, length_x, vistype, minseps=2 ):
+    def xticks_minsec_( fps, length_x, vistype, minseps=2 ):
         '''
         Convert and cast xticks expressed in frames to format "minutes:seconds".
         Args:
@@ -1134,7 +1134,7 @@ def visualise( ptdata, **kwargs ):
                 lbl_new = np.delete(lbl_new,-2)
         plt.xticks(loc_new, lbl_new)
 
-    def xticks_percent( x_percent, length_x, vistype, idx_isochrsec=None ):
+    def xticks_percent_( x_percent, length_x, vistype, idx_isochrsec=None ):
         '''
         Make and cast xticks as percentage.
         Args:
@@ -1176,13 +1176,13 @@ def visualise( ptdata, **kwargs ):
         idx_isochrsec = x_ticklabelling_dictargs['idx_isochrsec']
         hax_len = x_ticklabelling_dictargs['hax_len']
         if x_ticklabelling == 's':
-            xticks_minsec( fps, hax_len, vistype )
+            xticks_minsec_( fps, hax_len, vistype )
         elif x_ticklabelling == 'blank':
             plt.xticks([],[])
         elif xlabel == '%':
-            xticks_percent( xpercent, hax_len, vistype, idx_isochrsec=idx_isochrsec )
+            xticks_percent_( xpercent, hax_len, vistype, idx_isochrsec=idx_isochrsec )
 
-    def overlay_vlines( ax, loc, vlattr, numcolour='k', num_hvoffset=None ):
+    def overlay_vlines_( ax, loc, vlattr, numcolour='k', num_hvoffset=None ):
         '''
         Args:
             ax: pyplot axis object where to overlay vertical lines.
@@ -1297,8 +1297,8 @@ def visualise( ptdata, **kwargs ):
     spt_y = 1
     if sections and sections_appaxis_exist:
         spt_y = snum_hvoff[1]*1.1
-        xticks_percent_sections = True
-    else: xticks_percent_sections = False
+        xticks_percent__sections = True
+    else: xticks_percent__sections = False
     data_shape = list(data_dict[data_dict_keys[0]].shape)
     sing_dims = False
     i_1 = []
@@ -1358,7 +1358,7 @@ def visualise( ptdata, **kwargs ):
         fps = ptdata.topinfo['fps'].iloc[i_top]
         top_arr = data_dict[data_dict_keys[i_top]]
         new_i_top = True
-        if xticks_percent_sections:
+        if xticks_percent__sections:
             idx_isochrsec = ptdata.topinfo[f'trimmed_sections_{appaxis_lbl}s'].\
                             loc[data_dict_keys[i_top]]
         x_ticklabelling_dictargs['fps'] = fps
@@ -1408,7 +1408,7 @@ def visualise( ptdata, **kwargs ):
                     xstart,xend = plt.xlim()
                     vlsec = [ ( (v/hax_len)*(xend-xstart)+xstart ).item() for v in vlsec]
                     vlattr = vlattr.replace('k','w')
-                overlay_vlines( plt.gca(), vlsec, vlattr,
+                overlay_vlines_( plt.gca(), vlsec, vlattr,
                                 numcolour=[0.6,0.1,0.2], num_hvoffset=snum_hvoff )
             for i in i_ch:
                 if isinstance(ptdata.labels.dimel[i],dict): # dict: different labels for each top array

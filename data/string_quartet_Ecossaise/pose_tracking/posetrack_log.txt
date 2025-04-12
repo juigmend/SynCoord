@@ -1,6 +1,3 @@
-cQcukN4BWkM.mp4
-computing time = 0:52:03.680000 (H:M:S)
-
-cQcukN4BWkM.mp4
-computing time = 1:36:44.254000 (H:M:S)
+cQcukN4BWkM.mp4 [640,0.6,0.1] 
+computing time = 1:35:37.447 (H:M:S)
 
