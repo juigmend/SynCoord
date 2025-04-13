@@ -179,7 +179,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
     suffix = kwargs.get('suffix','')
     audio = kwargs.get('audio',True)
     sp = kwargs.get('sp',False)
-    flip = kwargs.get('flip',True)
+    flip = kwargs.get('flip',False)
     model_path = kwargs.get('model',AlphaPose_path
                             + r'\pretrained_models\fast_421_res152_256x192.pth')
     model_config_path = kwargs.get('config',AlphaPose_path
