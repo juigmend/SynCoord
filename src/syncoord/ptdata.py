@@ -86,15 +86,15 @@ def position( preproc_data, *prop_path, annot_path=None, max_n_files=None,
     '''
     Args:
         preproc_data: str, dict or np.ndarray
-                      If str: folder with parquet files for preprocesed (e.g., r"~\preprocessed"),
+                      If str: folder with parquet files for preprocesed (e.g., r"~/preprocessed"),
                                or "make" to produce synthetic data with default values.
                       If dict: as returned by syncoord.utils.testdata
                       If np.ndarray: as returned by syncoord.utils.init_testdatavars
-        prop_path: str, path and filename for properties CSV file (e.g., r"~\properties.csv").
+        prop_path: str, path and filename for properties CSV file (e.g., r"~/properties.csv").
                    Optional or ignored if preproc_data = "make"
         Optional:
             annot_path: str, path and filename of annotations CSV file
-                        (e.g., r"~\String_Quartet_annot.csv").
+                        (e.g., r"~/String_Quartet_annot.csv").
             max_n_files: None (all) or scalar, number of files to load.
             print_info: bool, print durations of data.
             **kwargs: passed to syncoord.utils.load_data

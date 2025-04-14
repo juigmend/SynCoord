@@ -7,8 +7,6 @@ from datetime import timedelta
 
 import numpy as np
 import pandas as pd
-from yt_dlp import YoutubeDL
-from IPython.display import YouTubeVideo
 
 from . import utils
 
@@ -33,6 +31,9 @@ def download( ID, mode, **kwargs):
     '''
     #TO-DO: handle exceptions of YoutubeDL when downloading
 
+    from yt_dlp import YoutubeDL
+    from IPython.display import YouTubeVideo
+
     video_folder = kwargs.get('video_folder',None)
     prop_folder = kwargs.get('prop_folder',video_folder)
     fn = kwargs.get('fn',ID)
@@ -53,7 +54,7 @@ def download( ID, mode, **kwargs):
 
         assert video_folder, 'Kewyord argument "video_folder" is missing.'
 
-        video_ffn_ne = video_folder + '\\' + fn
+        video_ffn_ne = video_folder + '/' + fn
         video_fn = f'{fn}.{ext}'
         if video_fn in os.listdir(video_folder):
             raise Exception(f'File {video_fn} already exists in video video_folder.')
@@ -214,7 +215,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
             if os.path.isfile(ffn_json): json_saved_fn.append( fn )
 
     if suffix: suffix_cmd = ['--suffix',suffix]
-    else: suffix_cmd = ['','']
+    else: suffix_cmd = ''
 
     if audio:
         audio_out_folder = os.path.join(video_out_folder,'audio')
@@ -245,7 +246,9 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
             if (not skip_done) or new_file:
 
                 if parlbl or log_path: par_str_short = f'[{idim_},{thre_},{conf_}]'
-                if parlbl: suffix_cmd = ['--suffix',f'_{par_str_short}{suffix}']
+                if parlbl:
+                    suffix_cmd[0] = '--suffix'
+                    suffix_cmd[1] = f'_{par_str_short}{suffix}'
                 if verbosity: print('Processing...',end=' ')
                 if verbosity or log_path: tic = time.time()
                 if log_path: tracking_log_txt = [f'{fn}\n{par_str_long}\n']

@@ -295,15 +295,15 @@ def load_data( preproc_data, *prop_path, annot_path=None, topdata_Name=None,
     Args:
         preproc_data: str, dict or np.ndarray.
                       If str: folder with parquet files for preprocesed data
-                              (e.g., r"~\preprocessed"), or "make" to produce synthetic data
+                              (e.g., r"~/preprocessed"), or "make" to produce synthetic data
                               with default values (function 'testdata' used internally).
                       If dict: as returned by syncoord.utils.init_testdatavars
                       If np.ndarray: as returned by syncoord.utils.testdata
-        prop_path: path for properties CSV file (e.g., r"~\properties.csv").
+        prop_path: path for properties CSV file (e.g., r"~/properties.csv").
                    Optional or ignored if preproc_data = "make".
         Optional:
             annot_path: path for annotations CSV file
-                        (e.g., r"~\Pachelbel_Canon_in_D_String_Quartet.csv").
+                        (e.g., r"~/Pachelbel_Canon_in_D_String_Quartet.csv").
             topdata_Name: 'idx' for element index (e.g., anonymise),  list, or None for "Name" in
                            annotation file.
             max_n_files: number of files to extract from the beginning of annotations.
@@ -354,7 +354,7 @@ def load_data( preproc_data, *prop_path, annot_path=None, topdata_Name=None,
         else:
             for i in range(topinfo.shape[0]):
                 ID = topinfo['ID'].iloc[i]
-                top_df = pd.read_parquet(preproc_data + '\\' + ID + '.parquet')
+                top_df = pd.read_parquet(preproc_data + '/' + ID + '.parquet')
                 top_arr_nd = np.array([ top_df.iloc[:,1::2].T , top_df.iloc[:,::2].T ])
                 top_arr_nd = np.transpose(top_arr_nd,(1,0,2))
                 pos_data[i] = top_arr_nd
@@ -398,7 +398,7 @@ def matlab_eng( addpaths=None, verbose=True ):
     import matlab.engine
     matlabeng = matlab.engine.start_matlab()
     if verbose: print('...connected to Matlab version',matlabeng.version())
-    full_addpaths = [r"..\src" ]
+    full_addpaths = ["../src" ]
     if addpaths:
         if isinstance(addpaths,str): full_addpaths.append(addpaths)
         elif isinstance(addpaths,list): full_addpaths.extend(addpaths)
