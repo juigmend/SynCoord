@@ -76,11 +76,11 @@ def download( ID, mode, **kwargs):
 
         props_df_new = pd.DataFrame([[ID,fps]], columns=["ID","fps"])
         if 'properties.csv' in os.listdir(prop_folder):
-            props_df_old = pd.read_csv(prop_folder+r'\properties.csv')
+            props_df_old = pd.read_csv(prop_folder+'/properties.csv')
             if ID in props_df_old.ID.values:
                 raise Exception(f'ID = {ID} already exists in file "properties.csv".')
             props_df_new = pd.concat([props_df_old, props_df_new], axis=0)
-        props_df_new.to_csv(prop_folder+'\properties.csv', index=False)
+        props_df_new.to_csv(prop_folder+'/properties.csv', index=False)
 
 def getaudio( ffn_in, ffn_ne_out=None ):
     '''
@@ -135,7 +135,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
     '''
     Detect and track human pose in video files.
     Note:
-        Thsi function overrides detector parameters in file AlphaPose\detector\yolo_cfg.py
+        Thsi function overrides detector parameters in file AlphaPose/detector/yolo_cfg.py
         See documentation for more information (links at the bottom).
     Args:
         video_in_path: str, path for input video file or folder with input video files.
@@ -182,9 +182,9 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
     sp = kwargs.get('sp',False)
     flip = kwargs.get('flip',False)
     model_path = kwargs.get('model',AlphaPose_path
-                            + r'\pretrained_models\fast_421_res152_256x192.pth')
+                            + '/pretrained_models/fast_421_res152_256x192.pth')
     model_config_path = kwargs.get('config',AlphaPose_path
-                                    + r'\configs\coco\resnet\256x192_res152_lr1e-3_1x-duc.yaml')
+                                    + '/configs/coco/resnet/256x192_res152_lr1e-3_1x-duc.yaml')
     verbosity = kwargs.get('verbosity',1)
 
     if video_in_path: video_in_path = os.path.abspath(video_in_path)
@@ -202,7 +202,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
                      and (isinstance(trim_range[1],(float,int)) or (trim_range[1] == 'end'))
         assert check_trim, 'Trim range values are incorrect.'
         trim_lbl = f'_{trim_range[0]}-{trim_range[1]}'
-        video_out_folder = video_in_path + r'\trimmed'
+        video_out_folder = video_in_path + '/trimmed'
         if not os.path.exists(video_out_folder): os.makedirs(video_out_folder)
     else:
         trim_lbl = ''
@@ -215,7 +215,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
             if os.path.isfile(ffn_json): json_saved_fn.append( fn )
 
     if suffix: suffix_cmd = ['--suffix',suffix]
-    else: suffix_cmd = ''
+    else: suffix_cmd = ['','']
 
     if audio:
         audio_out_folder = os.path.join(video_out_folder,'audio')
@@ -265,7 +265,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
                         # overshoot to ensure its the end of the video:
                         trim_end = int(float(video_duration.stdout)) + 1
                     else: trim_end = trim_range[1]
-                    video_to_track_ffn = ''.join([ video_out_folder, '\\', split_fn[0],
+                    video_to_track_ffn = ''.join([ video_out_folder, '/', split_fn[0],
                                                    trim_lbl, split_fn[1] ])
                     if not os.path.isfile(video_to_track_ffn):
                         ffmpeg_cmd = [ 'ffmpeg','-y','-loglevel','error','-i',ffn,'-ss',
@@ -281,7 +281,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
                     audio_ext = getaudio( video_to_track_ffn, audio_ffn )
 
                 # AlphaPose:
-                AlphaPose_cmd = [ 'cd',AlphaPose_path,'&&','python',r'scripts\demo_inference.py',
+                AlphaPose_cmd = [ 'cd',AlphaPose_path,'&&','python',r'scripts/demo_inference.py',
                                   '--sp','--video',video_to_track_ffn,'--jsonoutdir',json_path,
                                    save_video_cmd[0],save_video_cmd[1],save_video_cmd[2],
                                   '--checkpoint',model_path,'--cfg',model_config_path,
@@ -329,7 +329,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
                 # save log:
                 if log_path:
                     tracking_log_txt.append(toc_str)
-                    txtlog_ffn = log_path + '\\' + 'posetrack_log.txt'
+                    txtlog_ffn = log_path + '/' + 'posetrack_log.txt'
                     tracking_log_txt.append('\n')
                     with open(txtlog_ffn, 'a') as output:
                         for t in tracking_log_txt:
@@ -423,7 +423,7 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
             if verbose: print('processing...')
 
             # Load data from JSON file produced by AlphaPose:
-            data_raw_df = pd.read_json(json_path + '\\' + json_fn)
+            data_raw_df = pd.read_json(json_path + '/' + json_fn)
             if n_indiv is None: n_persons = data_raw_df.idx.max()
             else: n_persons = n_indiv
             persons_range = range(1,n_persons+1)
@@ -503,7 +503,7 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                     plt.gcf().supxlabel('stacked frames (as in json file)')
                     plt.tight_layout()
                     if rawfig_path:
-                        fig_ffn = rawfig_path + '\\' + fn_ne + '_RAW.png'
+                        fig_ffn = rawfig_path + '/' + fn_ne + '_RAW.png'
                         plt.savefig(fig_ffn)
                     if vis['show']: plt.show()
                     else: plt.close(plt.gcf())
@@ -569,7 +569,7 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
 
             # save log:
             if log_path:
-                txtlog_ffn = log_path + '\\' + 'poseprep_log.txt'
+                txtlog_ffn = log_path + '/' + 'poseprep_log.txt'
                 prep_log_txt.append('\n')
                 with open(txtlog_ffn, 'a') as output:
                     for t in prep_log_txt:
@@ -597,14 +597,14 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                 plt.xlabel('time (video frames)')
                 plt.tight_layout()
                 if prepfig_path:
-                    fig_ffn = prepfig_path + '\\' + fn_ne + '_PREP.png'
+                    fig_ffn = prepfig_path + '/' + fn_ne + '_PREP.png'
                     plt.savefig(fig_ffn)
                 if vis['show']: plt.show()
                 else: plt.close(plt.gcf())
 
             # Write pre-processed data to a file:
             if savepaths['parquet']:
-                parquet_ffn = preproc_path + '\\' + parquet_fn
+                parquet_ffn = preproc_path + '/' + parquet_fn
                 data_rar_df.to_parquet(parquet_ffn)
 
             if verbose: print('done')
