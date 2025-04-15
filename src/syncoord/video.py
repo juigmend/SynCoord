@@ -281,8 +281,8 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
                     audio_ext = getaudio( video_to_track_ffn, audio_ffn )
 
                 # AlphaPose:
-                AlphaPose_cmd = [ 'cd',AlphaPose_path,'&&','python',r'scripts/demo_inference.py',
-                                  '--sp','--video',video_to_track_ffn,'--jsonoutdir',json_path,
+                AlphaPose_cmd = [ 'cd',AlphaPose_path,'&&','python','scripts/demo_inference.py',
+                                  '--video',video_to_track_ffn,'--jsonoutdir',json_path,
                                    save_video_cmd[0],save_video_cmd[1],save_video_cmd[2],
                                   '--checkpoint',model_path,'--cfg',model_config_path,
                                   '--pose_track',suffix_cmd[0],suffix_cmd[1],'--vis_fast',
@@ -296,7 +296,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
                                                text=True)
                     for l in iter(AP_out.stdout.readline,''):
                         if l:
-                            if clear_line and verbosity:
+                            if clear_line:
                                 for _ in range(14): print('\b',end='',flush=True)
                                 print()
                                 clear_line = False
