@@ -1,6 +1,7 @@
 '''Feature extraction from video files.'''
 
 import os
+import sys
 import time
 import subprocess
 from datetime import timedelta
@@ -229,7 +230,10 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
             ffn = os.path.join(video_in_path,fn)
             split_fn = os.path.splitext(fn)
             fn_ne = split_fn[0] + trim_lbl
-            json_fn = f'AlphaPose_{fn_ne}{suffix}.json'
+            if parlbl or log_path: par_str_short = f'[{idim_},{thre_},{conf_}]'
+            if parlbl: suffix_str = f'_{par_str_short}{suffix}'
+            else: suffix_str = suffix
+            json_fn = f'AlphaPose_{fn_ne}{suffix_str}.json'
             new_file = True
             if skip_done: new_file = json_fn not in json_saved_fn
             if parlbl or log_path or verbosity:
@@ -239,9 +243,6 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
 
             if (not skip_done) or new_file:
 
-                if parlbl or log_path: par_str_short = f'[{idim_},{thre_},{conf_}]'
-                if parlbl: suffix_str = f'_{par_str_short}{suffix}'
-                else: suffix_str = suffix
                 if log_path: tracking_log_txt = [f'{fn}\n{par_str_long}\n']
                 if verbosity or log_path: tic = time.time()
 
@@ -273,6 +274,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
                     audio_ext = getaudio( video_to_track_ffn, audio_ffn )
 
                 # AlphaPose:
+                raise Exception('halt')
                 alphapose_argdict = { 'video' : video_to_track_ffn,
                                       'jsonoutdir' : json_path,
                                       'visoutdir' : video_out_path,
@@ -317,8 +319,9 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
     if not isinstance(conf,list): conf = [conf]
 
     cwd = os.getcwd()
-    os.chdir(AlphaPose_path)
+    sys.path.append(AlphaPose_path)
     import inference
+    os.chdir(AlphaPose_path)
 
     for idim_ in idim:
         for thre_ in thre:
