@@ -160,9 +160,9 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
             gpus: str. Index of CUDA device. Comma to use several, e.g. "0,1,2,3".
                        Use "-1" for cpu only. Default="0"
             flip: bool. Enable flip testing. It might improve accuracy.
-            model_paths: dict;
-                model_paths['model']: str, path for pretrained model.
-                model_paths['config']: str, path pretrained model's configuration file.
+            detector: str. See documentation for available detectors. Default = 'yolo'
+            model: str. Path for pretrained model (A.K.A. checkpoint).
+            config: str. Path for pretrained model's configuration file.
             verbosity: 0, 1, or 2. Default = 1
     Dependencies:
         AlphaPose fork: https://github.com/juigmend/AlphaPose
@@ -185,6 +185,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
     sp = kwargs.get('sp',False)
     gpus = kwargs.get('gpus','0')
     flip = kwargs.get('flip',False)
+    detector = kwargs.get('detector','yolo')
     model_path = kwargs.get('model',AlphaPose_path
                             + '/pretrained_models/fast_421_res152_256x192.pth')
     model_config_path = kwargs.get('config',AlphaPose_path
@@ -279,6 +280,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
                                       'jsonoutdir' : json_path,
                                       'visoutdir' : video_out_path,
                                       'save_video' : save_video,
+                                      'detector' : detector,
                                       'checkpoint' : model_path,
                                       'cfg' : model_config_path,
                                       'pose_track' : True,
