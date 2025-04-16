@@ -275,7 +275,6 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
                     audio_ext = getaudio( video_to_track_ffn, audio_ffn )
 
                 # AlphaPose:
-                raise Exception('halt')
                 alphapose_argdict = { 'video' : video_to_track_ffn,
                                       'jsonoutdir' : json_path,
                                       'visoutdir' : video_out_path,
