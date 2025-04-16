@@ -135,32 +135,34 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
     '''
     Detect and track human pose in video files.
     Note:
-        Thsi function overrides detector parameters in file AlphaPose/detector/yolo_cfg.py
-        See documentation for more information (links at the bottom).
+        Optional argments idim, thre and conf override corresponding detector parameters in
+        file AlphaPose/detector/yolo_cfg.py. See documentation (links at the bottom).
     Args:
-        video_in_path: str, path for input video file or folder with input video files.
-        json_path: str, path of folder for resulting json tracking files.
-        AlphaPose_path: str, path of folder where AlphaPose code is.
+        video_in_path: str, absolute path for input video file or folder with input video files.
+        json_path: str, absolute path of folder for resulting json tracking files.
+        AlphaPose_path: str, absolute path of folder where AlphaPose code is.
         Optional:
-            video_out_path: str, path of folder for resulting tracking video files
+            video_out_path: str. Path of folder for resulting tracking video files
                             with superimposed skeletons. None = Don't make video.
-            trim_range = list, [start,end] in seconds or 'end'.
-            log_path: str, path of folder for log file.
+            trim_range = list. [start,end] in seconds or 'end'.
+            log_path: str. Path of folder for log file.
             skip_done: skip if corresponding json file exists in json_path, default = False
             idim: int or list. Size of the detection network, multiple of 32.
             thre: float or list. NMS threshold for detection in (0...1]
             conf: float or list. Confidence threshold for detection in (0...1]
-            parlbl: bool, add [idim,thre,conf] to the names of the resulting files.
-            suffix: str, label to be added to the names of the resulting files.
-            audio: bool, extract audio from tracking video and add to AlphaPose video files.
+            parlbl: bool. Add [idim,thre,conf] to the names of the resulting files.
+            suffix: str. Label to be added to the names of the resulting files.
+            audio: bool. Extract audio from tracking video and add to AlphaPose video files.
                    Audio files will be saved in video_in_path, video files with added audio
                    will be saved in video_out_path.
             sp: bool. Run on a single process. Forcefully True if operating system is Windows.
+            gpus: str. Index of CUDA device. Comma to use several, e.g. "0,1,2,3".
+                       Use "-1" for cpu only. Default="0"
             flip: bool. Enable flip testing. It might improve accuracy.
             model_paths: dict;
                 model_paths['model']: str, path for pretrained model.
                 model_paths['config']: str, path pretrained model's configuration file.
-            verbosity: 0, 1, or 2. Only for notebook view, otherwise full verbosity.
+            verbosity: 0, 1, or 2. Default = 1
     Dependencies:
         AlphaPose fork: https://github.com/juigmend/AlphaPose
         ffmpeg installed in system (callable by command line)
@@ -180,6 +182,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
     suffix = kwargs.get('suffix','')
     audio = kwargs.get('audio',True)
     sp = kwargs.get('sp',False)
+    gpus = kwargs.get('gpus','0')
     flip = kwargs.get('flip',False)
     model_path = kwargs.get('model',AlphaPose_path
                             + '/pretrained_models/fast_421_res152_256x192.pth')
@@ -192,8 +195,8 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
     if video_out_path: video_out_path = os.path.abspath(video_out_path)
     if log_path: log_path = os.path.abspath(log_path)
 
-    if video_out_path: save_video_cmd = ['--visoutdir',video_out_path,'--save_video']
-    else: save_video_cmd = ['','','']
+    if video_out_path: save_video = True
+    else: save_video = False
 
     do_trim_video = not(not trim_range \
                         or ((trim_range[0] == 0) & (trim_range[1] == 'end')))
@@ -201,7 +204,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
         check_trim = isinstance(trim_range[0],(float,int)) \
                      and (isinstance(trim_range[1],(float,int)) or (trim_range[1] == 'end'))
         assert check_trim, 'Trim range values are incorrect.'
-        trim_lbl = f'_{trim_range[0]}-{trim_range[1]}'
+        trim_lbl = f'_{round(trim_range[0],2)}-{round(trim_range[1],2)}'
         video_out_folder = video_in_path + '/trimmed'
         if not os.path.exists(video_out_folder): os.makedirs(video_out_folder)
     else:
@@ -214,18 +217,9 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
             ffn_json = os.path.join(json_path, fn)
             if os.path.isfile(ffn_json): json_saved_fn.append( fn )
 
-    if suffix: suffix_cmd = ['--suffix',suffix]
-    else: suffix_cmd = ['','']
-
     if audio:
         audio_out_folder = os.path.join(video_out_folder,'audio')
         if not os.path.exists(audio_out_folder): os.makedirs(audio_out_folder)
-
-    if sp: sp_cmd = '--sp'
-    else: sp_cmd = ''
-
-    if flip: flip_cmd = '--flip'
-    else: flip_cmd = ''
 
     fnames = utils.listfiles(video_in_path)
 
@@ -246,12 +240,10 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
             if (not skip_done) or new_file:
 
                 if parlbl or log_path: par_str_short = f'[{idim_},{thre_},{conf_}]'
-                if parlbl:
-                    suffix_cmd[0] = '--suffix'
-                    suffix_cmd[1] = f'_{par_str_short}{suffix}'
-                if verbosity: print('Processing...',end=' ')
-                if verbosity or log_path: tic = time.time()
+                if parlbl: suffix_str = f'_{par_str_short}{suffix}'
+                else: suffix_str = suffix
                 if log_path: tracking_log_txt = [f'{fn}\n{par_str_long}\n']
+                if verbosity or log_path: tic = time.time()
 
                 # Trim video:
                 if do_trim_video:
@@ -281,38 +273,21 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
                     audio_ext = getaudio( video_to_track_ffn, audio_ffn )
 
                 # AlphaPose:
-                AlphaPose_cmd = [ 'cd',AlphaPose_path,'&&','python','scripts/demo_inference.py',
-                                  '--video',video_to_track_ffn,'--jsonoutdir',json_path,
-                                   save_video_cmd[0],save_video_cmd[1],save_video_cmd[2],
-                                  '--checkpoint',model_path,'--cfg',model_config_path,
-                                  '--pose_track',suffix_cmd[0],suffix_cmd[1],'--vis_fast',
-                                  '--param',str(idim_),str(thre_),str(conf_),sp_cmd,flip_cmd ]
-                AlphaPose_cmd = [s for s in AlphaPose_cmd if s != '']
-
-                def run_AP_(cmd):
-                    clear_line = True
-                    AP_out = subprocess.Popen( cmd, shell=True,
-                                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                               text=True)
-                    for l in iter(AP_out.stdout.readline,''):
-                        if l:
-                            if clear_line:
-                                for _ in range(14): print('\b',end='',flush=True)
-                                print()
-                                clear_line = False
-                            yield l
-                    AP_out.stdout.close()
-                    rc = AP_out.wait()
-                    if rc: raise subprocess.CalledProcessError(rc, cmd)
-                    if AP_out.stderr: print('\nstderr:\n',AP_out.stderr)
-
-                if verbosity==2:
-                    for l in run_AP_(AlphaPose_cmd): print(l)
-                else:
-                    subprocess.run( AlphaPose_cmd, shell=True )
-                    if verbosity:
-                        for _ in range(14): print('\b',end='',flush=True)
-                        print('')
+                alphapose_argdict = { 'video' : video_to_track_ffn,
+                                      'jsonoutdir' : json_path,
+                                      'visoutdir' : video_out_path,
+                                      'save_video' : save_video,
+                                      'checkpoint' : model_path,
+                                      'cfg' : model_config_path,
+                                      'pose_track' : True,
+                                      'suffix' : suffix_str,
+                                      'vis_fast' : True,
+                                      'param' : [ idim_, thre_, conf_ ],
+                                      'sp' : sp,
+                                      'gpus' : gpus,
+                                      'flip' : flip,
+                                      'verbosity' : verbosity }
+                inference.run(alphapose_argdict)
 
                 if verbosity or log_path:
                     toc = round(time.time() - tic,3)
@@ -321,15 +296,15 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
 
                 # Set audio to output video:
                 if video_out_path and audio:
-                    tracked_out_fn = 'AlphaPose_' \
-                                      + split_fn[0] + trim_lbl + suffix_cmd[1] + split_fn[1]
-                    tracked_video_ffn = os.path.join(save_video_cmd[1],tracked_out_fn)
-                    setaudio( tracked_video_ffn, audio_ffn + '.' + audio_ext )
+                    tracked_out_fn = ''.join([ 'AlphaPose_', split_fn[0], trim_lbl,
+                                                suffix_str, split_fn[1] ])
+                    tracked_video_ffn = os.path.join(video_out_path,tracked_out_fn)
+                    setaudio( tracked_video_ffn, f'{audio_ffn}.{audio_ext}' )
 
                 # save log:
                 if log_path:
                     tracking_log_txt.append(toc_str)
-                    txtlog_ffn = log_path + '/' + 'posetrack_log.txt'
+                    txtlog_ffn = f'{log_path}/posetrack_log.txt'
                     tracking_log_txt.append('\n')
                     with open(txtlog_ffn, 'a') as output:
                         for t in tracking_log_txt:
@@ -341,10 +316,15 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
     if not isinstance(thre,list): thre = [thre]
     if not isinstance(conf,list): conf = [conf]
 
+    cwd = os.getcwd()
+    os.chdir(AlphaPose_path)
+    import inference
+
     for idim_ in idim:
         for thre_ in thre:
             for conf_ in conf:
                 one_posetrack_( idim_, thre_, conf_ )
+    os.chdir(cwd)
 
 def poseprep( json_path, savepaths, vis={}, **kwargs ):
     '''
@@ -402,7 +382,11 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
         from sklearn.cluster import HDBSCAN
     if vis['show'] or rawfig_path or prepfig_path:
         import matplotlib.pyplot as plt
-
+        if plt.get_backend() == 'agg': # AlphaPose uses 'agg'
+            from importlib import reload
+            import matplotlib
+            reload(matplotlib)
+            reload(matplotlib.pyplot)
     DIM_LABELS = ['x','y']
     if isinstance(drdim,int): drdim = [drdim]
     elif isinstance(drdim,str): drdim = list(range(len(DIM_LABELS)))

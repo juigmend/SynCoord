@@ -1,3 +1,8 @@
-cQcukN4BWkM.mp4 [640,0.6,0.1] 
-computing time = 1:35:37.447 (H:M:S)
+cQcukN4BWkM.mp4
+idim = 640; thre = 0.6; conf = 0.1
+computing time = 0:01:49.822 (H:M:S)
+
+cQcukN4BWkM.mp4
+idim = 640; thre = 0.6; conf = 0.1
+computing time = 1:38:12.316 (H:M:S)
 
