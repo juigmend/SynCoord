@@ -1,6 +1,4 @@
 AlphaPose_cQcukN4BWkM_[640,0.6,0.1]_demo
-
-AlphaPose_cQcukN4BWkM_[640,0.6,0.1]_demo
 inconsistent frame count in x (2063, 2063, 2028, 2053)
 inconsistent frame count in y (2063, 2063, 2028, 2053)
 missing raw data have been interpolated
