@@ -455,6 +455,24 @@ def smooth( ptdata,**kwargs ):
     filtered.other = other
     return filtered
 
+def tder2D( ptdata, **kwargs ):
+    '''
+    Wrapper for syncoord.ndarr.tder2D
+    '''
+    return apply( ptdata, ndarr.tder2D, **kwargs )
+
+def peaks_to_phase( ptdata, **kwargs ):
+    '''
+    Wrapper for syncoord.ndarr.peaks_to_phase
+    '''
+    return apply( ptdata, ndarr.peaks_to_phase, **kwargs )
+
+def kuramoto_r( ptdata ):
+    '''
+    Wrapper for syncoord.ndarr.kuramoto_r
+    '''
+    return apply( ptdata, ndarr.kuramoto_r )
+
 def fourier( ptdata, window_duration, **kwargs ):
     '''
     Wrapper for syncoord.ndarr.fourier_transform
@@ -1005,7 +1023,6 @@ def apply( ptdata, func,*args, **kwargs ):
     dd_in = ptdata.data
     fn = func.__name__
 
-    # TO-DO: Each of these could have their own ptdata wrapper function:
     if fn == 'tder2D':
         del dim_names[axis-1]
         del dim_labels[axis-1]
