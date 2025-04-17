@@ -343,15 +343,18 @@ def smooth( ptdata,**kwargs ):
     Apply filter to ptdata, row-wise, to a dimension of N-D arrays (default is last dimension).
     Args:
         ptdata: PtData object. See documentation for syncoord.ptdata.PtData
-        filter_type: 'butter', 'mean'
+        filter_type: 'butter' or 'mean'
         Options:
             axis: int or str, default = -1.
                   Note: axis is a dimension of the N-D array.
                         The rightmost axis (-1) is the fastest changing.
-            For 'butter': freq_response ('lowpass','highpass','bandpass'),
-                          cutoff_freq (float or list), order (int),
-                          bandwidth (float, only for 'bandpass').
-            For 'mean': window_size (seconds; float or list).
+            If filter_type = 'butter':
+                freq_response: 'lowpass' (LPF),'highpass' (HPF), or 'bandpass' (BPF).
+                cutoff_freq (float or list): cutoff (LPF and HPF) or center frequency(BPF) (Hz).
+                order (int)
+                bandwidth (float): only for 'bandpass' (Hz).
+            If filter_type = 'mean':
+                window_size (float or list): (seconds)
     Returns:
         New PtData object.
     '''
@@ -363,6 +366,9 @@ def smooth( ptdata,**kwargs ):
     window_size = kwargs.get('window_size',3)
     bandwidth = kwargs.get('bandwidth',None)
     axis = kwargs.get('axis',-1)
+
+    if (filter_type=='butter') and (freq_response=='bandpass') and (bandwidth is None):
+        raise Exception('bandwidth is missing')
     if isinstance(axis,str):
         axis_lbl = axis
         axis = ptdata.names.dim.index(axis)
@@ -1020,6 +1026,8 @@ def apply( ptdata, func,*args, **kwargs ):
         del dim_labels[axis-1]
         del dimel_labels[axis-1]
         vis = {**vis, 'dlattr':'1.2','vlattr':'r:2f'}
+        if isinstance(dimel_labels[-2],list) or isinstance(dimel_labels[-2],dict):
+            vis['vistype'] = 'imshow'
     elif fn == 'power':
         main_name = rf'{ptdata.names.main[:].capitalize()} $^{args_list[0]}$'
         main_label = rf'{ptdata.labels.main[:]}$^{args_list[0]}$'
