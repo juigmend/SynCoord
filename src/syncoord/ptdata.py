@@ -1337,7 +1337,7 @@ def visualise( ptdata, **kwargs ):
         sing_dims = True
     if groupby is None: groupby = axes
     if not isinstance(groupby,list): groupby = [groupby]
-    groupby = groupby + axes
+    groupby.extend(axes)
     for i,v in enumerate(groupby):
         if v<0: groupby[i] = data_dict[data_dict_keys[0]].ndim+v
     groupby = list(dict.fromkeys(groupby)) # remove redundancy
