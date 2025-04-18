@@ -364,7 +364,7 @@ def iter( arr_nd, lockdim=None ):
             lockdim: dimension (int) or dimensions (list) to not iterate over.
     Returns:
         arr_out: slice of d corresponding to the iteration, only if d is np.ndarray.
-                 If d is a tuple this is not returned.
+                 If arr_nd is a tuple this is not returned.
         i_chdim: (list) index of changing dimensions.
         multi_idx: (list) multi-index of the current slice. If lockdim is not None,
                    elements at lockdim are replaced with ':'.
