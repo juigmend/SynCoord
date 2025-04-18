@@ -1004,7 +1004,7 @@ def apply( ptdata, func,*args, **kwargs ):
     '''
     Apply a function to every N-D array of the data dictionary in a PtData object.
     Note: ptdata.dim will be copied from the input and may not correspond to the output,
-    except for these functions from module 'ndarr': tder2D, peaks_to_phase, kuramoto_r, power.
+    except for these functions from syncoord.ndarr: tder2D, peaks_to_phase, kuramoto_r, power.
     Args:
         ptdata: PtData object, see documentation for syncoord.ptdata.PtData
         func: a function to operate on each N-D array of the dictionary.
@@ -1022,6 +1022,7 @@ def apply( ptdata, func,*args, **kwargs ):
     vis = ptdata.vis.copy()
     dd_in = ptdata.data
     fn = func.__name__
+    modulename = None
 
     if fn == 'tder2D':
         del dim_names[axis-1]
@@ -1049,8 +1050,9 @@ def apply( ptdata, func,*args, **kwargs ):
         main_name = rf'{ptdata.names.main[:].capitalize()} $^{args_list[0]}$'
         main_label = rf'{ptdata.labels.main[:]}$^{args_list[0]}$'
     else:
-        print('Warning: output "dim" field copied fromm input.')
+        print('Warning: output "dim" field copied from input.')
         main_name = f'{fn.capitalize()}'
+        main_label = main_name
 
     dd_out = {}
     for k in dd_in.keys():
@@ -1313,7 +1315,8 @@ def visualise( ptdata, **kwargs ):
     elif vistype in ('spectrogram','imshow'):
         if 'spectrogram' in vistype:
             super_title = 'Frequency Spectrum\n'
-        ylabel = 'Hz'
+            ylabel = 'Hz'
+        elif ptdata.names.dim[-2] == 'frequency': ylabel = 'Hz'
     else: raise Exception(f"vistype = '{vistype}' is not allowed. Allowed values are \
                             'line', 'cline','spectrogram', and 'imshow'")
     if groupby == 'default':
