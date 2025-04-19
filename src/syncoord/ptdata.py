@@ -96,7 +96,7 @@ class PtData:
                     s_2 = arr.shape[:-1]
                     if s_1 != s_1:
                         if verbose:
-                            print('Inconsistent array dimensions (except last).')
+                            print('Inconsistent array dimensions (except last dimension).')
                             self.print_shape(self)
                         return 0
                 return 1
