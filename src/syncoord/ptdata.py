@@ -20,7 +20,7 @@ class SubField:
 
 class PtData:
     '''
-    Data class.
+    Data-oriented class.
     Attributes:
         names:
             names.main: str, main name of the object. Descriptive.
@@ -42,15 +42,17 @@ class PtData:
              when the ptdata object is passsed to ptdata.visualise
         other: empty dict, for any other information.
     Methods:
-        print(): prints attributes and shape of data
-        visualise(**kwargs): calls syncoord.ptdata.visualise with the same optional arguments
+        print_shape(): prints shape of data arrays.
+        print(): prints attributes and shape of data arrays
+        checkdim(): checks consistency of dimensions of data arrays (shape), except last dimension.
+        visualise(**kwargs): calls syncoord.ptdata.visualise with the same optional arguments.
     Note:
         Use command vars to see content of subfields.
         Examples:
-            ptdata = PtData(topinfo)    # initialise data object
-            ptdata.names.main = 'Niels' # assign main name
+            ptdata = PtData(topinfo)   # initialise data object
+            ptdata.names.main = 'Juan' # assign main name
             vars(ptdata.names)
-            returns: {'main': 'Niels'}
+            returns: {'main': 'Juan'}
     Args:
         topinfo: See documentation for syncoord.utils.load_data
     '''
@@ -67,16 +69,32 @@ class PtData:
         self.vis = {}
         self.other = {}
 
+    def print_shape(self):
+        print('data:')
+        for k in self.data:
+            print(f'key = {k}, shape = {self.data[k].shape}')
+        print()
+
     def print(self):
         print(f'names:\n{vars(self.names)}\n')
         print(f'labels:\n{vars(self.labels)}\n')
-        if self.data:
-            print('data:')
-            for k in self.data.keys():
-                print(f'key = {k}, shape = {self.data[k].shape}')
-            print()
+        if self.data: self.print_shape(self)
         if self.vis: print(f'vis:\n{self.vis}\n')
         if self.other: print(f'other:\n{self.other}\n')
+
+    def checkdim(self):
+        if self.data:
+            if len(self.data)==1:
+                print('Field "data" contains one array.')
+                self.print_shape(self)
+            else:
+                s_1 = self.data.values[self.data[0]].shape[:-1]
+                for arr in self.data.values():
+                    s_2 = arr.shape[:-1]
+                    if s_1 != s_1:
+                        print('Inconsistent array dimensions (except last).')
+                        self.print_shape(self)
+        else: print('Field "data" is empty.')
 
     def visualise(self,**kwargs):
         visualise(self,**kwargs)
@@ -579,7 +597,7 @@ def winplv( ptdata, window_duration, window_hop=None, pairs_axis=0,
     dd_in = ptdata.data
     dd_out = {}
     c = 1
-    for k in dd_in.keys():
+    for k in dd_in:
         if verbose:
             print(f'processing array {k} ({c} of {len(ptdata.data.keys())})')
             c+=1
@@ -673,7 +691,7 @@ def xwt( ptdata, minmaxf, pairs_axis, fixed_axes, **kwargs ):
     dd_in = ptdata.data
     dd_out = {}
     c = 1
-    for k in dd_in.keys():
+    for k in dd_in:
         arr_nd = dd_in[k]
         if arr_nd.ndim < 3: raise Exception(f'Data dimensions should be at least 2,\
                                               but currently are {arr_nd.ndim}')
@@ -794,7 +812,7 @@ def aggrsec( ptdata, aggregate_axes=[-2,-1], sections_axis=1,
     if not isinstance(aggregate_axes,list): aggregate_axes = [aggregate_axes]
     dd_in = ptdata.data
     dd_out = {}
-    for k in dd_in.keys():
+    for k in dd_in:
         idx_isochr_sections = ptdata.topinfo.loc[k,'trimmed_sections_frames']
         n_sections = len(idx_isochr_sections)
         n_sec_str = str(n_sections)
@@ -869,7 +887,7 @@ def aggrax( ptdata, axis=0, function='mean' ):
     '''
     dd_in = ptdata.data
     dd_out = {}
-    for k in dd_in.keys():
+    for k in dd_in:
         if function == 'sum': dd_out[k] = np.sum(dd_in[k],axis=axis)
         elif function == 'mean': dd_out[k] = np.mean(dd_in[k],axis=axis)
     main_name = ptdata.names.main
@@ -915,7 +933,7 @@ def aggrtop( ptdata, function='mean' ):
     '''
     dd_in = ptdata.data
     arr_nd_out = np.zeros(dd_in[next(iter(dd_in))].shape)
-    for k in dd_in.keys(): arr_nd_out += dd_in[k]
+    for k in dd_in: arr_nd_out += dd_in[k]
     if function == 'mean': arr_nd_out = arr_nd_out/len(dd_in)
     dd_out = {0:arr_nd_out}
 
@@ -971,7 +989,7 @@ def secstats( ptdata, **kwargs ):
     margins_dict = ('margins' in kwargs) and isinstance(kwargs['margins'],dict)
     dd_in = ptdata.data
     dd_out = {}
-    for k in dd_in.keys():
+    for k in dd_in:
         idx_sections = ptdata.topinfo[lbl_topinfo_sec].loc[k]
         fps = ptdata.topinfo['fps'].loc[k]
         if margins_dict: kwargs['margins'] = kwargs['margins'][k]
@@ -1055,7 +1073,7 @@ def apply( ptdata, func,*args, **kwargs ):
         main_label = main_name
 
     dd_out = {}
-    for k in dd_in.keys():
+    for k in dd_in:
         if (fn not in ['tder2D','kuramoto_r']) or (dd_in[k].shape[axis-1] == 2):
             dd_out[k] = func(dd_in[k],*args,**kwargs)
         elif dd_in[k].shape[axis-1] > 2:
