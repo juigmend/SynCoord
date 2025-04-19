@@ -910,8 +910,6 @@ def aggrax( ptdata, axis=0, function='mean' ):
     del dim_names[axis]
     dim_labels = ptdata.labels.dim.copy()
     del dim_labels[axis]
-    vis = deepcopy(ptdata.vis)
-    other = deepcopy(ptdata.other)
     if 'frequency' not in ptdata.names.dim:
         if 'y_ticks' in vis: del vis['y_ticks']
         if 'freq_bins' in other: del other['freq_bins']
@@ -923,8 +921,8 @@ def aggrax( ptdata, axis=0, function='mean' ):
     agg.labels.dim = dim_labels
     agg.labels.dimel = dim_labels
     agg.data = dd_out
-    agg.vis = {**vis, 'groupby':axis, 'sections':True}
-    agg.other = other
+    agg.vis = {**ptdata.vis, 'groupby':axis, 'sections':True}
+    agg.other = deepcopy(ptdata.other)
     return agg
 
 def aggrtop( ptdata, function='mean' ):
@@ -963,7 +961,7 @@ def aggrtop( ptdata, function='mean' ):
     agg.labels.dimel = ptdata.labels.dimel.copy()
     agg.data = dd_out
     agg.vis = {**ptdata.vis, 'groupby':0, 'sections':True}
-    agg.other = ptdata.other.copy()
+    agg.other = deepcopy(ptdata.other)
     return agg
 
 def secstats( ptdata, **kwargs ):
