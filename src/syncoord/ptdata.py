@@ -91,7 +91,7 @@ class PtData:
                     self.print_shape(self)
                 return 1
             else:
-                s_1 = self.data.values[self.data[0]].shape[:-1]
+                s_1 = self.data[list(self.data.keys())[0]].shape[:-1]
                 for arr in self.data.values():
                     s_2 = arr.shape[:-1]
                     if s_1 != s_1:
