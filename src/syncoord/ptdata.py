@@ -44,7 +44,9 @@ class PtData:
     Methods:
         print_shape(): prints shape of data arrays.
         print(): prints attributes and shape of data arrays
-        checkdim(): checks consistency of dimensions of data arrays (shape), except last dimension.
+        checkdim(verbose=True): checks consistency of dimensions of data arrays (shape),
+                                except last dimension.
+                                Returns -1 if empty, 0 if inconsistent, 1 if consistent.
         visualise(**kwargs): calls syncoord.ptdata.visualise with the same optional arguments.
     Note:
         Use command vars to see content of subfields.
@@ -71,8 +73,7 @@ class PtData:
 
     def print_shape(self):
         print('data:')
-        for k in self.data:
-            print(f'key = {k}, shape = {self.data[k].shape}')
+        for k in self.data: print(f'key = {k}, shape = {self.data[k].shape}')
         print()
 
     def print(self):
@@ -82,19 +83,26 @@ class PtData:
         if self.vis: print(f'vis:\n{self.vis}\n')
         if self.other: print(f'other:\n{self.other}\n')
 
-    def checkdim(self):
+    def checkdim(self,verbose=True):
         if self.data:
             if len(self.data)==1:
-                print('Field "data" contains one array.')
-                self.print_shape(self)
+                if verbose:
+                    print('Field "data" contains one array.')
+                    self.print_shape(self)
+                return 1
             else:
                 s_1 = self.data.values[self.data[0]].shape[:-1]
                 for arr in self.data.values():
                     s_2 = arr.shape[:-1]
                     if s_1 != s_1:
-                        print('Inconsistent array dimensions (except last).')
-                        self.print_shape(self)
-        else: print('Field "data" is empty.')
+                        if verbose:
+                            print('Inconsistent array dimensions (except last).')
+                            self.print_shape(self)
+                        return 0
+                return 1
+        else:
+            if verbose: print('Field "data" is empty.')
+            return -1
 
     def visualise(self,**kwargs):
         visualise(self,**kwargs)
