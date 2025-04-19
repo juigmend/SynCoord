@@ -79,7 +79,7 @@ class PtData:
     def print(self):
         print(f'names:\n{vars(self.names)}\n')
         print(f'labels:\n{vars(self.labels)}\n')
-        if self.data: self.print_shape(self)
+        if self.data: self.print_shape()
         if self.vis: print(f'vis:\n{self.vis}\n')
         if self.other: print(f'other:\n{self.other}\n')
 
@@ -88,7 +88,7 @@ class PtData:
             if len(self.data)==1:
                 if verbose:
                     print('Field "data" contains one array.')
-                    self.print_shape(self)
+                    self.print_shape()
                 return 1
             else:
                 s_1 = self.data[list(self.data)[0]].shape[:-1]
@@ -97,7 +97,7 @@ class PtData:
                     if s_1 != s_1:
                         if verbose:
                             print('Inconsistent array dimensions (except last dimension).')
-                            self.print_shape(self)
+                            self.print_shape()
                         return 0
                 return 1
         else:
