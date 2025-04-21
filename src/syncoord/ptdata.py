@@ -1169,7 +1169,7 @@ def apply( ptdata, func,*args, **kwargs ):
             s = list(arr_in.shape[:])
             s[axis-1] = 1
             arr_out = np.empty(tuple(s))
-            for slc,_,midx in ndarr.iter(arr_in,lockdim=[axis-1,axis]):
+            for slc,_,midx in ndarr.diter(arr_in,lockdim=[axis-1,axis]):
                 midx[axis-1] = 0
                 midx_str = str(midx).replace("'","")
                 exec('arr_out'+midx_str+'= func(slc,*args,**kwargs) ')
@@ -1527,7 +1527,7 @@ def visualise( ptdata, **kwargs ):
                             loc[data_dict_keys[i_top]]
         x_ticklabelling_dictargs['fps'] = fps
         x_ticklabelling_dictargs['idx_isochrsec'] = idx_isochrsec
-        array_iterator = ndarr.iter( top_arr, lockdim=groupby )
+        array_iterator = ndarr.diter( top_arr, lockdim=groupby )
         for vis_arr,i_ch,i_nd in array_iterator:
 # TO-DO: Arg. 'topidxkey' (boolean) to add index and key of the top array to the title.
             sp_title = ''
