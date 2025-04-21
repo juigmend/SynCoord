@@ -526,7 +526,7 @@ def fourier( ptdata, window_duration, **kwargs ):
     else:
         main_name = 'Frequency Spectrum'
         if kwargs['output'] == 'amplitude':
-            main_name = f'{main_name} (Amplitude)'
+            main_name = f'{main_name} (amplitude)'
         main_label = 'Spectrum'
         dim_labels.insert(-1,'freq.')
         vistype = 'imshow'
