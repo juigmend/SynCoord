@@ -752,6 +752,76 @@ def xwt( ptdata, minmaxf, pairs_axis, fixed_axes, **kwargs ):
     xwtdata.other['freq_bins'] = freq_bins
     return xwtdata
 
+def rho( ptdata, exaxes=None, mode='all' ):
+    '''
+    Group synchrony.
+    Wrapper for multiSyncPy.synchrony_metrics.rho
+    Args:
+        ptdata: PtData object with phase angles.
+                See documentation for syncoord.ptdata.PtData
+        exaxes: int or None.
+                If int: dimension(s) to exclude from grouping, except last dimension.
+                If None: all dimensions except last will be grouped.
+                Set to -2 if that dimension's name is 'frequency'.
+        Optional:
+            mode: 'all' or 'mean'
+    Returns:
+        New PtData object.
+    References:
+        https://doi.org/10.3389/fphys.2012.00405
+        https://github.com/cslab-hub/multiSyncPy
+    '''
+    if len(ptdata.data)==1: cdv = False
+    else: cdv = True
+    assert ptdata.checkdim(verbose=cdv)==1
+    from multiSyncPy.synchrony_metrics import rho as sm_rho
+
+    if mode == 'all':
+        i_out = 0
+        n_out = mode
+    elif mode == 'mean': i_out = n_out = 1
+    else: raise Exception('mode can only be "all" or "mean"')
+
+    if ptdata.names.dim[-2] == 'frequency': exaxes = -2
+
+    dd_in = ptdata.data
+    dd_out = {}
+    for k in dd_in:
+        dd_out[k] = ndarr.apply_dimgroup( dd_in[k], sm_rho, exaxes=exaxes,
+                                          i_out=i_out, n_out=n_out )
+
+    dim_names = ptdata.names.dim.copy()
+    dim_labels = ptdata.labels.dim.copy()
+    dimel_labels = ptdata.labels.dimel.copy()
+    idx_grpax, _ = utils.invexaxes(exaxes, dd_in[list(dd_in)[0]].shape)
+    del idx_grpax[-1]
+    idx_grpax.sort(reverse=True)
+    for i in idx_grpax:
+        del dim_names[i]
+        del dim_labels[i]
+        del dimel_labels[i]
+    vis = {**ptdata.vis}
+    vis['dlattr'] = '1.2'
+    if dd_out[list(dd_out)[0]].ndim >= 2: vis = {**vis,'vistype':'imshow'}
+    if 'freq_bins' in ptdata.other:
+        vis['y_ticks'] = ptdata.other['freq_bins'].copy()
+
+    ptd_rho = sc.ptdata.PtData(ptdata.topinfo)
+    ptd_rho.names.main = 'Rho'
+    ptd_rho.names.dim = dim_names
+    ptd_rho.labels.main = r"$\rho$"
+    ptd_rho.labels.dim = dim_labels
+    ptd_rho.labels.dimel = dimel_labels
+    ptd_rho.data = dd_out
+    ptd_rho.vis = vis
+    ptd_rho.other = deepcopy(ptdata.other)
+    return ptd_rho
+
+rho = sc.ptdata.rho( fft_phase )
+rho.visualise(vscale=1.3)
+
+# . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
 def isochrsec( ptdata, last=False, axis=-1 ):
     '''
     Wrapper for ndarr.isochronal_sections.
