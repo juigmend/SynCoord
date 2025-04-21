@@ -520,14 +520,17 @@ def fourier( ptdata, window_duration, **kwargs ):
 
     if ('output' in kwargs) and (kwargs['output'] == 'phase'):
         main_name = 'Phase'
-        dim_names.insert(-1,'frequency')
         main_label = r'$\phi$'
         dim_labels.insert(-1,'freq.')
+        vistype = 'line'
     else:
         main_name = 'Frequency Spectrum'
-        dim_names.insert(-1,'amplitude')
+        if kwargs['output'] == 'amplitude':
+            main_name = f'{main_name} (Amplitude)'
         main_label = 'Spectrum'
-        dim_labels.insert(-1,'amp.')
+        dim_labels.insert(-1,'freq.')
+        vistype = 'imshow'
+    dim_names.insert(-1,'frequency')
 
     mode = kwargs.get('mode')
 
@@ -561,7 +564,7 @@ def fourier( ptdata, window_duration, **kwargs ):
     fft_result.labels.dim = dim_labels
     fft_result.labels.dimel = dimel_labels
     fft_result.data = dd_out
-    fft_result.vis = {'dlattr':'k0.8','vlattr':'r:3f'}
+    fft_result.vis = {'dlattr':'k0.8','vlattr':'r:3f','vistype':vistype}
     fft_result.other = other
     return fft_result
 
@@ -910,6 +913,8 @@ def aggrax( ptdata, axis=0, function='mean' ):
     del dim_names[axis]
     dim_labels = ptdata.labels.dim.copy()
     del dim_labels[axis]
+    vis = {**ptdata.vis, 'groupby':axis, 'sections':True}
+    other =  deepcopy(ptdata.other)
     if 'frequency' not in ptdata.names.dim:
         if 'y_ticks' in vis: del vis['y_ticks']
         if 'freq_bins' in other: del other['freq_bins']
@@ -921,8 +926,8 @@ def aggrax( ptdata, axis=0, function='mean' ):
     agg.labels.dim = dim_labels
     agg.labels.dimel = dim_labels
     agg.data = dd_out
-    agg.vis = {**ptdata.vis, 'groupby':axis, 'sections':True}
-    agg.other = deepcopy(ptdata.other)
+    agg.vis = vis
+    agg.other = other
     return agg
 
 def aggrtop( ptdata, function='mean' ):
@@ -1017,7 +1022,7 @@ def secstats( ptdata, **kwargs ):
     sextats.labels.dim = dim_labels
     sextats.labels.dimel = dimel_labels
     sextats.data = dd_out
-    sextats.vis = vis = {'groupby':None,'vistype':'cline','dlattr':ptdata.vis['dlattr'],'sections':False}
+    sextats.vis = {'groupby':None,'vistype':'cline','dlattr':ptdata.vis['dlattr'],'sections':False}
     sextats.other = ptdata.other.copy()
     return sextats
 
@@ -1027,8 +1032,8 @@ def secstats( ptdata, **kwargs ):
 def apply( ptdata, func,*args, **kwargs ):
     '''
     Apply a function to every N-D array of the data dictionary in a PtData object.
-    Note: ptdata.dim will be copied from the input and may not correspond to the output,
-    except for these functions from syncoord.ndarr: tder2D, peaks_to_phase, kuramoto_r, power.
+    Note: ptdata.dim is copied from the input and may not correspond to the output, except
+          for these functions from syncoord.ndarr: tder2D, peaks_to_phase, kuramoto_r, power.
     Args:
         ptdata: PtData object, see documentation for syncoord.ptdata.PtData
         func: a function to operate on each N-D array of the dictionary.
@@ -1046,7 +1051,6 @@ def apply( ptdata, func,*args, **kwargs ):
     vis = ptdata.vis.copy()
     dd_in = ptdata.data
     fn = func.__name__
-    modulename = None
 
     if fn == 'tder2D':
         del dim_names[axis-1]
@@ -1075,7 +1079,7 @@ def apply( ptdata, func,*args, **kwargs ):
         main_label = rf'{ptdata.labels.main[:]}$^{args_list[0]}$'
     else:
         print('Warning: output "dim" field copied from input.')
-        main_name = f'{fn.capitalize()}'
+        main_name = fn.capitalize()
         main_label = main_name
 
     dd_out = {}

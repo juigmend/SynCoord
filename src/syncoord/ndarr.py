@@ -78,7 +78,7 @@ def fourier_transform( arr_nd, window_length, fps=None, output='spectrum', windo
         window_length: length of the FFT window vector, in seconds if the fps parameter is given.
         Options:
             fps
-            output: 'spectrum' or 'phase'(radians).
+            output: 'phase'(radians), 'amplitude', 'spectrum' (complex)
             window_shape: main_name of the window shape (eg.'hann'). See help(scipy.signal.windows) or
                           https://docs.scipy.org/doc/scipy/reference/signal.windows.html
             mode: 'same' (post-process zero-padded, same size of input) or 'valid' (only FFT result).
@@ -103,6 +103,7 @@ def fourier_transform( arr_nd, window_length, fps=None, output='spectrum', windo
             this_window = sig[ i_window : i_window+window_length] * fft_window
             this_spectrum = rfft(this_window)[first_fbin:]
             if output == 'spectrum': fft_result.append(this_spectrum)
+            elif output == 'amplitude': fft_result.append(np.abs(this_spectrum))
             elif output == 'phase': fft_result.append( np.angle(this_spectrum) )
         fft_result = np.array(fft_result).T
         if zpad:
