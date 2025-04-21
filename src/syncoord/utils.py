@@ -172,7 +172,12 @@ def init_testdatavars(**kwargs):
         an array 'data_vars'. Such array has dimensions [sections,points,axes,vars], where vars
         are frequency, phase shift, amplitude, vertical offset, irregularity, noise_strength.
     '''
-
+    # TO-DO: insert another default section so that:
+    #        sec 0: all in phase
+    #        sec 1 (new): all in phase, one not
+    #        sec 2: randomly out of phase
+    #        sec 3: stable phase difference, two have little diff, two have inverse phase
+    # TO-DO: allow seed for random generator as argument
     fps = kwargs.get('fps',30)
     durations_sections = kwargs.get('durations_sections',[7,7,7])
     n_points = kwargs.get('n_points',4)
@@ -231,6 +236,7 @@ def testdata(*args,**kwargs):
     Returns:
         N-D array with dimensions [points,axes,frames]
     '''
+    # TO-DO: allow seed for random generator as argument
     if args:
         kwargs = args[0]
 
