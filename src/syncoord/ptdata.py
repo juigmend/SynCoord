@@ -806,7 +806,7 @@ def rho( ptdata, exaxes=None, mode='all' ):
     if 'freq_bins' in ptdata.other:
         vis['y_ticks'] = ptdata.other['freq_bins'].copy()
 
-    ptd_rho = sc.ptdata.PtData(ptdata.topinfo)
+    ptd_rho = PtData(ptdata.topinfo)
     ptd_rho.names.main = 'Rho'
     ptd_rho.names.dim = dim_names
     ptd_rho.labels.main = r"$\rho$"
@@ -1215,7 +1215,7 @@ def apply2( ptd_1, ptd_2, func,*args, **kwargs ):
     for k1,k2 in zip(dd_in_1,dd_in_2):
         dd_out[k1] = func(dd_in_1[k1], dd_in_2[k2], *args, **kwargs)
 
-    app2 = sc.ptdata.PtData(ptd_1.topinfo)
+    app2 = PtData(ptd_1.topinfo)
     app2.names.main = main_name
     app2.names.dim = dim_names
     app2.labels.main = ptd_1.labels.main
