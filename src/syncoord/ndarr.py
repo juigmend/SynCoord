@@ -558,3 +558,59 @@ def apply_to_pairs( arr_nd, func, pairs_axis, fixed_axes=-1, imout=0, verbose=Fa
     if multi_results:
         return arr_nd_out, pairs_idx, multi_results
     else: return arr_nd_out, pairs_idx
+
+def apply_dimgroup( arr_in, func, exaxes=None, i_out=0, n_out='all' ):
+    '''
+    Group dimensions and apply a function: func( arr_2D,*args,**kwargs),
+    where arr_2D is a 2-dimensional array, and func returns a 1-dimensional array.
+    Args:
+        arr_in: input N-D array.
+        func: function to apply.
+        Optional:
+            exaxes: int or None.
+                    If int: dimension(s) to exclude from grouping, except last dimension.
+                    If None: all dimensions except last will be grouped.
+            i_out: int or str.
+                   If int: index of function's return to cast to output N-D array.
+                   If str: 'tuple' to return the function's return.
+                            Only if arr_in is 2-dimensional or if exaxes=None.
+            n_out: number of elements in last dimension of function's output: 'all' or 1.
+    Returns:
+        output: N-D array or tuple, depending on i_out.
+    '''
+    if arr_in.ndim < 2:
+        raise Exception('input dimensions should be at least 2')
+    else:
+        assert (n_out=='all') or (n_out==1), "".join([ "n_out can only be 'all' or 1 for ",
+                                                       "input arrays of more than 2 dimensions" ])
+        if arr_in.ndim > 2:
+
+            def _reshape_exlast(arr_a):
+                arrdim = 1
+                for n in arr_a.shape[:-1]: arrdim *= n
+                return np.reshape(arr_a,(arrdim,arr_a.shape[-1]))
+
+            if exaxes is None:
+                arr_1 =  _reshape_exlast(arr_in)
+                funcret = func(arr_1)
+                if isinstance(funcret,tuple) or (i_out != 'tuple'): output = funcret[i_out]
+                else: output = funcret
+            else:
+                graxes, exaxes = utils.invexaxes(exaxes, arr_in.shape, arr_in.ndim)
+                shape_out = []
+                for i in exaxes: shape_out.append(arr_in.shape[i])
+                if n_out == 1: shape_out.append(1)
+                else: shape_out.append(arr_in.shape[-1])
+                output = np.empty(shape_out)
+                array_iterator = sc.ndarr.iter( arr_in, lockdim=graxes )
+                for i,item in enumerate(array_iterator):
+                    arr_0,i_ch,i_nd = item
+                    arr_1 =  _reshape_exlast(arr_0)
+                    idxex_out = [v for v in i_nd if v != ':']
+                    funcret = func(arr_1)
+                    output[idxex_out,:] = funcret[i_out]
+        else:
+            funcret = func(arr_in)
+            if isinstance(funcret,tuple) or (i_out != 'tuple'): output = funcret[i_out]
+            else: output = funcret
+    return output
