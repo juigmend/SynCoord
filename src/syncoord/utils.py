@@ -407,3 +407,29 @@ def matlab_eng( addpaths=None, verbose=True ):
             pabs = os.path.abspath(p)
             matlabeng.addpath( matlabeng.genpath(p), nargout=0 )
     return matlabeng
+
+def invexaxes(exaxes, s, d=None ):
+    '''
+    Turns selection of axes (dimensions) to exclude (except last), into the opposite.
+    The last dimension will always be included.
+    Useful to delete names or labels of dimensions that will not exist after a process.
+    Args:
+        exaxes: dimensions to exclude.
+        s: shape of the array before processing.
+        d: ndim (number of dimensions) of the array before processing.
+    Returns:
+        graxes: opposite to input except last.
+        exaxes: as input; iterable if it is not.
+    '''
+    try:
+        iter(exaxes)
+        if isinstance(exaxes,tuple): exaxes = list(exaxes)
+        exaxes.sort()
+    except:
+        if exaxes is None: exaxes = []
+        else: exaxes = [exaxes]
+    if (-1 in exaxes) or (s[-1] in exaxes):
+        raise Exception('the last dimension cannot be excluded')
+    if d is None: d = len(s)
+    graxes = np.delete(np.arange(d),exaxes).tolist()
+    return graxes, exaxes

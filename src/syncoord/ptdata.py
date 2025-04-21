@@ -513,25 +513,6 @@ def fourier( ptdata, window_duration, **kwargs ):
     Returns:
         New PtData object.
     '''
-    dim_names = ptdata.names.dim.copy()
-    dim_labels = ptdata.labels.dim.copy()
-    dimel_labels = ptdata.labels.dimel.copy()
-    dd_in = ptdata.data
-
-    if ('output' in kwargs) and (kwargs['output'] == 'phase'):
-        main_name = 'Phase'
-        main_label = r'$\phi$'
-        dim_labels.insert(-1,'freq.')
-        vistype = 'line'
-    else:
-        main_name = 'Frequency Spectrum'
-        if kwargs['output'] == 'amplitude':
-            main_name = f'{main_name} (amplitude)'
-        main_label = 'Spectrum'
-        dim_labels.insert(-1,'freq.')
-        vistype = 'imshow'
-    dim_names.insert(-1,'frequency')
-
     mode = kwargs.get('mode')
 
     if mode and (mode=='valid'):
@@ -544,6 +525,7 @@ def fourier( ptdata, window_duration, **kwargs ):
     freq_bins_labels = {}
     wl = window_duration
 
+    dd_in = ptdata.data
     dd_out = {}
     for k in dd_in:
         fps = ptdata.topinfo.loc[k,'fps']
@@ -554,7 +536,26 @@ def fourier( ptdata, window_duration, **kwargs ):
         rdif = abs(np.mean(freq_bins_rounded-np.round(freq_bins_rounded)))
         if rdif < 0.01: freq_bins_rounded = np.round(freq_bins_rounded,0).astype(int)
         freq_bins_labels[k] = [f'bin {i}: {f} Hz' for i,f in enumerate(freq_bins_rounded)]
+
+    dim_names = ptdata.names.dim.copy()
+    dim_labels = ptdata.labels.dim.copy()
+    dimel_labels = ptdata.labels.dimel.copy()
     dimel_labels.insert(-1,freq_bins_labels)
+    vis = {'dlattr':'k0.8','vlattr':'r:3f'}
+    if ('output' in kwargs) and (kwargs['output'] == 'phase'):
+        main_name = 'Phase'
+        main_label = r'$\phi$'
+        dim_labels.insert(-1,'freq.')
+        vis['vistype'] = 'line'
+    else:
+        main_name = 'Frequency Spectrum'
+        if kwargs['output'] == 'amplitude':
+            main_name = f'{main_name} (amplitude)'
+        main_label = 'Spectrum'
+        dim_labels.insert(-1,'freq.')
+        vis['vistype'] = 'imshow'
+        vis['y_ticks'] = freq_bins
+    dim_names.insert(-1,'frequency')
     other = {'freq_bins':freq_bins}
 
     fft_result = PtData(topinfo)
@@ -564,7 +565,7 @@ def fourier( ptdata, window_duration, **kwargs ):
     fft_result.labels.dim = dim_labels
     fft_result.labels.dimel = dimel_labels
     fft_result.data = dd_out
-    fft_result.vis = {'dlattr':'k0.8','vlattr':'r:3f','vistype':vistype}
+    fft_result.vis = vis
     fft_result.other = other
     return fft_result
 
@@ -1043,6 +1044,7 @@ def apply( ptdata, func,*args, **kwargs ):
     Returns:
         New PtData object.
     '''
+    longname = kwargs.get('longname',-1)
     axis = kwargs.get('axis',-1)
     args_list = list(args)
     dim_names = ptdata.names.dim.copy()
@@ -1079,8 +1081,8 @@ def apply( ptdata, func,*args, **kwargs ):
         main_label = rf'{ptdata.labels.main[:]}$^{args_list[0]}$'
     else:
         print('Warning: output "dim" field copied from input.')
-        main_name = fn.capitalize()
-        main_label = main_name
+        main_name = f'{fn}({ptdata.names.main})'
+        main_label = fn
 
     dd_out = {}
     for k in dd_in:
@@ -1142,6 +1144,7 @@ def visualise( ptdata, **kwargs ):
             snum_hvoff: list with horizontal and vertical offset factor for section numbers.
             y_lim: list with minimum and maximum for vertical axes. Overrides arg. 'rescale'.
             y_label: label for vertical axis. 'default' uses ptdata.labels.main
+                     or 'Hz' if ptdata.names.dim[-2] = 'frequency'
             y_ticks: labels for vertical axis ticks, useful only when vistype = 'imshow'
             x_ticklabelling: labelling of horizontal axis;
                              's' = 'time (seconds)',
@@ -1363,7 +1366,7 @@ def visualise( ptdata, **kwargs ):
         if not isinstance(groupby,list): groupby = [groupby]
         groupby.extend(i_1)
         sing_dims = True
-    if groupby is None: groupby = axes
+    if groupby is None: groupby = axes.copy()
     if not isinstance(groupby,list): groupby = [groupby]
     groupby.extend(axes)
     for i,v in enumerate(groupby):
