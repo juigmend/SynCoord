@@ -817,9 +817,6 @@ def rho( ptdata, exaxes=None, mode='all' ):
     ptd_rho.other = deepcopy(ptdata.other)
     return ptd_rho
 
-rho = sc.ptdata.rho( fft_phase )
-rho.visualise(vscale=1.3)
-
 # . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 
 def isochrsec( ptdata, last=False, axis=-1 ):
