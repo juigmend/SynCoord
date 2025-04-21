@@ -1191,6 +1191,44 @@ def apply( ptdata, func,*args, **kwargs ):
     processed.other = ptdata.other.copy()
     return processed
 
+def apply2( ptd_1, ptd_2, func,*args, **kwargs ):
+    '''
+    Apply a function to corresponding pairs of N-D data arrays in two PtData objects.
+    For example, element-wise multiplication of a and b: apply2(a, b, numpy.multiply).
+    Args:
+        ptd_1, pt_2: PtData objects, see documentation for syncoord.ptdata.PtData
+        func: a numpy function to operate on corresponsing N-D arrays.
+        Optional:
+            *args, **kwargs: input arguments and keyword-arguments to the function, respectively.
+    Returns:
+        New PtData object.
+        The resulting ptdata.names.main will have names.main merged from ptd_1 and ptd_2.
+        Other subfileds and the index of the data dict will be of ptd_1.
+    '''
+    args_list = list(args)
+    main_name = f'{func.__name__}({ptd_1.names.main}, {ptd_2.names.main})'
+    dim_names = ptd_1.names.dim.copy()
+    dim_labels = ptd_1.labels.dim.copy()
+    dimel_labels = ptd_1.labels.dimel.copy()
+    vis = ptd_1.vis.copy()
+    dd_in_1 = ptd_1.data
+    dd_in_2 = ptd_2.data
+
+    dd_out = {}
+    for k1,k2 in zip(dd_in_1,dd_in_2):
+        dd_out[k1] = func(dd_in_1[k1], dd_in_2[k2], *args, **kwargs)
+
+    app2 = sc.ptdata.PtData(ptd_1.topinfo)
+    app2.names.main = main_name
+    app2.names.dim = dim_names
+    app2.labels.main = ptd_1.labels.main
+    app2.labels.dim = dim_labels
+    app2.labels.dimel = dimel_labels
+    app2.data = dd_out
+    app2.vis = vis
+    app2.other = deepcopy(ptd_1.other)
+    return app2
+
 # .............................................................................
 # VISUALISATION:
 
