@@ -356,7 +356,7 @@ def section_stats( arr_nd, idx_sections, fps, last=False, margins=None, axis=-1,
 # .............................................................................
 # APPLICATION:
 
-def iter( arr_nd, lockdim=None ):
+def diter( arr_nd, lockdim=None ):
     '''
     Generator that iterates over dimensions of an N-D data array.
     Args:
@@ -602,7 +602,7 @@ def apply_dimgroup( arr_in, func, exaxes=None, i_out=0, n_out='all' ):
                 if n_out == 1: shape_out.append(1)
                 else: shape_out.append(arr_in.shape[-1])
                 output = np.empty(shape_out)
-                array_iterator = sc.ndarr.iter( arr_in, lockdim=graxes )
+                array_iterator = diter( arr_in, lockdim=graxes )
                 for i,item in enumerate(array_iterator):
                     arr_0,i_ch,i_nd = item
                     arr_1 =  _reshape_exlast(arr_0)
