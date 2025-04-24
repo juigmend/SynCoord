@@ -285,13 +285,11 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
                 if rc: raise subprocess.CalledProcessError(rc, cmd)
                 if AP_out.stderr: print('\nstderr:\n',AP_out.stderr)
 
-            # [ 'cd',AlphaPose_path,'&&','python',r'scripts\demo_inference.py',
-            # [ 'python3',r'scripts\demo_inference.py',
             AlphaPose_cmd = [ 'cd',AlphaPose_path,'&&','python',r'scripts\demo_inference.py',
                               '--sp','--video',video_to_track_ffn,'--jsonoutdir',json_path,
                                save_video_cmd[0],save_video_cmd[1],save_video_cmd[2],
                               '--param', str(idim_), str(thre_), str(conf_) ,
-                              '--detector',detector,
+                              '--detector',detector, '--verbosity', str(verbosity),
                               '--checkpoint',model_path,'--cfg',model_config_path,
                               '--pose_track',suffix_cmd[0],suffix_cmd[1],'--vis_fast' ]
 
