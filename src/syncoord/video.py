@@ -159,6 +159,10 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
             sp: bool. Run on a single process. Forcefully True if operating system is Windows.
             gpus: str. Index of CUDA device. Comma to use several, e.g. "0,1,2,3".
                        Use "-1" for cpu only. Default="0"
+            program: str or None.
+                     If str: 'inference' (module) or 'demo_inference' (script).
+                     If None and gpus = -1: use module AlphaPose/inference.py
+                     If None and gpus >= 0: run script AlphaPose/scripts/demo_inference.py
             flip: bool. Enable flip testing. It might improve accuracy.
             detector: str. See documentation for available detectors. Default = 'yolo'
             model: str. Path for pretrained model (A.K.A. checkpoint).
@@ -184,6 +188,10 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
     audio = kwargs.get('audio',True)
     sp = kwargs.get('sp',False)
     gpus = kwargs.get('gpus','0')
+    program = kwargs.get('program',None)
+    if program is None:
+        if int(gpus) == -1: program = 'inference'
+        elif int(gpus) >= 0: program = 'demo_inference'
     flip = kwargs.get('flip',False)
     detector = kwargs.get('detector','yolo')
     model_path = kwargs.get('model',AlphaPose_path
@@ -225,7 +233,78 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
 
     fnames = utils.listfiles(video_in_path)
 
-    def one_posetrack_( idim_, thre_, conf_ ):
+    cwd = os.getcwd()
+    sys.path.append(AlphaPose_path)
+    os.chdir(AlphaPose_path)
+
+    if program == 'inference':
+
+        import inference
+        def _run_AP(video_to_track_ffn, idim_, thre_, conf_, suffix_str):
+            alphapose_argdict = { 'video' : video_to_track_ffn,
+                                  'jsonoutdir' : json_path,
+                                  'visoutdir' : video_out_path,
+                                  'save_video' : save_video,
+                                  'detector' : detector,
+                                  'checkpoint' : model_path,
+                                  'cfg' : model_config_path,
+                                  'pose_track' : True,
+                                  'suffix' : suffix_str,
+                                  'vis_fast' : True,
+                                  'param' : [ idim_, thre_, conf_ ],
+                                  'sp' : sp,
+                                  'gpus' : gpus,
+                                  'flip' : flip,
+                                  'verbosity' : verbosity }
+            inference.run(alphapose_argdict)
+
+    elif program == 'demo_inference':
+
+        if video_out_path: save_video_cmd = ['--visoutdir',video_out_path,'--save_video']
+        else: save_video_cmd = ['','','']
+
+        def _run_AP(video_to_track_ffn, idim_, thre_, conf_, suffix_str):
+
+            if suffix_str: suffix_cmd = ['--suffix',suffix_str]
+            else: suffix_cmd = ['','']
+
+            def _subprocess_AP(cmd):
+                clear_line = True
+                AP_out = subprocess.Popen( cmd, shell=True,
+                                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                           text=True)
+                for l in iter(AP_out.stdout.readline,''):
+                    if l:
+                        if clear_line:
+                            for _ in range(14): print('\b',end='',flush=True)
+                            print()
+                            clear_line = False
+                        yield l
+                AP_out.stdout.close()
+                rc = AP_out.wait()
+                if rc: raise subprocess.CalledProcessError(rc, cmd)
+                if AP_out.stderr: print('\nstderr:\n',AP_out.stderr)
+
+            # [ 'cd',AlphaPose_path,'&&','python',r'scripts\demo_inference.py',
+            # [ 'python3',r'scripts\demo_inference.py',
+            AlphaPose_cmd = [ 'cd',AlphaPose_path,'&&','python',r'scripts\demo_inference.py',
+                              '--sp','--video',video_to_track_ffn,'--jsonoutdir',json_path,
+                               save_video_cmd[0],save_video_cmd[1],save_video_cmd[2],
+                              '--param', str(idim_), str(thre_), str(conf_) ,
+                              '--detector',detector,
+                              '--checkpoint',model_path,'--cfg',model_config_path,
+                              '--pose_track',suffix_cmd[0],suffix_cmd[1],'--vis_fast' ]
+
+            if verbosity==2:
+                for l in _subprocess_AP(AlphaPose_cmd): print(l)
+            else:
+                subprocess.run( AlphaPose_cmd, shell=True )
+                for _ in range(14): print('\b',end='',flush=True)
+                print('')
+
+    else: raise Exception('value for argument "program" is invalid')
+
+    def _one_posetrack( idim_, thre_, conf_ ):
 
         for fn in fnames:
             ffn = os.path.join(video_in_path,fn)
@@ -275,22 +354,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
                     audio_ext = getaudio( video_to_track_ffn, audio_ffn )
 
                 # AlphaPose:
-                alphapose_argdict = { 'video' : video_to_track_ffn,
-                                      'jsonoutdir' : json_path,
-                                      'visoutdir' : video_out_path,
-                                      'save_video' : save_video,
-                                      'detector' : detector,
-                                      'checkpoint' : model_path,
-                                      'cfg' : model_config_path,
-                                      'pose_track' : True,
-                                      'suffix' : suffix_str,
-                                      'vis_fast' : True,
-                                      'param' : [ idim_, thre_, conf_ ],
-                                      'sp' : sp,
-                                      'gpus' : gpus,
-                                      'flip' : flip,
-                                      'verbosity' : verbosity }
-                inference.run(alphapose_argdict)
+                _run_AP(video_to_track_ffn, idim_, thre_, conf_, suffix_str)
 
                 if verbosity or log_path:
                     toc = round(time.time() - tic,3)
@@ -319,15 +383,10 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
     if not isinstance(thre,list): thre = [thre]
     if not isinstance(conf,list): conf = [conf]
 
-    cwd = os.getcwd()
-    sys.path.append(AlphaPose_path)
-    import inference
-    os.chdir(AlphaPose_path)
-
     for idim_ in idim:
         for thre_ in thre:
             for conf_ in conf:
-                one_posetrack_( idim_, thre_, conf_ )
+                _one_posetrack( idim_, thre_, conf_ )
     os.chdir(cwd)
 
 def poseprep( json_path, savepaths, vis={}, **kwargs ):
