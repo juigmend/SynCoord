@@ -285,7 +285,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
                 if rc: raise subprocess.CalledProcessError(rc, cmd)
                 if AP_out.stderr: print('\nstderr:\n',AP_out.stderr)
 
-            AlphaPose_cmd = [ 'cd',AlphaPose_path,'&&','python',r'scripts\demo_inference.py',
+            AlphaPose_cmd = [ 'cd',AlphaPose_path,'&&','python3',r'scripts/demo_inference.py',
                               '--sp','--video',video_to_track_ffn,'--jsonoutdir',json_path,
                                save_video_cmd[0],save_video_cmd[1],save_video_cmd[2],
                               '--param', str(idim_), str(thre_), str(conf_) ,
@@ -297,8 +297,6 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
                 for l in _subprocess_AP(AlphaPose_cmd): print(l)
             else:
                 subprocess.run( AlphaPose_cmd, shell=True )
-                for _ in range(14): print('\b',end='',flush=True)
-                print('')
 
     else: raise Exception('value for argument "program" is invalid')
 
