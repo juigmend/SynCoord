@@ -32,9 +32,6 @@ def download( ID, mode, **kwargs):
     '''
     #TO-DO: handle exceptions of YoutubeDL when downloading
 
-    from yt_dlp import YoutubeDL
-    from IPython.display import YouTubeVideo
-
     video_folder = kwargs.get('video_folder',None)
     prop_folder = kwargs.get('prop_folder',video_folder)
     fn = kwargs.get('fn',ID)
@@ -43,7 +40,9 @@ def download( ID, mode, **kwargs):
     ext = kwargs.get('ext','mp4')
     verbose = kwargs.get('verbose',False)
 
-    if 'preview' in mode: display(YouTubeVideo(ID))
+    if 'preview' in mode:
+        from IPython.display import YouTubeVideo
+        display(YouTubeVideo(ID))
 
     yt_url = f'https://www.youtube.com/watch?v={ID}'
 
@@ -52,7 +51,8 @@ def download( ID, mode, **kwargs):
         print(yt_info.stdout)
 
     if 'download' in mode:
-
+        
+        from yt_dlp import YoutubeDL
         assert video_folder, 'Kewyord argument "video_folder" is missing.'
 
         video_ffn_ne = video_folder + '/' + fn
@@ -138,6 +138,9 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
     Note:
         Optional argments idim, thre and conf override corresponding detector parameters in
         file AlphaPose/detector/yolo_cfg.py. See documentation (links at the bottom).
+        This function has been tested with:
+            - Windows 11, CPU
+            - SLURM, CPU and GPU
     Args:
         video_in_path: str, absolute path for input video file or folder with input video files.
         json_path: str, absolute path of folder for resulting json tracking files.
@@ -159,15 +162,17 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
             sp: bool. Run on a single process. Forcefully True if operating system is Windows.
             gpus: str. Index of CUDA device. Comma to use several, e.g. "0,1,2,3".
                        Use "-1" for cpu only. Default="0"
-            program: str or None.
-                     If str: 'inference' (module) or 'demo_inference' (script).
-                     If None and gpus = -1: use module AlphaPose/inference.py
-                     If None and gpus >= 0: run script AlphaPose/scripts/demo_inference.py
+            program: str or None (default).
+                     If str: 'inference' (module) or 'demo_inference' (script)
+                              The latter prints nicely on a python IDE (e.g., jupyter),
+                              but might not work with GPU.
+                     If None and gpus = "-1": use module AlphaPose/inference.py
+                     Else: run script AlphaPose/scripts/demo_inference.py
             flip: bool. Enable flip testing. It might improve accuracy.
             detector: str. See documentation for available detectors. Default = 'yolo'
             model: str. Path for pretrained model (A.K.A. checkpoint).
             config: str. Path for pretrained model's configuration file.
-            verbosity: 0, 1, or 2. Default = 1
+            verbosity: 0 (minimal), 1 (progress bar), or 2 (full). Default = 1
     Dependencies:
         AlphaPose fork: https://github.com/juigmend/AlphaPose
         ffmpeg installed in system (callable by command line)
@@ -190,8 +195,8 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
     gpus = kwargs.get('gpus','0')
     program = kwargs.get('program',None)
     if program is None:
-        if int(gpus) == -1: program = 'inference'
-        elif int(gpus) >= 0: program = 'demo_inference'
+        if (len(gpus) > 2) or int(gpus) >= 0: program = 'demo_inference'
+        elif int(gpus) == -1: program = 'inference'
     flip = kwargs.get('flip',False)
     detector = kwargs.get('detector','yolo')
     model_path = kwargs.get('model',AlphaPose_path
@@ -270,8 +275,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
 
             def _subprocess_AP(cmd):
                 clear_line = True
-                AP_out = subprocess.Popen( cmd, shell=True,
-                                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                AP_out = subprocess.Popen( cmd, shell=True, capture_output=True,
                                            text=True)
                 for l in iter(AP_out.stdout.readline,''):
                     if l:
@@ -285,7 +289,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
                 if rc: raise subprocess.CalledProcessError(rc, cmd)
                 if AP_out.stderr: print('\nstderr:\n',AP_out.stderr)
 
-            AlphaPose_cmd = [ 'cd',AlphaPose_path,'&&','python3',r'scripts/demo_inference.py',
+            AlphaPose_cmd = [ 'python3','scripts/demo_inference.py',
                               '--sp','--video',video_to_track_ffn,'--jsonoutdir',json_path,
                                save_video_cmd[0],save_video_cmd[1],save_video_cmd[2],
                               '--param', str(idim_), str(thre_), str(conf_) ,
@@ -294,9 +298,19 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
                               '--pose_track',suffix_cmd[0],suffix_cmd[1],'--vis_fast' ]
 
             if verbosity==2:
-                for l in _subprocess_AP(AlphaPose_cmd): print(l)
+                if gpus == '-1':
+                    for l in _subprocess_AP(AlphaPose_cmd): print(l)
+                else:
+                    try:
+                        AP_out = subprocess.run( AlphaPose_cmd, check=True,
+                                                 capture_output=True )
+                        print("stdout :\n", AP_out.stdout)
+                    except subprocess.CalledProcessError as e:
+                        print('exit_code:', e.returncode)
+                        print('stderror:\n',e.stderr)
             else:
-                subprocess.run( AlphaPose_cmd, shell=True )
+                if gpus == '-1': subprocess.run( AlphaPose_cmd, shell=True )
+                else: subprocess.run( AlphaPose_cmd, shell=False )
 
     else: raise Exception('value for argument "program" is invalid')
 
