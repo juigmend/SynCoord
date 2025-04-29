@@ -136,7 +136,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
     '''
     Detect and track human pose in video files.
     Note:
-        Optional argments idim, thre and conf override corresponding detector parameters in
+        Optional argments idim, nms and conf override corresponding detector parameters in
         file AlphaPose/detector/yolo_cfg.py. See documentation (links at the bottom).
         This function has been tested with:
             - Windows 11, CPU
@@ -152,9 +152,9 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
             log_path: str. Path of folder for log file.
             skip_done: skip if corresponding json file exists in json_path, default = False
             idim: int or list. Size of the detection network, multiple of 32.
-            thre: float or list. NMS threshold for detection in (0...1]
+            nms: float or list. NMS threshold for detection in (0...1]
             conf: float or list. Confidence threshold for detection in (0...1]
-            parlbl: bool. Add [idim,thre,conf] to the names of the resulting files.
+            parlbl: bool. Add [idim,nms,conf] to the names of the resulting files.
             suffix: str. Label to be added to the names of the resulting files.
             audio: bool. Extract audio from tracking video and add to AlphaPose video files.
                    Audio files will be saved in video_in_path, video files with added audio
@@ -186,7 +186,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
     log_path = kwargs.get('log_path',None)
     skip_done = kwargs.get('skip_done',True)
     idim = kwargs.get('idim',608)
-    thre = kwargs.get('thre',0.6)
+    nms = kwargs.get('nms',0.6)
     conf = kwargs.get('conf',0.1)
     parlbl = kwargs.get('parlbl',False)
     suffix = kwargs.get('suffix','')
@@ -245,7 +245,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
     if program == 'inference':
 
         import inference
-        def _run_AP(video_to_track_ffn, idim_, thre_, conf_, suffix_str):
+        def _run_AP(video_to_track_ffn, idim_, nms_, conf_, suffix_str):
             alphapose_argdict = { 'video' : video_to_track_ffn,
                                   'jsonoutdir' : json_path,
                                   'visoutdir' : video_out_path,
@@ -256,7 +256,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
                                   'pose_track' : True,
                                   'suffix' : suffix_str,
                                   'vis_fast' : True,
-                                  'param' : [ idim_, thre_, conf_ ],
+                                  'param' : [ idim_, nms_, conf_ ],
                                   'sp' : sp,
                                   'gpus' : gpus,
                                   'flip' : flip,
@@ -268,7 +268,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
         if video_out_path: save_video_cmd = ['--visoutdir',video_out_path,'--save_video']
         else: save_video_cmd = ['','','']
 
-        def _run_AP(video_to_track_ffn, idim_, thre_, conf_, suffix_str):
+        def _run_AP(video_to_track_ffn, idim_, nms_, conf_, suffix_str):
 
             if suffix_str: suffix_cmd = ['--suffix',suffix_str]
             else: suffix_cmd = ['','']
@@ -292,7 +292,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
             AlphaPose_cmd = [ 'python3','scripts/demo_inference.py',
                               '--sp','--video',video_to_track_ffn,'--jsonoutdir',json_path,
                                save_video_cmd[0],save_video_cmd[1],save_video_cmd[2],
-                              '--param', str(idim_), str(thre_), str(conf_) ,
+                              '--param', str(idim_), str(nms_), str(conf_) ,
                               '--detector',detector, '--verbosity', str(verbosity),
                               '--checkpoint',model_path,'--cfg',model_config_path,
                               '--pose_track',suffix_cmd[0],suffix_cmd[1],'--vis_fast' ]
@@ -314,20 +314,20 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
 
     else: raise Exception('value for argument "program" is invalid')
 
-    def _one_posetrack( idim_, thre_, conf_ ):
+    def _one_posetrack( idim_, nms_, conf_ ):
 
         for fn in fnames:
             ffn = os.path.join(video_in_path,fn)
             split_fn = os.path.splitext(fn)
             fn_ne = split_fn[0] + trim_lbl
-            if parlbl or log_path: par_str_short = f'[{idim_},{thre_},{conf_}]'
+            if parlbl or log_path: par_str_short = f'[{idim_},{nms_},{conf_}]'
             if parlbl: suffix_str = f'_{par_str_short}{suffix}'
             else: suffix_str = suffix
             json_fn = f'AlphaPose_{fn_ne}{suffix_str}.json'
             new_file = True
             if skip_done: new_file = json_fn not in json_saved_fn
             if parlbl or log_path or verbosity:
-                par_str_long = f'idim = {idim_}; thre = {thre_}; conf = {conf_}'
+                par_str_long = f'idim = {idim_}; nms = {nms_}; conf = {conf_}'
             if verbosity:
                 print(f'{fn} :\n{par_str_long}')
 
@@ -364,7 +364,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
                     audio_ext = getaudio( video_to_track_ffn, audio_ffn )
 
                 # AlphaPose:
-                _run_AP(video_to_track_ffn, idim_, thre_, conf_, suffix_str)
+                _run_AP(video_to_track_ffn, idim_, nms_, conf_, suffix_str)
 
                 if verbosity or log_path:
                     toc = round(time.time() - tic,3)
@@ -390,13 +390,13 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
             elif verbosity: print('skipped')
 
     if not isinstance(idim,list): idim = [idim]
-    if not isinstance(thre,list): thre = [thre]
+    if not isinstance(nms,list): nms = [nms]
     if not isinstance(conf,list): conf = [conf]
 
     for idim_ in idim:
-        for thre_ in thre:
+        for nms_ in nms:
             for conf_ in conf:
-                _one_posetrack( idim_, thre_, conf_ )
+                _one_posetrack( idim_, nms_, conf_ )
     os.chdir(cwd)
 
 def poseprep( json_path, savepaths, vis={}, **kwargs ):
