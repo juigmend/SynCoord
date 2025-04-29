@@ -107,7 +107,7 @@ def getaudio( ffn_in, ffn_ne_out=None ):
     if not ffn_ne_out: ffn_out = os.path.splitext(ffn_in)[0] + '.' + audio_ext
     else: ffn_out = ffn_ne_out + '.' + audio_ext
 
-    subprocess.run([ 'ffmpeg', '-y', '-loglevel', 'error', '-i', ffn_in, '-vn', 
+    subprocess.run([ 'ffmpeg', '-y', '-loglevel', 'error', '-i', ffn_in, '-vn',
                      '-acodec', 'copy', ffn_out ])
     return audio_ext
 
@@ -195,7 +195,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
     gpus = kwargs.get('gpus','0')
     program = kwargs.get('program',None)
     if program is None:
-        if (len(gpus) > 2) or int(gpus) >= 0: program = 'demo_inference'
+        if (int(gpus) >= 0) or (len(gpus) > 2): program = 'demo_inference'
         elif int(gpus) == -1: program = 'inference'
     flip = kwargs.get('flip',False)
     detector = kwargs.get('detector','yolo')
