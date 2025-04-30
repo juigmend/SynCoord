@@ -172,14 +172,9 @@ def init_testdatavars(**kwargs):
         an array 'data_vars'. Such array has dimensions [sections,points,axes,vars], where vars
         are frequency, phase shift, amplitude, vertical offset, irregularity, noise_strength.
     '''
-    # TO-DO: insert another default section so that:
-    #        sec 0: all in phase
-    #        sec 1 (new): all in phase, one not
-    #        sec 2: randomly out of phase
-    #        sec 3: stable phase difference, two have little diff, two have inverse phase
     # TO-DO: allow seed for random generator as argument
     fps = kwargs.get('fps',30)
-    durations_sections = kwargs.get('durations_sections',[7,7,7])
+    durations_sections = kwargs.get('durations_sections',[4,4,4,4])
     n_points = kwargs.get('n_points',4)
     n_axes = kwargs.get('n_axes',2)
     seed = kwargs.get('seed',None)
@@ -209,15 +204,20 @@ def init_testdatavars(**kwargs):
     point_vars[0,2,1] = 1, 0,    4, 400, 0,  0.5
     point_vars[0,3,1] = 1, 0,    5, 500, 0,  0.5
     # section 1:
-    point_vars[1,0,1] = 1, 0.2, 33, 100, 0.9,  0.5
-    point_vars[1,1,1] = 1, 0.7, 37, 200, 0.7, 0.5
-    point_vars[1,2,1] = 1, 0,    4, 400, 0.9,  0.5
-    point_vars[1,3,1] = 1, 1.5,  5, 500, 0.8,  0.5
+    point_vars[1,0,1] = 1, 0,   45, 100, 0.1,  0.5
+    point_vars[1,1,1] = 3, 0,   40, 200, 0.1,  0.5
+    point_vars[1,2,1] = 1, 0,   18, 400, 0.1,  0.5
+    point_vars[1,3,1] = 1, 0,   12, 500, 0.1,  0.5
     # section 2:
-    point_vars[2,0,1] = 1, 0,       33, 100, 0, 0.5
-    point_vars[2,1,1] = 1, np.pi/2, 37, 200, 0, 0.5
-    point_vars[2,2,1] = 1, 0,        4, 400, 0, 0.5
-    point_vars[2,3,1] = 1, 2*np.pi,  5, 500, 0, 0.5
+    point_vars[2,0,1] = 1, 0.2, 45, 100, 0.9,  0.5
+    point_vars[2,1,1] = 1, 0.7, 40, 200, 0.7, 0.5
+    point_vars[2,2,1] = 1, 0,   18, 400, 0.9,  0.5
+    point_vars[2,3,1] = 1, 1.5, 12, 500, 0.8,  0.5
+    # section 3:
+    point_vars[3,0,1] = 1, 0,       45, 100, 0, 0.5
+    point_vars[3,1,1] = 1, np.pi/2, 40, 200, 0, 0.5
+    point_vars[3,2,1] = 1, 0,       18, 400, 0, 0.5
+    point_vars[3,3,1] = 1, 2*np.pi, 12, 500, 0, 0.5
     # axis 0 ..........................................
     point_vars[:,:,0,:] = point_vars[:,:,1,:]
     point_vars[:,:,0,2] = point_vars[:,:,0,2] * 0.6
