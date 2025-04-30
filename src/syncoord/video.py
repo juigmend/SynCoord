@@ -195,8 +195,10 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
     gpus = kwargs.get('gpus','0')
     program = kwargs.get('program',None)
     if program is None:
-        if (int(gpus) >= 0) or (len(gpus) > 2): program = 'demo_inference'
+        if len(gpus) > 2: program = 'demo_inference'
+        elif int(gpus) >= 0:  program = 'demo_inference'
         elif int(gpus) == -1: program = 'inference'
+        else: raise Exception('invalid value for argument "gpus"')
     flip = kwargs.get('flip',False)
     detector = kwargs.get('detector','yolo')
     model_path = kwargs.get('model',AlphaPose_path
