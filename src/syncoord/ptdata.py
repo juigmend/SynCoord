@@ -124,6 +124,7 @@ def position( preproc_data, *prop_path, annot_path=None, max_n_files=None,
             max_n_files: None (all) or scalar, number of files to load.
             print_info: bool, print durations of data.
             **kwargs: passed to syncoord.utils.load_data
+                      and syncoord.utils.init_testdatavars if preproc_data = "make"
     Returns:
         PtData object with position data (dictionary of mutlti dimensional numpy arrays).
     '''

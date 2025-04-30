@@ -172,7 +172,6 @@ def init_testdatavars(**kwargs):
         an array 'data_vars'. Such array has dimensions [sections,points,axes,vars], where vars
         are frequency, phase shift, amplitude, vertical offset, irregularity, noise_strength.
     '''
-    # TO-DO: allow seed for random generator as argument
     fps = kwargs.get('fps',30)
     durations_sections = kwargs.get('durations_sections',[4,4,4,4])
     n_points = kwargs.get('n_points',4)
@@ -296,13 +295,13 @@ def listfiles(path):
         return fnames
 
 def load_data( preproc_data, *prop_path, annot_path=None, topdata_Name=None,
-               max_n_files=None, print_info=True ):
+               max_n_files=None, print_info=True, **kwargs):
     '''
     Args:
         preproc_data: str, dict or np.ndarray.
                       If str: folder with parquet files for preprocesed data
                               (e.g., r"~/preprocessed"), or "make" to produce synthetic data
-                              with default values (function 'testdata' used internally).
+                              with default values (calls syncoord.utils.testdata).
                       If dict: as returned by syncoord.utils.init_testdatavars
                       If np.ndarray: as returned by syncoord.utils.testdata
         prop_path: path for properties CSV file (e.g., r"~/properties.csv").
@@ -315,6 +314,7 @@ def load_data( preproc_data, *prop_path, annot_path=None, topdata_Name=None,
             max_n_files: number of files to extract from the beginning of annotations.
                          None or scalar.
             print_info (bool): show index, name and duration of data.
+            **kwargs: passed to syncoord.utils.init_testdatavars if preproc_data = "make"
     Returns:
         pos_data: dictionary of multidimensional numpy arrays containing preprocessed data
         dim_names: names of N-D array's dimensions*
@@ -329,8 +329,8 @@ def load_data( preproc_data, *prop_path, annot_path=None, topdata_Name=None,
     if prop_path[0]:
         properties = pd.read_csv(prop_path[0][0])
 
-    def make_topinfo_tdv():
-        tdv = init_testdatavars()
+    def make_topinfo_tdv(kwargs):
+        tdv = init_testdatavars(**kwargs)
         tsf = []
         csum = 0
         for d in tdv['durations_sections'][:-1]:
@@ -355,7 +355,7 @@ def load_data( preproc_data, *prop_path, annot_path=None, topdata_Name=None,
     pos_data = {}
     if isinstance(preproc_data,str):
         if preproc_data == 'make':
-            if not annot_path: topinfo, tdv = make_topinfo_tdv()
+            if not annot_path: topinfo, tdv = make_topinfo_tdv(kwargs)
             pos_data[0] = testdata(tdv)
         else:
             for i in range(topinfo.shape[0]):
