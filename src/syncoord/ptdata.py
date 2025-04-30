@@ -107,13 +107,14 @@ class PtData:
     def visualise(self,**kwargs):
         visualise(self,**kwargs)
 
-def position( preproc_data, *prop_path, annot_path=None, max_n_files=None,
+def load( preproc_data, *prop_path, annot_path=None, max_n_files=None,
               print_info=True, **kwargs ):
     '''
     Args:
         preproc_data: str, dict or np.ndarray
-                      If str: folder with parquet files for preprocesed (e.g., r"~/preprocessed"),
-                               or "make" to produce synthetic data with default values.
+                      If str: folder with parquet files for preprocesed data
+                              (e.g., r"~/preprocessed"),
+                              or "make" to produce synthetic data with default values.
                       If dict: as returned by syncoord.utils.testdata
                       If np.ndarray: as returned by syncoord.utils.init_testdatavars
         prop_path: str, path and filename for properties CSV file (e.g., r"~/properties.csv").
@@ -126,19 +127,18 @@ def position( preproc_data, *prop_path, annot_path=None, max_n_files=None,
             **kwargs: passed to syncoord.utils.load_data
                       and syncoord.utils.init_testdatavars if preproc_data = "make"
     Returns:
-        PtData object with position data (dictionary of mutlti dimensional numpy arrays).
+        PtData object with loaded data (dictionary of mutlti dimensional numpy arrays).
     '''
-    position_data, dim_names, dim_labels, dimel_labels, topinfo =\
-        utils.load_data( preproc_data, prop_path, annot_path=annot_path, max_n_files=max_n_files,
-                   print_info=print_info, **kwargs )
+    load_out = utils.load_data( preproc_data, prop_path, annot_path=annot_path,
+                                max_n_files=max_n_files, print_info=print_info, **kwargs )
 
-    pos = PtData(topinfo)
+    pos = PtData(load_out[0])
     pos.names.main = 'Position'
-    pos.names.dim = dim_names
+    pos.names.dim = load_out[1]
     pos.labels.main = 'Pos.'
-    pos.labels.dim = dim_labels
-    pos.labels.dimel = dimel_labels
-    pos.data = position_data
+    pos.labels.dim = load_out[2]
+    pos.labels.dimel = load_out[3]
+    pos.data = load_out[4]
     pos.vis['y_label'] = None
     pos.vis['dlattr'] = '1.2'
     return pos
