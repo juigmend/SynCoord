@@ -134,7 +134,7 @@ def load( preproc_data, *prop_path, annot_path=None, max_n_files=None,
                                 max_n_files=max_n_files, print_info=print_info, **kwargs )
 
     pos = PtData(load_out[0])
-    pos.names.main = ''
+    pos.names.main = ' '
     pos.names.dim = load_out[1]
     pos.labels.main = ''
     pos.labels.dim = load_out[2]
