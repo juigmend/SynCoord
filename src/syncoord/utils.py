@@ -316,14 +316,14 @@ def load_data( preproc_data, *prop_path, annot_path=None, topdata_Name=None,
             print_info (bool): show index, name and duration of data.
             **kwargs: passed to syncoord.utils.init_testdatavars if preproc_data = "make"
     Returns:
-        pos_data: dictionary of multidimensional numpy arrays containing preprocessed data
+        topinfo: Pandas dataframe with properties and annotations (if they exist), and
+                 trimmed sections in frames if column "Sections" exist.
         dim_names: names of N-D array's dimensions*
                    (short, used e.g., to select data, in groupby, etc.)
         dim_labels: labels for N-D array's dimensions*
                     (less short, used e.g, as labels for visualisations)
         dimel_labels: labels for each element of N-D array's dimensions*.
-        topinfo: Pandas dataframe with properties and annotations (if they exist), and
-                 trimmed sections in frames if column "Sections" exist.
+        prep_data: dictionary of multidimensional numpy arrays containing preprocessed data
         * dimensions = axes of the N-D Numpy array, where the rightmost is the fastest changing.
     '''
     if prop_path[0]:
@@ -352,27 +352,27 @@ def load_data( preproc_data, *prop_path, annot_path=None, topdata_Name=None,
             topinfo['trimmed_sections_frames'] = trim_sections_to_frames(topinfo)
     elif prop_path[0]: topinfo = properties
 
-    pos_data = {}
+    prep_data = {}
     if isinstance(preproc_data,str):
         if preproc_data == 'make':
             if not annot_path: topinfo, tdv = make_topinfo_tdv(kwargs)
-            pos_data[0] = testdata(tdv)
+            prep_data[0] = testdata(tdv)
         else:
             for i in range(topinfo.shape[0]):
                 ID = topinfo['ID'].iloc[i]
                 top_df = pd.read_parquet(preproc_data + '/' + ID + '.parquet')
                 top_arr_nd = np.array([ top_df.iloc[:,1::2].T , top_df.iloc[:,::2].T ])
                 top_arr_nd = np.transpose(top_arr_nd,(1,0,2))
-                pos_data[i] = top_arr_nd
+                prep_data[i] = top_arr_nd
     elif isinstance(preproc_data,dict):
-        pos_data[0] = testdata(preproc_data)
+        prep_data[0] = testdata(preproc_data)
         if not annot_path: topinfo, _ = make_topinfo_tdv()
     elif isinstance(preproc_data,np.ndarray):
-        pos_data[0] = preproc_data
+        prep_data[0] = preproc_data
         if not annot_path: topinfo, _ = make_topinfo_tdv()
     dim_names = ['point','axis','frame']
     dim_labels = ['point','axes','time (frames)']
-    dimel_labels = [['p. '+str(i) for i in range(pos_data[0].shape[dim_names.index('point')])],
+    dimel_labels = [['p. '+str(i) for i in range(prep_data[0].shape[dim_names.index('point')])],
                   ['$y$','$x$'],None]
     if isinstance(topdata_Name,list):
         topinfo["Name"] = topdata_Name
@@ -381,17 +381,17 @@ def load_data( preproc_data, *prop_path, annot_path=None, topdata_Name=None,
     elif topdata_Name is None: pass
     else:
         raise Exception("invalid value for topdata_Name")
-    d_keys = list(pos_data.keys())
+    d_keys = list(prep_data.keys())
     if print_info: print('index; key; Name; duration (s):')
     for i,k in enumerate(topinfo.index):
         if k != d_keys[i]:
             raise Exception("".join([f"ptdata.topinfo.index[{k}] doesn't match ",
                                      f"list(ptdata.data.keys())[{i}]"]))
         if print_info:
-            this_length = pos_data[k][0].shape[-1]
+            this_length = prep_data[k][0].shape[-1]
             this_duration_lbl = frames_to_minsec_str(this_length,topinfo.loc[k,'fps'],ms=True)
             print(f'  {i}; {k}; {topinfo["Name"].iloc[i]}; {this_duration_lbl}')
-    return pos_data, dim_names, dim_labels, dimel_labels, topinfo
+    return topinfo, dim_names, dim_labels, dimel_labels, prep_data
 
 def matlab_eng( addpaths=None, verbose=True ):
     '''
