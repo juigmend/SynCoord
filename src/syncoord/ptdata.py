@@ -129,13 +129,14 @@ def load( preproc_data, *prop_path, annot_path=None, max_n_files=None,
     Returns:
         PtData object with loaded data (dictionary of mutlti dimensional numpy arrays).
     '''
+    # TO-DO: get main name and label from preprocessed data file
     load_out = utils.load_data( preproc_data, prop_path, annot_path=annot_path,
                                 max_n_files=max_n_files, print_info=print_info, **kwargs )
 
     pos = PtData(load_out[0])
-    pos.names.main = 'Position'
+    pos.names.main = ''
     pos.names.dim = load_out[1]
-    pos.labels.main = 'Pos.'
+    pos.labels.main = ''
     pos.labels.dim = load_out[2]
     pos.labels.dimel = load_out[3]
     pos.data = load_out[4]
