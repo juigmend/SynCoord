@@ -51,7 +51,7 @@ def download( ID, mode, **kwargs):
         print(yt_info.stdout)
 
     if 'download' in mode:
-        
+
         from yt_dlp import YoutubeDL
         assert video_folder, 'Kewyord argument "video_folder" is missing.'
 
