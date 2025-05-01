@@ -1135,7 +1135,7 @@ def apply( ptdata, func,*args, **kwargs ):
     elif fn == 'peaks_to_phase':
         main_name = 'Peaks Phase'
         main_label = r'$\phi$'
-        vis = {**vis, 'dlattr':'k0.2', 'vlattr':'r-3b'}
+        vis = {**vis,'dlattr':'k0.8', 'vlattr':'r:3f','vistype':'line'}
     elif fn == 'kuramoto_r':
         main_name = 'Kuramoto Order Parameter $r$'
         main_label = '$r$'
@@ -1562,7 +1562,7 @@ def visualise( ptdata, **kwargs ):
             elif 'spectrogram' in vistype:
                 plt.specgram(vis_arr,Fs=fps,detrend='linear',scale='linear')
             if y_lim: plt.ylim(y_lim)
-            if (y_ticks is not None) and (vis_arr.ndim == 2):
+            if (y_ticks is not None) and (vis_arr.ndim == 2) and (vistype == 'imshow'):
                 if isinstance(y_ticks,list): sp_yticks.append(y_ticks)
                 elif isinstance(y_ticks,dict): sp_yticks.append(y_ticks[ data_dict_keys[i_top] ])
                 sp_axes.append( plt.gca() )
