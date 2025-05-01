@@ -556,8 +556,8 @@ def fourier( ptdata, window_duration, **kwargs ):
         main_label = 'Spectrum'
         dim_labels.insert(-1,'freq.')
         vis['vistype'] = 'imshow'
-        vis['y_ticks'] = freq_bins
     dim_names.insert(-1,'frequency')
+    vis['y_ticks'] = freq_bins
     other = {'freq_bins':freq_bins}
 
     fft_result = PtData(topinfo)
