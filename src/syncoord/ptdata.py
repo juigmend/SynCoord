@@ -1252,7 +1252,7 @@ def visualise( ptdata, **kwargs ):
             y_lim: list with minimum and maximum for vertical axes. Overrides arg. 'rescale'.
             y_label: label for vertical axis. 'default' uses ptdata.labels.main
                      or 'Hz' if ptdata.names.dim[-2] = 'frequency'
-            y_ticks: labels for vertical axis ticks, useful only when vistype = 'imshow'
+            y_ticks: labels for vertical axis ticks when vistype = 'imshow', otherwise ignored.
             x_ticklabelling: labelling of horizontal axis;
                              's' = 'time (seconds)',
                              '25%' = xticks as specified percentage,
