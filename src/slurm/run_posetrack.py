@@ -22,8 +22,8 @@ json_path = pose_tracking_path+'/tracking'               # <--- tracking (json f
 # Pose Detection and Tracking Parameters:
 
 ptrack_kwargs = {'idim': 4320,            # <--- input dimensions (proportional to resources)
-                 'conf': 0.05,            # <--- confidence threshold (inversely proportional to resources)
                  'nms': 0.6,              # <--- NMS threshold (proportional to resources)
+                 'conf': 0.05,            # <--- confidence threshold (inversely proportional to resources)
                  'trim_range': [0,5],     # <--- video range (seconds)
                  'parlbl':True,           # <--- parameters label in file names
                  'suffix': '_gpu',        # <--- add string to file name
