@@ -151,9 +151,9 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
             trim_range = list. [start,end] in seconds or 'end'.
             log_path: str. Path of folder for log file.
             skip_done: skip if corresponding json file exists in json_path, default = False
-            idim: int or list. Size of the detection network, multiple of 32.
-            nms: float or list. NMS threshold for detection in (0...1]
-            conf: float or list. Confidence threshold for detection in (0...1]
+            idim: int or list. Size of YOLO detector network, multiple of 32.
+            nms: float or list. NMS threshold for YOLO detector in (0...1]
+            conf: float or list. Confidence threshold for YOLO detector in (0...1]
             parlbl: bool. Add [idim,nms,conf] to the names of the resulting files.
             suffix: str. Label to be added to the names of the resulting files.
             audio: bool. Extract audio from tracking video and add to AlphaPose video files.
@@ -169,7 +169,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
                      If None and gpus = "-1": use module AlphaPose/inference.py
                      Else: run script AlphaPose/scripts/demo_inference.py
             flip: bool. Enable flip testing. It might improve accuracy.
-            detector: str. See documentation for available detectors. Default = 'yolo'
+            detector: str. See documentation for available detectors. Default = 'yolo' (v3)
             model: str. Path for pretrained model (A.K.A. checkpoint).
             config: str. Path for pretrained model's configuration file.
             verbosity: 0 (minimal), 1 (progress bar), or 2 (full). Default = 1
