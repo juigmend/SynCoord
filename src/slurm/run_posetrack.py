@@ -21,15 +21,15 @@ json_path = pose_tracking_path+'/tracking'               # <--- tracking (json f
 
 # Pose Detection and Tracking Parameters:
 
-ptrack_kwargs = {'idim': 4320,            # <--- input dimensions (proportional to resources)
+ptrack_kwargs = {'idim': 640,             # <--- input dimensions (proportional to resources)
                  'nms': 0.6,              # <--- NMS threshold (proportional to resources)
-                 'conf': 0.05,            # <--- confidence threshold (inversely proportional to resources)
+                 'conf': 0.1,             # <--- confidence threshold (inversely proportional to resources)
                  'trim_range': [0,5],     # <--- video range (seconds)
-                 'parlbl':True,           # <--- parameters label in file names
+                 'parlbl': True,          # <--- parameters label in file names
                  'suffix': '_gpu',        # <--- add string to file name
-                 'verbosity':0,           # <--- verbosity level: 0 (minimal), 1 (pbar) , 2 (full)
+                 'verbosity': 0,          # <--- verbosity level: 0 (minimal), 1 (pbar) , 2 (full)
                  'skip_done': False,      # <--- skip if resulting json file exists
-                 'gpus':'0'               # <--- (str) index of gpu to use, separated by comma if more than one
+                 'gpus': '0'              # <--- (str) index of gpu to use, separated by comma if more than one
                 }
 ################################################################################
 
