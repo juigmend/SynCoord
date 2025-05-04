@@ -542,13 +542,13 @@ def apply_to_pairs( arr_nd, func, pairs_axis, fixed_axes=-1, imout=0, verbose=Fa
                     if arr_nd_out_mutated:
                         raise Exception('func not returning arrays with consistent shape.')
                     fixed_axes_pos = fixed_axes.copy()
-                    for i,a in enumerate(fixed_axes_pos):
-                        if a < 0: fixed_axes_pos[i] = arr_nd_out.ndim + a
+                    for i_fap,a in enumerate(fixed_axes_pos):
+                        if a < 0: fixed_axes_pos[i_fap] = arr_nd_out.ndim + a
                     shape_out_new = shape_out.copy()
                     i_fa = 0
-                    for i in range(arr_nd_out.ndim):
-                        if i == fixed_axes_pos[i_fa]:
-                            shape_out_new[i] = result_arr.shape[i_fa]
+                    for i_dim in range(arr_nd_out.ndim):
+                        if i_dim == fixed_axes_pos[i_fa]:
+                            shape_out_new[i_dim] = result_arr.shape[i_fa]
                             i_fa += 1
                     arr_nd_out = np.empty(tuple(shape_out_new))
                     shape_fixed_axes = tuple(shape_out_new[v] for v in fixed_axes_pos)
