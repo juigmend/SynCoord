@@ -51,7 +51,7 @@ def download( ID, mode, **kwargs):
         print(yt_info.stdout)
 
     if 'download' in mode:
-
+        
         from yt_dlp import YoutubeDL
         assert video_folder, 'Kewyord argument "video_folder" is missing.'
 
@@ -107,7 +107,7 @@ def getaudio( ffn_in, ffn_ne_out=None ):
     if not ffn_ne_out: ffn_out = os.path.splitext(ffn_in)[0] + '.' + audio_ext
     else: ffn_out = ffn_ne_out + '.' + audio_ext
 
-    subprocess.run([ 'ffmpeg', '-y', '-loglevel', 'error', '-i', ffn_in, '-vn',
+    subprocess.run([ 'ffmpeg', '-y', '-loglevel', 'error', '-i', ffn_in, '-vn', 
                      '-acodec', 'copy', ffn_out ])
     return audio_ext
 
@@ -138,7 +138,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
     Note:
         Optional argments idim, nms and conf override corresponding detector parameters in
         file AlphaPose/detector/yolo_cfg.py. See documentation (links at the bottom).
-        This function has been tested with:
+        This function has been tested using:
             - Windows 11, CPU
             - SLURM, CPU and GPU
     Args:
@@ -151,9 +151,9 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
             trim_range = list. [start,end] in seconds or 'end'.
             log_path: str. Path of folder for log file.
             skip_done: skip if corresponding json file exists in json_path, default = False
-            idim: int or list. Size of YOLO detector network, multiple of 32.
-            nms: float or list. NMS threshold for YOLO detector in (0...1]
-            conf: float or list. Confidence threshold for YOLO detector in (0...1]
+            idim: int or list. Size of the detection network, multiple of 32.
+            nms: float or list. NMS threshold for detection in (0...1]
+            conf: float or list. Confidence threshold for detection in (0...1]
             parlbl: bool. Add [idim,nms,conf] to the names of the resulting files.
             suffix: str. Label to be added to the names of the resulting files.
             audio: bool. Extract audio from tracking video and add to AlphaPose video files.
@@ -169,9 +169,10 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
                      If None and gpus = "-1": use module AlphaPose/inference.py
                      Else: run script AlphaPose/scripts/demo_inference.py
             flip: bool. Enable flip testing. It might improve accuracy.
-            detector: str. See documentation for available detectors. Default = 'yolo' (v3)
+            detector: str. See documentation for available detectors. Default = 'yolo'
             model: str. Path for pretrained model (A.K.A. checkpoint).
             config: str. Path for pretrained model's configuration file.
+            vis_fast: bool. Simpler and faster visualisation. Default = True
             verbosity: 0 (minimal), 1 (progress bar), or 2 (full). Default = 1
     Dependencies:
         AlphaPose fork: https://github.com/juigmend/AlphaPose
@@ -205,6 +206,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
                             + '/pretrained_models/fast_421_res152_256x192.pth')
     model_config_path = kwargs.get('config',AlphaPose_path
                                     + '/configs/coco/resnet/256x192_res152_lr1e-3_1x-duc.yaml')
+    vis_fast = kwargs.get('vis_fast',True)
     verbosity = kwargs.get('verbosity',1)
 
     if video_in_path: video_in_path = os.path.abspath(video_in_path)
@@ -257,7 +259,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
                                   'cfg' : model_config_path,
                                   'pose_track' : True,
                                   'suffix' : suffix_str,
-                                  'vis_fast' : True,
+                                  'vis_fast' : vis_fast,
                                   'param' : [ idim_, nms_, conf_ ],
                                   'sp' : sp,
                                   'gpus' : gpus,
@@ -269,6 +271,9 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
 
         if video_out_path: save_video_cmd = ['--visoutdir',video_out_path,'--save_video']
         else: save_video_cmd = ['','','']
+
+        if vis_fast: visfast_cmd = '--vis_fast'
+        else: visfast_cmd = ''
 
         def _run_AP(video_to_track_ffn, idim_, nms_, conf_, suffix_str):
 
@@ -297,7 +302,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
                               '--param', str(idim_), str(nms_), str(conf_) ,
                               '--detector',detector, '--verbosity', str(verbosity),
                               '--checkpoint',model_path,'--cfg',model_config_path,
-                              '--pose_track',suffix_cmd[0],suffix_cmd[1],'--vis_fast' ]
+                              '--pose_track',suffix_cmd[0],suffix_cmd[1],visfast_cmd ]
 
             if verbosity==2:
                 if gpus == '-1':
@@ -307,6 +312,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
                         AP_out = subprocess.run( AlphaPose_cmd, check=True,
                                                  capture_output=True )
                         print("stdout :\n", AP_out.stdout)
+
                     except subprocess.CalledProcessError as e:
                         print('exit_code:', e.returncode)
                         print('stderror:\n',e.stderr)
