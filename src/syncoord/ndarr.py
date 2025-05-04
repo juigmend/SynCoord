@@ -472,13 +472,13 @@ def apply_to_pairs( arr_nd, func, pairs_axis, fixed_axes=-1, imout=0, verbose=Fa
         Optional:
             fixed_axes: axis (int) or axes (list) that are the input to func. Default is last axis *.
             imout: index of N-D array in returned tuple of func, if func has multiple returns.
-            verbose: Display progress.
+            verbose: display progress.
             **kwargs = optional arguments and keyword arguments to be passed to func.
     Returns:
         arr_nd_out: N-D array. The length of the pairs dimension originanlly
                     of length N, is ((N*N)-N)/2.
-        pairs_idx: List of pairs.
-        multi_results: Tuple with func returns other than indicated by argument 'imout',
+        pairs_idx: list of pairs.
+        multi_results: tuple with func returns other than indicated by argument 'imout',
                        otherwise empty list. Consecutively equal results will be discarded.
     * axes = dimensions of the N-D array, where the rightmost axis is the fastest changing.
     '''
