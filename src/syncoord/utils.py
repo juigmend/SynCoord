@@ -329,7 +329,7 @@ def load_data( preproc_data, *prop_path, annot_path=None, topdata_Name=None,
     if prop_path[0]:
         properties = pd.read_csv(prop_path[0][0])
 
-    def make_topinfo_tdv(kwargs):
+    def make_topinfo_tdv(**kwargs):
         tdv = init_testdatavars(**kwargs)
         tsf = []
         csum = 0
@@ -355,7 +355,7 @@ def load_data( preproc_data, *prop_path, annot_path=None, topdata_Name=None,
     prep_data = {}
     if isinstance(preproc_data,str):
         if preproc_data == 'make':
-            if not annot_path: topinfo, tdv = make_topinfo_tdv(kwargs)
+            if not annot_path: topinfo, tdv = make_topinfo_tdv(**kwargs)
             prep_data[0] = testdata(tdv)
         else:
             for i in range(topinfo.shape[0]):
@@ -366,10 +366,10 @@ def load_data( preproc_data, *prop_path, annot_path=None, topdata_Name=None,
                 prep_data[i] = top_arr_nd
     elif isinstance(preproc_data,dict):
         prep_data[0] = testdata(preproc_data)
-        if not annot_path: topinfo, _ = make_topinfo_tdv()
+        if not annot_path: topinfo, _ = make_topinfo_tdv(**kwargs)
     elif isinstance(preproc_data,np.ndarray):
         prep_data[0] = preproc_data
-        if not annot_path: topinfo, _ = make_topinfo_tdv()
+        if not annot_path: topinfo, _ = make_topinfo_tdv(**kwargs)
     dim_names = ['point','axis','frame']
     dim_labels = ['point','axes','time (frames)']
     dimel_labels = [['p. '+str(i) for i in range(prep_data[0].shape[dim_names.index('point')])],
