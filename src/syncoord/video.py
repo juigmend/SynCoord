@@ -11,6 +11,67 @@ import pandas as pd
 
 from . import utils
 
+def trop( path_in, path_out, **kwargs):
+    '''
+    Trim and crop video files.
+    Args:
+        path_in: input video file or folder
+        path_out: output video file or folder
+        Optional:
+        (either trim or crop are optional)
+            trim (list): [start,end] in seconds.
+            crop (str): 'width:height:right:down' *
+                Example: '400:200:50:10' results in 400 px. (pixels) of width, 200 px. of height,
+                         at 50 px. right and 10 px. down from the top-left corner.
+            skip_done (bool): Skip if output file exists. Default = False
+            lbl (str): suffix for the output file's name or '--auto'. Default = None
+    * Documentation: https://ffmpeg.org/ffmpeg-filters.html#crop
+    '''
+    trim = kwargs.get('trim',None)
+    crop = kwargs.get('crop',None)
+    skip_done = kwargs.get('skip_done',False)
+    lbl = kwargs.get('lbl',None)
+
+    assert (trim or crop), 'Check that at least one argument "trim" or "crop" has a value.'
+    assert os.path.abspath(path_in) != os.path.abspath(path_out), 'path_in is the same as path_out'
+
+    if os.path.isfile(path_in): video_in_path = os.path.dirname(path_in)
+    else: video_in_path = path_in
+    is_path_out_dir = os.path.isdir(path_out)
+
+    if not lbl: lbl = ''
+    if (lbl=='--auto'):
+        if trim: trim_lbl = f'_{trim[0]}-{trim[1]}'
+        else: trim_lbl = ''
+        if crop:
+            crop_lbl = crop.replace(':','-')
+            crop_lbl = f'_[{crop_lbl}]'
+        else: crop_lbl = ''
+        lbl = f'{trim_lbl}{crop_lbl}'
+
+    sp_cmd_a = ['ffmpeg', '-y', '-loglevel','error', '-i']
+    sp_cmd_b = []
+    if trim: sp_cmd_b += ['-ss', str(trim[0]), '-to', str(trim[1])]
+    if crop: sp_cmd_b += ['-vf',f'crop={crop}']
+    sp_cmd_b += ['-acodec', 'copy']
+
+    for fn in utils.listfiles(path_in):
+        ffn_in = os.path.join(video_in_path,fn)
+        if is_path_out_dir:
+            bname_split = os.path.splitext(fn)
+            bname_lbl = bname_split[0] + lbl + bname_split[1]
+            ffn_out = os.path.join(path_out, bname_lbl)
+        else:
+            ffn_out = path_out
+
+        if skip_done: run_sp = not os.path.exists(ffn_out)
+        else: run_sp = True
+
+        if run_sp:
+            sp_cmd = sp_cmd_a + [ffn_in] + sp_cmd_b + [ffn_out]
+            subprocess.run(sp_cmd)
+            assert os.path.exists(ffn_out), 'File not saved. Check that the output folder exists.'
+
 def download( ID, mode, **kwargs):
     '''
     Download video from Youtube, get information, preview, and write text file 'properties.csv'
@@ -51,7 +112,7 @@ def download( ID, mode, **kwargs):
         print(yt_info.stdout)
 
     if 'download' in mode:
-        
+
         from yt_dlp import YoutubeDL
         assert video_folder, 'Kewyord argument "video_folder" is missing.'
 
