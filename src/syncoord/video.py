@@ -491,9 +491,9 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
             n_indiv: int, expected number of individuals to be tracked, None for automatic.
             skip_done: bool, skip if corresponding preprocessed parquet file exists.
             suffix: str, label to be added to the names of the resulting files.
-            trange: list or str. Time-range selection.
+            trange: list or str. Time-range selection. Default = None
                     If list: [start,end] (frames)
-                    If str: 'all'
+                    If str: 'all' (same as None)
             drdim: None, 'all', int, or list of dimensions to apply disjoint ranges
                    for tracked individuals. Works only if keypoint trajectories don't overlap.
             verbose: bool.
