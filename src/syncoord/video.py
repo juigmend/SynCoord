@@ -520,7 +520,7 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
     drdim = kwargs.get('drdim',None)
     verbose = kwargs.get('verbose',True)
 
-    if drdim:
+    if drdim is not None:
         from sklearn.cluster import HDBSCAN
     if vis['show'] or rawfig_path or prepfig_path:
         import matplotlib.pyplot as plt
