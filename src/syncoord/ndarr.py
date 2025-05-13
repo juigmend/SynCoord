@@ -470,10 +470,12 @@ def apply_to_pairs( arr_nd, func, pairs_axis, fixed_axes=-1, imout=0, verbose=Fa
         func: function to apply, whose first argument is a list with each N-D array of the pair.
         pairs_axis: axis to run the pairwise process.
         Optional:
-            fixed_axes: axis (int) or axes (list) that are the input to func. Default is last axis *.
+            fixed_axes: axis (int) or axes (list) that are the input to func. Should be equal or
+                        less than the dimensions in the output array of func, and should not include
+                        pairs_axis. Default is last axis *.
             imout: index of N-D array in returned tuple of func, if func has multiple returns.
             verbose: display progress.
-            **kwargs = optional arguments and keyword arguments to be passed to func.
+            **kwargs = optional arguments and keyword arguments passed to func.
     Returns:
         arr_nd_out: N-D array. The length of the pairs dimension originanlly
                     of length N, is ((N*N)-N)/2.
@@ -545,13 +547,21 @@ def apply_to_pairs( arr_nd, func, pairs_axis, fixed_axes=-1, imout=0, verbose=Fa
                     for i_fap,a in enumerate(fixed_axes_pos):
                         if a < 0: fixed_axes_pos[i_fap] = arr_nd_out.ndim + a
                     shape_out_new = shape_out.copy()
-                    i_fa = 0
-                    for i_dim in range(arr_nd_out.ndim):
-                        if i_dim == fixed_axes_pos[i_fa]:
-                            shape_out_new[i_dim] = result_arr.shape[i_fa]
-                            i_fa += 1
+                    if len(fixed_axes_pos)==1:
+                        if result_arr.ndim==1:
+                            shape_out_new[fixed_axes_pos[0]] = result_arr.shape
+                        else:
+                            shape_out_new[fixed_axes_pos[0]:fixed_axes_pos[0]+1] = result_arr.shape
+                            idx_shape_o[fixed_axes_pos[0]:fixed_axes_pos[0]+1] = \
+                                [':' for _ in range(result_arr.ndim)]
+                    elif len(fixed_axes_pos) == result_arr.ndim:
+                        for i_n, i_fap in enumerate(fixed_axes_pos):
+                            shape_out_new[i_fap] = result_arr.shape[i_n]
+                            idx_shape_o[i_fap] = ':'
+                    else: raise Exception('values in argument "fixed_axes" should be less')
+                    idx_shape_o_str = str(idx_shape_o).replace("'","")
                     arr_nd_out = np.empty(tuple(shape_out_new))
-                    shape_fixed_axes = tuple(shape_out_new[v] for v in fixed_axes_pos)
+                    shape_fixed_axes = result_arr.shape
                     arr_nd_out_mutated = True
                 exec('arr_nd_out'+idx_shape_o_str+' = result_arr')
                 i_pair += 1
