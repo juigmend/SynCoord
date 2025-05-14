@@ -482,6 +482,7 @@ def apply_to_pairs( arr_nd, func, pairs_axis, fixed_axes=-1, imout=0, verbose=Fa
         pairs_idx: list of pairs.
         multi_results: tuple with func returns other than indicated by argument 'imout',
                        otherwise empty list. Consecutively equal results will be discarded.
+        new_fixed_axes:)
     * axes = dimensions of the N-D array, where the rightmost axis is the fastest changing.
     '''
     shape_in = list(arr_nd.shape)
@@ -492,6 +493,7 @@ def apply_to_pairs( arr_nd, func, pairs_axis, fixed_axes=-1, imout=0, verbose=Fa
     del loc_idx_iter[pairs_axis]
     if not isinstance(fixed_axes,list): fixed_axes = [fixed_axes]
     fixed_axes.sort()
+    new_fixed_axes = fixed_axes.copy()
     idx_shape_o = [None for _ in shape_in]
     for i in fixed_axes:
         del iter_shape[i]
@@ -554,6 +556,8 @@ def apply_to_pairs( arr_nd, func, pairs_axis, fixed_axes=-1, imout=0, verbose=Fa
                             shape_out_new[fixed_axes_pos[0]:fixed_axes_pos[0]+1] = result_arr.shape
                             idx_shape_o[fixed_axes_pos[0]:fixed_axes_pos[0]+1] = \
                                 [':' for _ in range(result_arr.ndim)]
+                            new_fixed_axes = fixed_axes_pos \
+                                + [fixed_axes_pos[0]+i+1 for i in range(result_arr.ndim)]
                     elif len(fixed_axes_pos) == result_arr.ndim:
                         for i_n, i_fap in enumerate(fixed_axes_pos):
                             shape_out_new[i_fap] = result_arr.shape[i_n]
@@ -565,9 +569,8 @@ def apply_to_pairs( arr_nd, func, pairs_axis, fixed_axes=-1, imout=0, verbose=Fa
                     arr_nd_out_mutated = True
                 exec('arr_nd_out'+idx_shape_o_str+' = result_arr')
                 i_pair += 1
-    if multi_results:
-        return arr_nd_out, pairs_idx, multi_results
-    else: return arr_nd_out, pairs_idx
+    if multi_results: return arr_nd_out, pairs_idx, new_fixed_axes, multi_results
+    else: return arr_nd_out, pairs_idx, new_fixed_axes
 
 def apply_dimgroup( arr_in, func, exaxes=None, i_out=0, n_out='all' ):
     '''
