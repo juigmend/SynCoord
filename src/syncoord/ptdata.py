@@ -707,7 +707,7 @@ def xwt( ptdata, minmaxf, pairs_axis, fixed_axes, **kwargs ):
     c = 1
     for k in dd_in:
         arr_nd = dd_in[k]
-        if arr_nd.ndim < 3: raise Exception(f'Data dimensions should be at least 2,\
+        if arr_nd.ndim < 2: raise Exception(f'Data dimensions should be at least 2,\
                                               but currently are {arr_nd.ndim}')
         fps = ptdata.topinfo.loc[k,'fps']
         pairs_results = ndarr.apply_to_pairs( arr_nd, ndarr.xwt_nd, pairs_axis,
@@ -715,18 +715,22 @@ def xwt( ptdata, minmaxf, pairs_axis, fixed_axes, **kwargs ):
                                               minmaxf=minmaxf, fps=fps, **kwargs )
         dd_out[k] = pairs_results[0]
 
-    pairs_idx = pairs_results[1]
-    freq_bins = pairs_results[2][0][0].tolist()
-    freq_bins_round = np.round(freq_bins,1).tolist()
     if neweng:
         kwargs['matlabeng'].quit()
         if verbose: print('Disconnected from Matlab.')
 
+    pairs_idx = pairs_results[1]
+    new_fixed_axes = pairs_results[2]
+    freq_bins = pairs_results[3][0][0].tolist()
+    freq_bins_round = np.round(freq_bins,1).tolist()
+
     dim_names = ptdata.names.dim.copy()
     dim_labels = ptdata.labels.dim.copy()
     dimel_labels = ptdata.labels.dimel.copy()
-    if isinstance(fixed_axes,list): groupby = fixed_axes[0]
-    else: groupby = fixed_axes
+
+    if isinstance(new_fixed_axes,list): groupby = new_fixed_axes[0]
+    else: groupby = new_fixed_axes
+
     i_freq_lbl = groupby
     if i_freq_lbl < 0: i_freq_lbl = len(dim_names) + i_freq_lbl
     if (i_freq_lbl != pairs_axis) and (i_freq_lbl >= 0):
