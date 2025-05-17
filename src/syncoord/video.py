@@ -471,32 +471,39 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
 def poseprep( json_path, savepaths, vis={}, **kwargs ):
     '''
     Pre-process AlphaPose's tracking results.
-    Currently tested for extraction of one point per individual.
     Args:
-        json_path: str, path of folder for input json AlphaPose tracking files.
-        savepaths: dict, of str or None.
-                savepaths['parquet']: path to folder for pre-processed data parquet files.
+        json_path (str): Path of folder for input json AlphaPose tracking files.
+        savepaths (dict):
+                savepaths['parquet'] (str): Path to folder for pre-processed data parquet files.
                 Optional:
-                    savepaths['rawfig']: path to folder for raw data figures.
-                    savepaths['prepfig']: path to folder for pre-processed data figures.
-                    savepaths['log']: path to folder for pre-processing log file.
+                    savepaths['rawfig'] (str): Path to folder for raw data figures.
+                    savepaths['prepfig'] (str): Path to folder for pre-processed data figures.
+                    savepaths['log'] (str): Path to folder for pre-processing log file.
         Optional:
-            vis: dict, visualisation options.
-                vis['show']: bool, show visualisation (independent of saving)
-                vis['markersize']: scalar, marker size for raw data plots.
-                vis['lwraw']: scalar, line width for raw data plots.
-                vis['lwprep']: scalar, line width for pre-processed data plots.
-        **kwargs:
-            keypoints: list. Default =[0,1] ([x1,y1] for "Nose", assuming COCO format).
-            n_indiv: int, expected number of individuals to be tracked, None for automatic.
-            skip_done: bool, skip if corresponding preprocessed parquet file exists.
-            suffix: str, label to be added to the names of the resulting files.
-            trange: list or str. Time-range selection. Default = None
-                    If list: [start,end] (frames)
-                    If str: 'all' (same as None)
-            drdim: None, 'all', int, or list of dimensions to apply disjoint ranges
-                   for tracked individuals. Works only if keypoint trajectories don't overlap.
-            verbose: bool.
+            vis (dict): Visualisation options.
+                vis['show'] (bool): Show visualisation (independent of saving)
+                vis['markersize'] (int,float): Marker size for raw data plots.
+                vis['lwraw'] (int,float): Line width for raw data plots.
+                vis['lwprep'] (int,float): Line width for pre-processed data plots.
+            keypoints (list): Default =[0,1] ([x1,y1] for "Nose", assuming COCO format).
+            kp_labels (list): Labels for keypoints. Default = ['x','y']
+            n_indiv (int,str): Expected number of individuals to be tracked. Default = 'auto'
+            skip_done (bool): Skip if corresponding preprocessed parquet file exists.
+            suffix (str): Label to be added to the names of the resulting files.
+            trange (list): Time-range selection [start,end]. Default = None
+            scorefac (float): NMS score factor to discard raw data. 0 >= scorefac <= 1
+                              Default = 0.7
+            drdim (str,int,list): Dimensions to apply disjoint ranges for tracked individuals.
+                                  'all' to try all dimensions. Works only if keypoint trajectories
+                                  don't overlap. Default = None
+            drlim_set (list): Set manual limits for disjoint ranges, only if json_path is a file or
+                              is a folder with only one file. Format is nested lists for dimensions.
+                              The order should be consistent with drdim. Default = None
+                              Example: [[lim0_dim0,lim1_dim0], [lim0_dim1,lim1_dim1]]
+            verbose (bool): Default = True
+    Returns:
+            drlim_file (list): Limits of disjoint ranges, only if json_path is a file and
+                               drdim is not None.
     Documentation:
         https://github.com/MVIG-SJTU/AlphaPose/blob/master/docs/output.md
     '''
@@ -510,18 +517,21 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
     assert isinstance(vis,dict), 'Argument "vis" should be dict.'
     vis = {'show':True,'markersize':0.8,'lwraw':4,'lwprep':2,**vis}
     keypoints = kwargs.get('keypoints',[0,1])
+    kp_labels = kwargs.get('kp_labels',['x','y'])
     if len(keypoints) > 2:
         raise Exception(''.join([ f'Currently only one point with two dimensions (x,y) \
                                     are allowed, but instead got this: {keypoints}' ]))
-    n_indiv = kwargs.get('n_indiv',None)
+    n_indiv = kwargs.get('n_indiv','auto')
     skip_done = kwargs.get('skip_done',True)
     suffix = kwargs.get('suffix',None)
     trange = kwargs.get('trange',None)
+    scorefac = kwargs.get('scorefac',0.7)
     drdim = kwargs.get('drdim',None)
+    drlim_set = kwargs.get('drlim_set',None)
     verbose = kwargs.get('verbose',True)
 
-    if drdim is not None:
-        from sklearn.cluster import HDBSCAN
+    if drdim is not None: from sklearn.cluster import HDBSCAN
+
     if vis['show'] or rawfig_path or prepfig_path:
         import matplotlib.pyplot as plt
         if plt.get_backend() == 'agg': # AlphaPose uses 'agg'
@@ -529,12 +539,21 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
             import matplotlib
             reload(matplotlib)
             reload(matplotlib.pyplot)
-    DIM_LABELS = ['x','y']
+
     if isinstance(drdim,int): drdim = [drdim]
-    elif isinstance(drdim,str): drdim = list(range(len(DIM_LABELS)))
+    elif isinstance(drdim,str): drdim = list(range(len(kp_labels)))
 
     parquet_fnames = utils.listfiles(savepaths['parquet'])
+
     json_fnames = utils.listfiles(json_path)
+    json_path_is_file = os.path.isfile(json_path)
+    if json_path_is_file: json_path = os.path.dirname(json_path)
+
+    if drlim_set:
+        assert drdim, 'argument "drdim" should have a value'
+        assert len(drdim) == len(drlim_set), '"drdim" and "drlim_set" should be the same length'
+        assert (len(json_fnames)==1) or json_path_is_file, 'argument "drlim_set" works only for one file'
+
     for json_fn in json_fnames:
 
         fn_ne = os.path.splitext(json_fn)[0]
@@ -550,67 +569,78 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
 
             # Load data from JSON file produced by AlphaPose:
             data_raw_df = pd.read_json(json_path + '/' + json_fn)
-            if n_indiv is None: n_persons = data_raw_df.idx.max()
+            if n_indiv == 'auto': n_persons = data_raw_df.idx.max()
             else: n_persons = n_indiv
             persons_range = range(1,n_persons+1)
 
             # Reduce by removing unnecessary data:
             data_red_df = data_raw_df.drop(['category_id','keypoints','score','box'],axis=1)
-            for lbl,i in zip(DIM_LABELS,keypoints):
+            score_thresh = (data_raw_df.score.max() - data_raw_df.score.min()) * scorefac
+            data_red_df = data_red_df[ data_raw_df.score >= score_thresh ]
+            for lbl,i in zip(kp_labels,keypoints):
                 data_red_df[lbl] = data_raw_df.keypoints.str[i]
             data_red_df.image_id = data_red_df.image_id.str.split('.').str[0].astype(int)
+            if trange: t_loc = trange
+            else: t_loc = [0,data_red_df.image_id.max()]
+            idx_df_sel = (data_red_df.image_id >= t_loc[0]) & (data_red_df.image_id <  t_loc[1])
+            data_red_df = data_red_df[idx_df_sel]
 
             # Inspect and make plot of raw data:
-            if drdim: limits = []
             if vis['show'] or rawfig_path or log_path or drdim:
+                if drdim:
+                    if drlim_set:
+                        drlim_file = drlim_set
+                        i_drlim = 0
+                    else: drlim_file = []
                 if log_path: prep_log_txt = [fn_ne + '\n']
-                if (trange is None) or (trange == 'all'):
-                    t_loc = [0,data_red_df.image_id.max()]
-                else:
-                    t_loc = trange
+
                 n_series = len(keypoints)
-                series_range = range(n_series)
                 for i_s in range(n_series):
                     if vis['show'] or rawfig_path: plt.subplot(n_series,1,i_s+1)
                     n_frames = []
                     legend = []
                     for i_p in persons_range:
-                        slice_sel = (   (data_red_df.idx == i_p)
-                                      & (data_red_df.image_id >= t_loc[0])
-                                      & (data_red_df.image_id <  t_loc[1]) )
-                        data_red_slice_df = data_red_df[DIM_LABELS[i_s]][slice_sel]
+                        data_red_p_df = data_red_df[kp_labels[i_s]][data_red_df.idx == i_p]
                         if vis['show'] or rawfig_path:
-                            data_red_slice_df.plot(linewidth=vis['lwraw'])
-                        n_frames.append(len(data_red_slice_df))
+                            data_red_p_df.plot(linewidth=vis['lwraw'],alpha=0.7)
+                        n_frames.append(len(data_red_p_df))
 
                     if vis['show'] or rawfig_path or drdim:
-                        this_series = data_red_df[DIM_LABELS[i_s]].sort_values()
+                        this_series = data_red_df[kp_labels[i_s]]
+
                     if vis['show'] or rawfig_path:
                         this_series.plot( marker='.', linestyle='none',
                                           markersize=vis['markersize'], color='k')
-                    plot_hlines = False
-                    if drdim and (i_s in drdim):
-                        mcs = int(len(this_series)/(n_persons*2))
-                        clustering = HDBSCAN( min_cluster_size=mcs, store_centers="centroid",
-                                              metric="cityblock" )
-                        clustering.fit(np.reshape(this_series, (-1, 1)))
-                        centroids = np.squeeze(clustering.centroids_)
-                        if centroids.size == n_persons:
-                            these_limits = centroids[:-1] + np.diff(centroids)/2
-                            these_limits = np.insert( these_limits, [0,len(centroids)-1],
-                                                      [0,this_series.max()] )
-                            limits.append(these_limits)
-                            plot_hlines = True
-                        else:
-                            limits.append(None)
-                            print( ''.join([ 'Warning: no disjoint ranges for axis',
-                                             f'{i_s}', ' (', f'{DIM_LABELS[i_s]}', ')' ]))
 
-                        if plot_hlines: plt.hlines( these_limits[1:-1], 0, len(this_series),
+                    if drdim and (i_s in drdim):
+                        if drlim_set:
+                            dim_max = this_series.max()
+                            drlim_file[i_drlim] = [0] + drlim_file[i_drlim] + [dim_max]
+                            drlim_series = drlim_file[i_drlim]
+                            plot_hlines = True
+                            i_drlim += 1
+                        else:
+                            mcs = int(len(this_series)/(n_persons*2))
+                            clustering = HDBSCAN( min_cluster_size=mcs, store_centers="centroid",
+                                                  metric="cityblock" )
+                            clustering.fit(np.reshape(this_series, (-1, 1)))
+                            centroids = np.squeeze(clustering.centroids_)
+                            if centroids.size == n_persons:
+                                drlim_series = centroids[:-1] + np.diff(centroids)/2
+                                drlim_series = np.insert( drlim_series, [0,len(centroids)-1],
+                                                          [0,this_series.max()] )
+                                drlim_file.append(np.sort(drlim_series).tolist())
+                                plot_hlines = True
+                            else:
+                                drlim_file.append(None)
+                                print( ''.join([ 'Warning: no disjoint ranges for axis',
+                                                 f'{i_s}', ' (', f'{kp_labels[i_s]}', ')' ]))
+                                plot_hlines = False
+                        if plot_hlines: plt.hlines( drlim_series[1:-1], 0, data_red_df.index.max(),
                                                     linestyles='dashed',
                                                     colors='tab:gray', linewidths=0.8 )
 
-                    plt.ylabel(DIM_LABELS[i_s])
+                    plt.ylabel(kp_labels[i_s])
                     if i_s == 0:
                         plt.legend( list(persons_range)+['all'],loc='upper right',
                                     bbox_to_anchor=(1.2, 1.02) )
@@ -620,12 +650,13 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                         for p in n_frames:
                             if p != mean_persons:
                                 warning_frames = ''.join([ 'inconsistent frame count in '
-                                                          f'{DIM_LABELS[i_s]} {tuple(n_frames)}' ])
+                                                          f'{kp_labels[i_s]} {tuple(n_frames)}' ])
                                 prep_log_txt.append( warning_frames+'\n' )
                                 if verbose: print('Warning:',warning_frames)
                                 break
+
                 if rawfig_path or vis['show']:
-                    plt.gcf().suptitle(fn_ne+'\nRaw Data')
+                    plt.gcf().suptitle(f'{fn_ne}\nRaw (NMS score factor = {scorefac})')
                     plt.gcf().supxlabel('stacked frames (as in json file)')
                     plt.tight_layout()
                     if rawfig_path:
@@ -633,17 +664,32 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                         plt.savefig(fig_ffn)
                     if vis['show']: plt.show()
                     else: plt.close(plt.gcf())
+
                 if log_path or verbose:
                     if (data_red_df.idx.max()) != n_persons:
                         warning_idx = 'more idx than number of people in raw data'
                         if verbose: print('Warning:',warning_idx)
                         if log_path: prep_log_txt.append(warning_idx+'\n')
 
+            # Apply disjoint ranges:
+            if drdim:
+                i_l = 0
+                for i_drdim in drdim:
+                    if isinstance(drlim_file[i_drdim],list):
+                        for i_p, _ in enumerate(drlim_file[i_l][:-1]):
+                            col_lbl = kp_labels[i_drdim]
+                            idx_lo = data_red_df[col_lbl] > drlim_file[i_l][i_p]
+                            idx_hi = data_red_df[col_lbl] <= drlim_file[i_l][i_p+1]
+                            idx_sel = idx_lo & idx_hi
+                            data_red_df.loc[idx_sel,'idx'] = i_p+1
+                        drlim_file[i_l] = drlim_file[i_l][1:-1] # for output
+                    i_l += 1
+
             # Rearrange such that each row is a frame (image_id):
             data_rar_df = pd.DataFrame( list(range(data_red_df.image_id.max() + 1)) ,
                                         columns=['image_id'] )
             for i_p in persons_range:
-                red_df_cols = ['image_id'] + DIM_LABELS
+                red_df_cols = ['image_id'] + kp_labels
                 red_df_idx = data_red_df.idx == i_p
                 data_rar_df = data_rar_df.merge( data_red_df[red_df_cols][(red_df_idx)],
                                                  on='image_id', how='left',
@@ -654,33 +700,18 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
             # It is assumed that the persons don't relocate (e.g. they are sitting or standing in
             # one place). Indices are set to start at 0 to be consistent with Python indexing.
             new_order_x = [ x for x in data_rar_df.iloc[:,::2].median().sort_values().index]
-            new_order_y = [ y.replace(DIM_LABELS[0],DIM_LABELS[1]) for y in new_order_x ]
+            new_order_y = [ y.replace(kp_labels[0],kp_labels[1]) for y in new_order_x ]
             new_order_xy = []
             new_order_lbl = []
             i_c = 0
             for x,y in zip(new_order_x,new_order_y):
                 new_order_xy.append(x)
                 new_order_xy.append(y)
-                new_order_lbl.append(f'{i_c}_{DIM_LABELS[0]}')
-                new_order_lbl.append(f'{i_c}_{DIM_LABELS[1]}')
+                new_order_lbl.append(f'{i_c}_{kp_labels[0]}')
+                new_order_lbl.append(f'{i_c}_{kp_labels[1]}')
                 i_c += 1
             data_rar_df = data_rar_df.reindex(new_order_xy, axis=1)
             data_rar_df.columns = new_order_lbl
-
-            # Apply disjoint ranges:
-            if drdim:
-                i_lims = 0
-                for d in drdim:
-                    if isinstance(limits[i_lims],np.ndarray):
-                        i_col = 0
-                        for col_lbl in data_rar_df:
-                            if (col_lbl[ col_lbl.index('_')+1: ]) == DIM_LABELS[d]:
-                                lim_lo = data_rar_df[col_lbl] > limits[i_lims][i_col]
-                                lim_hi = data_rar_df[col_lbl] <= limits[i_lims][i_col+1]
-                                mask = lim_lo & lim_hi
-                                data_rar_df[col_lbl] = data_rar_df.loc[mask,col_lbl]
-                                i_col += 1
-                    i_lims += 1
 
             # Fill missing data:
             found_nan = data_rar_df.isnull().values.any()
@@ -707,19 +738,19 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                     t_loc = [0,data_rar_df.index.max()]
                 else:
                     t_loc = trange
-                for i_s in series_range:
+                for i_s in range(n_series):
                     plt.subplot(n_series,1,i_s+1)
                     legend = []
-                    names_cols = [ f'{n}_{DIM_LABELS[i_s]}' for n in range(n_persons)]
+                    names_cols = [ f'{n}_{kp_labels[i_s]}' for n in range(n_persons)]
                     for nc in names_cols:
                         data_rar_slice_df = data_rar_df[nc].iloc[ t_loc[0] : t_loc[1] ]
                         data_rar_slice_df.plot(linewidth=vis['lwprep'])
 
                         legend.append(nc.split('_')[0])
-                    plt.ylabel(DIM_LABELS[i_s])
+                    plt.ylabel(kp_labels[i_s])
                     if i_s == 0:
                         plt.legend(legend,loc='upper right', bbox_to_anchor=(1.2, 1.02))
-                plt.suptitle(fn_ne+'\nPre-processed Data')
+                plt.suptitle(fn_ne+'\nPre-processed')
                 plt.xlabel('time (video frames)')
                 plt.tight_layout()
                 if prepfig_path:
@@ -737,3 +768,5 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
 
         else:
             if verbose: print('skipped')
+
+    if (drdim is not None) and (len(json_fnames)==1): return drlim_file
