@@ -42,7 +42,7 @@ ptrack_kwargs['video_out_path'] = video_out_path
 ptrack_kwargs['log_path'] = pose_tracking_path
 ptrack_kwargs['sp'] = True
 
-# yolov3 (default) seems not to work in Linux
+# detectors 'yolo' (YOLOv3, default) and 'tracker' seem not to work in Linux
 ptrack_kwargs['detector'] = 'yolox'
 ptrack_kwargs['model'] = AlphaPose_path + '/pretrained_models/halpe26_fast_res50_256x192.pth'
 ptrack_kwargs['config'] = AlphaPose_path + '/configs/halpe_26/resnet/256x192_res50_lr1e-3_1x.yaml'
