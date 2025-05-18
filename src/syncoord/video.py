@@ -225,8 +225,8 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
                        Use "-1" for cpu only. Default="0"
             program: str or None (default).
                      If str: 'inference' (module) or 'demo_inference' (script)
-                              The latter prints nicely on a python IDE (e.g., jupyter),
-                              but might not work with GPU.
+                              The former prints nicely on a Python IDE (e.g., Jupyter),
+                              but may not work with GPU.
                      If None and gpus = "-1": use module AlphaPose/inference.py
                      Else: run script AlphaPose/scripts/demo_inference.py
             flip: bool. Enable flip testing. It might improve accuracy.
