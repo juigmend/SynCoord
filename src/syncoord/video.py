@@ -481,13 +481,15 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                     savepaths['log'] (str): Path to folder for pre-processing log file.
         Optional:
             vis (dict): Visualisation options.
-                vis['show'] (bool): Show visualisation (independent of saving)
+                vis['show'] (bool): Show visualisation (independent of saving).
                 vis['markersize'] (int,float): Marker size for raw data plots.
                 vis['lwraw'] (int,float): Line width for raw data plots.
                 vis['lwprep'] (int,float): Line width for pre-processed data plots.
             keypoints (list): Default =[0,1] ([x1,y1] for "Nose", assuming COCO format).
             kp_labels (list): Labels for keypoints. Default = ['x','y']
             n_indiv (int,str): Expected number of individuals to be tracked. Default = 'auto'
+            sel_indiv (int,list,str): Selection of individuals with index in json file starting
+                                      at 1. Default = 'all'
             skip_done (bool): Skip if corresponding preprocessed parquet file exists.
             suffix (str): Label to be added to the names of the resulting files.
             trange (list): Time-range selection [start,end]. Default = None
@@ -500,6 +502,7 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                               is a folder with only one file. Format is nested lists for dimensions.
                               The order should be consistent with drdim. Default = None
                               Example: [[lim0_dim0,lim1_dim0], [lim0_dim1,lim1_dim1]]
+            fillgaps (bool): Fill missing data with cubic spline. Default = True
             verbose (bool): Default = True
     Returns:
             drlim_file (list): Limits of disjoint ranges, only if json_path is a file and
@@ -522,15 +525,15 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
         raise Exception(''.join([ f'Currently only one point with two dimensions (x,y) \
                                     are allowed, but instead got this: {keypoints}' ]))
     n_indiv = kwargs.get('n_indiv','auto')
+    sel_indiv = kwargs.get('sel_indiv','all')
     skip_done = kwargs.get('skip_done',True)
     suffix = kwargs.get('suffix',None)
     trange = kwargs.get('trange',None)
     scorefac = kwargs.get('scorefac',0.7)
     drdim = kwargs.get('drdim',None)
     drlim_set = kwargs.get('drlim_set',None)
+    fillgaps = kwargs.get('fillgaps',True)
     verbose = kwargs.get('verbose',True)
-
-    if drdim is not None: from sklearn.cluster import HDBSCAN
 
     if vis['show'] or rawfig_path or prepfig_path:
         import matplotlib.pyplot as plt
@@ -540,6 +543,9 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
             reload(matplotlib)
             reload(matplotlib.pyplot)
 
+    if isinstance(sel_indiv,int): sel_indiv = [sel_indiv]
+
+    if drdim is not None: from sklearn.cluster import HDBSCAN
     if isinstance(drdim,int): drdim = [drdim]
     elif isinstance(drdim,str): drdim = list(range(len(kp_labels)))
 
@@ -571,7 +577,6 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
             data_raw_df = pd.read_json(json_path + '/' + json_fn)
             if n_indiv == 'auto': n_persons = data_raw_df.idx.max()
             else: n_persons = n_indiv
-            persons_range = range(1,n_persons+1)
 
             # Reduce by removing unnecessary data:
             data_red_df = data_raw_df.drop(['category_id','keypoints','score','box'],axis=1)
@@ -584,6 +589,10 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
             else: t_loc = [0,data_red_df.image_id.max()]
             idx_df_sel = (data_red_df.image_id >= t_loc[0]) & (data_red_df.image_id <  t_loc[1])
             data_red_df = data_red_df[idx_df_sel]
+            if sel_indiv == 'all': persons_range = range(1,n_persons+1)
+            else:
+                n_persons = len(sel_indiv)
+                persons_range = sel_indiv
 
             # Inspect and make plot of raw data:
             if vis['show'] or rawfig_path or log_path or drdim:
@@ -714,15 +723,16 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
             data_rar_df.columns = new_order_lbl
 
             # Fill missing data:
-            found_nan = data_rar_df.isnull().values.any()
-            if found_nan:
-                data_rar_df = data_rar_df.interpolate(limit_direction='both',method='cubicspline')
-                if log_path or verbose:
-                    warning_interp = 'missing raw data have been interpolated'
-                    if verbose:
-                        print('Warning:',warning_interp)
-                    if log_path:
-                        prep_log_txt.append(warning_interp+'\n')
+            if fillgaps:
+                found_nan = data_rar_df.isnull().values.any()
+                if found_nan:
+                    data_rar_df = data_rar_df.interpolate(limit_direction='both',method='cubicspline')
+                    if log_path or verbose:
+                        warning_interp = 'missing raw data have been interpolated'
+                        if verbose:
+                            print('Warning:',warning_interp)
+                        if log_path:
+                            prep_log_txt.append(warning_interp+'\n')
 
             # save log:
             if log_path:
