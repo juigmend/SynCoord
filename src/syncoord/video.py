@@ -602,10 +602,12 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                         i_drlim = 0
                     else: drlim_file = []
                 if log_path: prep_log_txt = [fn_ne + '\n']
-
                 n_series = len(keypoints)
+
                 for i_s in range(n_series):
-                    if vis['show'] or rawfig_path: plt.subplot(n_series,1,i_s+1)
+
+                    if (vis['show'] is True) or rawfig_path: plt.subplot(n_series,1,i_s+1)
+
                     n_frames = []
                     legend = []
                     for i_p in persons_range:
