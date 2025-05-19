@@ -751,9 +751,6 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
             for i_c, cn in enumerate(data_rar_df.columns):
                 if kp_labels[kp_horizontal] == cn[0]:
                     idx_h.append(i_c)
-                    
-            # new_order_h = [ s for s in data_rar_df.iloc[:,idx_h].median().sort_values().index]
-            
             sorted_df = data_rar_df.iloc[:,idx_h].median().reset_index().sort_values(0)
             idx_new_order = list(sorted_df.index)
             new_order_h = list(sorted_df['index'])
@@ -762,7 +759,6 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
             for i_s in range(n_series):
                 colours_ra.append([])
                 for i_no in idx_new_order: colours_ra[i_s].append(colours[i_s][i_no])
-                
                 if i_s == kp_horizontal:
                     new_order_lists.append(new_order_h)
                 else:
@@ -779,17 +775,7 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                 i_np += 1
             data_rar_df = data_rar_df.reindex(new_order_all, axis=1)
             data_rar_df.columns = new_order_lbl
-            # print('old_order_all =',old_order_all)
-            # idx_reorder = []
-            # for e in old_order_all:
-            #     # idx_reorder.append(new_order_all.index(e))
-            #     colours_ra.append(colours[new_order_all.index(e)])
-            # print('idx_reorder =',idx_reorder)
-            # print('new_order_all =',new_order_all)
-            # print('colours =',colours)
-            # print('colours_ra =',colours_ra)
-            # raise Exception('halt')
-            
+
             # Fill missing data:
             if fillgaps:
                 found_nan = data_rar_df.isnull().values.any()
