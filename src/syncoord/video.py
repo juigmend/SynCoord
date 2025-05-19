@@ -481,12 +481,14 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                     savepaths['log'] (str): Path to folder for pre-processing log file.
         Optional:
             vis (dict): Visualisation options.
-                vis['show'] (bool): Show visualisation (independent of saving).
+                vis['show'] (bool,str): Show visualisation (independent of saving).
+                                        'ind' to plot individuals separately.
                 vis['markersize'] (int,float): Marker size for raw data plots.
                 vis['lwraw'] (int,float): Line width for raw data plots.
                 vis['lwprep'] (int,float): Line width for pre-processed data plots.
             keypoints (list): Default =[0,1] ([x1,y1] for "Nose", assuming COCO format).
             kp_labels (list): Labels for keypoints. Default = ['x','y']
+            kp_horizontal (int): Keypoint index of horizontal axis. Default = 0
             n_indiv (int,str): Expected number of individuals to be tracked. Default = 'auto'
             sel_indiv (int,list,str): Selection of individuals with index in json file starting
                                       at 1. Default = 'all'
@@ -521,6 +523,7 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
     vis = {'show':True,'markersize':0.8,'lwraw':4,'lwprep':2,**vis}
     keypoints = kwargs.get('keypoints',[0,1])
     kp_labels = kwargs.get('kp_labels',['x','y'])
+    kp_horizontal = kwargs.get('kp_horizontal',0)
     if len(keypoints) > 2:
         raise Exception(''.join([ f'Currently only one point with two dimensions (x,y) \
                                     are allowed, but instead got this: {keypoints}' ]))
@@ -542,6 +545,9 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
             import matplotlib
             reload(matplotlib)
             reload(matplotlib.pyplot)
+    if vis['show'] == 'ind':
+        vis['lwraw'] /= 2
+        if vis['lwraw'] < 1: vis['lwraw'] = 1
 
     if isinstance(sel_indiv,int): sel_indiv = [sel_indiv]
 
@@ -594,8 +600,9 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                 n_persons = len(sel_indiv)
                 persons_range = sel_indiv
 
-            # Inspect and make plot of raw data:
+            # Inspect, plot selected raw data, and cluster:
             if vis['show'] or rawfig_path or log_path or drdim:
+
                 if drdim:
                     if drlim_set:
                         drlim_file = drlim_set
@@ -603,27 +610,52 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                     else: drlim_file = []
                 if log_path: prep_log_txt = [fn_ne + '\n']
                 n_series = len(keypoints)
+                if vis['show'] == 'ind':
+                    n_sp = n_series*n_persons + n_series*2 - 1
+                    i_sp = 1
+                minmax_frames = [data_red_df.index.min(),data_red_df.index.max()]
+                colours = []
 
                 for i_s in range(n_series):
-
-                    if (vis['show'] is True) or rawfig_path: plt.subplot(n_series,1,i_s+1)
-
+                    if vis['show'] == 'ind': new_series = True
+                    elif (vis['show'] is True) or rawfig_path:
+                        plt.subplot(n_series,1,i_s+1)
+                        legend = []
                     n_frames = []
-                    legend = []
+                    colours.append([])
                     for i_p in persons_range:
+
                         data_red_p_df = data_red_df[kp_labels[i_s]][data_red_df.idx == i_p]
                         if vis['show'] or rawfig_path:
-                            data_red_p_df.plot(linewidth=vis['lwraw'],alpha=0.7)
+                            if vis['show'] == 'ind':
+                                if new_series:
+                                    i_sp += 1
+                                    if i_s > 0: i_sp += 1
+                                plt.subplot(n_sp,1,i_sp)
+                                i_sp += 1
+
+                            ax = data_red_p_df.plot(linewidth=vis['lwraw'],alpha=0.7)
+                            colours[i_s].append( ax.get_lines()[-1].get_color())
+
+                            if vis['show'] == 'ind':
+                                plt.xlim(minmax_frames)
+                                plt.xticks(fontsize=7)
+                                plt.yticks(fontsize=7)
+                                if new_series:
+                                    plt.title(f'\n{kp_labels[i_s]}')
+                                    new_series = False
                         n_frames.append(len(data_red_p_df))
 
                     if vis['show'] or rawfig_path or drdim:
                         this_series = data_red_df[kp_labels[i_s]]
-
-                    if vis['show'] or rawfig_path:
+                    if vis['show'] != 'ind' and(vis['show'] or rawfig_path):
                         this_series.plot( marker='.', linestyle='none',
                                           markersize=vis['markersize'], color='k')
 
+                    # Identify disjoint ranges by clustering:
                     if drdim and (i_s in drdim):
+                        assert vis['show'] != 'ind', ''.join[ "disjoint ranges cannot be applied ",
+                                                              "when vis['show']='ind'"]
                         if drlim_set:
                             dim_max = this_series.max()
                             drlim_file[i_drlim] = [0] + drlim_file[i_drlim] + [dim_max]
@@ -651,10 +683,11 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                                                     linestyles='dashed',
                                                     colors='tab:gray', linewidths=0.8 )
 
-                    plt.ylabel(kp_labels[i_s])
-                    if i_s == 0:
-                        plt.legend( list(persons_range)+['all'],loc='upper right',
-                                    bbox_to_anchor=(1.2, 1.02) )
+                    if vis['show'] != 'ind':
+                        plt.ylabel(kp_labels[i_s])
+                        if i_s == 0:
+                            plt.legend( list(persons_range)+['all'],loc='upper right',
+                                        bbox_to_anchor=(1.2, 1.02) )
 
                     if log_path:
                         mean_persons = sum(n_frames)/n_persons
@@ -669,7 +702,7 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                 if rawfig_path or vis['show']:
                     plt.gcf().suptitle(f'{fn_ne}\nRaw (NMS score factor = {scorefac})')
                     plt.gcf().supxlabel('stacked frames (as in json file)')
-                    plt.tight_layout()
+                    if vis['show'] != 'ind': plt.tight_layout()
                     if rawfig_path:
                         fig_ffn = rawfig_path + '/' + fn_ne + '_RAW.png'
                         plt.savefig(fig_ffn)
@@ -702,28 +735,61 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
             for i_p in persons_range:
                 red_df_cols = ['image_id'] + kp_labels
                 red_df_idx = data_red_df.idx == i_p
-                data_rar_df = data_rar_df.merge( data_red_df[red_df_cols][(red_df_idx)],
+                data_rar_df = data_rar_df.merge( data_red_df[red_df_cols][red_df_idx],
                                                  on='image_id', how='left',
                                                  suffixes=(f'_{i_p-1}',f'_{i_p}') )
+            colnames = list(data_rar_df.columns)
+            new_last_colnames = [f'{s}_{i_p}' for s in colnames[-n_series:]]
+            colnames[-n_series:] = new_last_colnames
+            data_rar_df.columns = colnames
             data_rar_df = data_rar_df.drop(['image_id'],axis=1)
 
             # Re-order and re-label columns in order from left to right as they appear in the image:
             # It is assumed that the persons don't relocate (e.g. they are sitting or standing in
             # one place). Indices are set to start at 0 to be consistent with Python indexing.
-            new_order_x = [ x for x in data_rar_df.iloc[:,::2].median().sort_values().index]
-            new_order_y = [ y.replace(kp_labels[0],kp_labels[1]) for y in new_order_x ]
-            new_order_xy = []
+            idx_h = []
+            for i_c, cn in enumerate(data_rar_df.columns):
+                if kp_labels[kp_horizontal] == cn[0]:
+                    idx_h.append(i_c)
+                    
+            # new_order_h = [ s for s in data_rar_df.iloc[:,idx_h].median().sort_values().index]
+            
+            sorted_df = data_rar_df.iloc[:,idx_h].median().reset_index().sort_values(0)
+            idx_new_order = list(sorted_df.index)
+            new_order_h = list(sorted_df['index'])
+            new_order_lists = []
+            colours_ra = []
+            for i_s in range(n_series):
+                colours_ra.append([])
+                for i_no in idx_new_order: colours_ra[i_s].append(colours[i_s][i_no])
+                
+                if i_s == kp_horizontal:
+                    new_order_lists.append(new_order_h)
+                else:
+                    new_order_s = [ d.replace(str(kp_labels[kp_horizontal]),kp_labels[i_s])
+                                    for d in new_order_h ]
+                    new_order_lists.append(new_order_s)
+            new_order_all = []
             new_order_lbl = []
-            i_c = 0
-            for x,y in zip(new_order_x,new_order_y):
-                new_order_xy.append(x)
-                new_order_xy.append(y)
-                new_order_lbl.append(f'{i_c}_{kp_labels[0]}')
-                new_order_lbl.append(f'{i_c}_{kp_labels[1]}')
-                i_c += 1
-            data_rar_df = data_rar_df.reindex(new_order_xy, axis=1)
+            i_np = 0
+            for i_p,_ in enumerate(persons_range):
+                for i_s in range(n_series):
+                    new_order_all.append(new_order_lists[i_s][i_p])
+                    new_order_lbl.append(f'{i_np}_{kp_labels[i_s]}')
+                i_np += 1
+            data_rar_df = data_rar_df.reindex(new_order_all, axis=1)
             data_rar_df.columns = new_order_lbl
-
+            # print('old_order_all =',old_order_all)
+            # idx_reorder = []
+            # for e in old_order_all:
+            #     # idx_reorder.append(new_order_all.index(e))
+            #     colours_ra.append(colours[new_order_all.index(e)])
+            # print('idx_reorder =',idx_reorder)
+            # print('new_order_all =',new_order_all)
+            # print('colours =',colours)
+            # print('colours_ra =',colours_ra)
+            # raise Exception('halt')
+            
             # Fill missing data:
             if fillgaps:
                 found_nan = data_rar_df.isnull().values.any()
@@ -731,10 +797,8 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                     data_rar_df = data_rar_df.interpolate(limit_direction='both',method='cubicspline')
                     if log_path or verbose:
                         warning_interp = 'missing raw data have been interpolated'
-                        if verbose:
-                            print('Warning:',warning_interp)
-                        if log_path:
-                            prep_log_txt.append(warning_interp+'\n')
+                        if verbose: print('Warning:',warning_interp)
+                        if log_path: prep_log_txt.append(warning_interp+'\n')
 
             # save log:
             if log_path:
@@ -744,19 +808,16 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                     for t in prep_log_txt:
                         output.write(t)
 
-            # Make plot of pre-processed data:
+            # Plot pre-processed data:
             if vis['show'] or prepfig_path:
-                if (trange is None) or (trange == 'all'):
-                    t_loc = [0,data_rar_df.index.max()]
-                else:
-                    t_loc = trange
                 for i_s in range(n_series):
                     plt.subplot(n_series,1,i_s+1)
                     legend = []
                     names_cols = [ f'{n}_{kp_labels[i_s]}' for n in range(n_persons)]
-                    for nc in names_cols:
-                        data_rar_slice_df = data_rar_df[nc].iloc[ t_loc[0] : t_loc[1] ]
-                        data_rar_slice_df.plot(linewidth=vis['lwprep'])
+                    for i_nc, nc in enumerate(names_cols):
+                        data_rar_slice_df = data_rar_df[nc]
+                        this_colour = colours_ra[i_s][i_nc]
+                        data_rar_slice_df.plot(linewidth=vis['lwprep'],color=this_colour)
 
                         legend.append(nc.split('_')[0])
                     plt.ylabel(kp_labels[i_s])
