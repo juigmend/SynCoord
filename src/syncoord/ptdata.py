@@ -47,6 +47,7 @@ class PtData:
         checkdim(verbose=True): checks consistency of dimensions of data arrays (shape),
                                 except last dimension.
                                 Returns -1 if empty, 0 if inconsistent, 1 if consistent.
+        copy(*arg): Returns a deep copy of the object. Optional: 'nodata' to exclude data.
         visualise(**kwargs): calls syncoord.ptdata.visualise with the same optional arguments.
     Note:
         Use command vars to see content of subfields.
@@ -70,6 +71,11 @@ class PtData:
         self.topinfo = topinfo
         self.vis = {}
         self.other = {}
+
+    def copy(self,*arg):
+        _self = deepcopy(self)
+        if arg[0] == 'nodata': _self.data = {}
+        return _self
 
     def print_shape(self):
         print('data:')
@@ -975,8 +981,8 @@ def aggrax( ptdata, axis=0, function='mean' ):
     dd_in = ptdata.data
     dd_out = {}
     for k in dd_in:
-        if function == 'sum': dd_out[k] = np.sum(dd_in[k],axis=axis)
-        elif function == 'mean': dd_out[k] = np.mean(dd_in[k],axis=axis)
+        if function == 'sum': dd_out[k] = np.nansum(dd_in[k],axis=axis)
+        elif function == 'mean': dd_out[k] = np.nanmean(dd_in[k],axis=axis)
     main_name = ptdata.names.main
     if function == 'sum':
         function_lbl = 'added'
