@@ -1204,7 +1204,8 @@ def apply2( ptd_1, ptd_2, func,*args, **kwargs ):
     Apply a function to corresponding pairs of N-D data arrays in two PtData objects.
     For example, element-wise multiplication of a and b: apply2(a, b, numpy.multiply).
     Args:
-        ptd_1, pt_2: PtData objects, see documentation for syncoord.ptdata.PtData
+        ptd_1, pt_2: PtData objects with same number of N-D arrays. See documentation for
+                     syncoord.ptdata.PtData
         func: a numpy function to operate on corresponsing N-D arrays.
         Optional:
             *args, **kwargs: input arguments and keyword-arguments to the function, respectively.
