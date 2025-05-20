@@ -58,7 +58,7 @@ class PtData:
     Args:
         topinfo: See documentation for syncoord.utils.load_data
     '''
-    def __init__(self,topinfo):
+    def __init__(self,topinfo=None):
         self.names = SubField()
         self.names.main = ''
         self.names.dim = []
