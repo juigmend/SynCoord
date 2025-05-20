@@ -134,7 +134,7 @@ def load( preproc_data, *prop_path, annot_path=None, max_n_files=None,
                                 max_n_files=max_n_files, print_info=print_info, **kwargs )
 
     pos = PtData(load_out[0])
-    pos.names.main = ' '
+    pos.names.main = ''
     pos.names.dim = load_out[1]
     pos.labels.main = ''
     pos.labels.dim = load_out[2]
@@ -420,7 +420,8 @@ def smooth( ptdata,**kwargs ):
                 and (not isinstance(cutoff_freq[0],list)) \
                 and (not isinstance(cutoff_freq[1],list)): cutoff_freq = [cutoff_freq]
         multiband_param = cutoff_freq
-        main_name =  f'Filtered ({freq_response})\n{ptdata.names.main}'
+        main_name =  f'Filtered ({freq_response})'
+        if ptdata.names.main: main_name = f'{main_name}\n{ptdata.names.main}'
         other = dict(list(kwargs.items())[:4]+list(kwargs.items())[5:])
         def butter_(arr,b,a):
             return signal.filtfilt(b, a, arr)
