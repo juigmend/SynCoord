@@ -1266,7 +1266,8 @@ def visualise( ptdata, **kwargs ):
                              's' = 'time (seconds)',
                              '25%' = xticks as specified percentage,
                              '%' = xticks as automatic percentage,
-                             'dim x' = use ptdata.labels.dim[x], or None.
+                             'dim x' = use ptdata.labels.dim[x],
+                             'default', or None.
             figtitle: figure title. If None, ptdata.name.main will be used.
             axes: dimensions to visualise. One for 'line' and'spectrogram', two for 'imshow'.
             sel_list: selection to display with list *
