@@ -1456,10 +1456,12 @@ def visualise( ptdata, **kwargs ):
             groupby = [0]
         if (y_lim is None) and rescale: y_lim = minmax
     elif vistype in ('spectrogram','imshow'):
-        if 'spectrogram' in vistype:
-            super_title = 'Frequency Spectrum\n'
-            ylabel = 'Hz'
-        elif ptdata.names.dim[-2] == 'frequency': ylabel = 'Hz'
+        try:
+            if 'spectrogram' in vistype:
+                super_title = 'Frequency Spectrum\n'
+                ylabel = 'Hz'
+            elif ptdata.names.dim[-2] == 'frequency': ylabel = 'Hz'
+        except: pass
     else: raise Exception(f"vistype = '{vistype}' is not allowed. Allowed values are \
                             'line', 'cline','spectrogram', and 'imshow'")
     if groupby == 'default':
@@ -1558,8 +1560,9 @@ def visualise( ptdata, **kwargs ):
                 elif vistype == 'imshow':
                     if vis_arr.ndim != 2:
                         check_gb = abs(2-vis_arr.ndim)
-                        exmsg = f'Number of dimensions for imshow is {vis_arr.ndim} but should \
-                                be 2. Check that argument "groupby" has length = {check_gb}'
+                        exmsg = ''.join([f'Number of dimensions for imshow is {vis_arr.ndim} ',
+                                          'but should be 2. Check that argument "groupby" has ',
+                                         f'length = {check_gb}, or use another "vistype" value'])
                         raise Exception(exmsg)
                     plt.imshow(vis_arr,aspect='auto',vmin=minmax[0],vmax=minmax[1])
                     plt.gca().invert_yaxis()
