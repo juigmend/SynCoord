@@ -482,11 +482,11 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
         Optional:
             vis (dict): Visualisation options.
                 vis['show'] (bool,str): Show visualisation (independent of saving).
-                                        'ind' to plot individuals separately.
-                vis['markersize'] (int,float): Marker size for raw data plots.
-                vis['lwraw'] (int,float): Line width for raw data plots.
-                vis['lwprep'] (int,float): Line width for pre-processed data plots.
-            keypoints (list): Default =[0,1] ([x1,y1] for "Nose", assuming COCO format).
+                                        'ind' to plot individuals separately. Default = True
+                vis['markersize'] (int,float): Marker size for raw data plots. Default = 0.8
+                vis['lwraw'] (int,float): Line width for raw data plots. Default = 4
+                vis['lwprep'] (int,float): Line width for pre-processed data plots. Default = 2
+            keypoints (list): Default = [0,1] ([x1,y1] for "Nose", assuming COCO format).
             kp_labels (list): Labels for keypoints. Default = ['x','y']
             kp_horizontal (int): Keypoint index of horizontal axis. Default = 0
             n_indiv (int,str): Expected number of individuals to be tracked. Default = 'auto'
@@ -507,8 +507,8 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
             fillgaps (bool): Fill missing data with cubic spline. Default = True
             verbose (bool): Default = True
     Returns:
-            drlim_file (list): Limits of disjoint ranges, only if json_path is a file and
-                               drdim is not None.
+        drlim_file (list): Limits of disjoint ranges. Only if json_path is a file
+                           or folder has one file, and drdim is not None.
     Documentation:
         https://github.com/MVIG-SJTU/AlphaPose/blob/master/docs/output.md
     '''
@@ -545,9 +545,6 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
             import matplotlib
             reload(matplotlib)
             reload(matplotlib.pyplot)
-    if vis['show'] == 'ind':
-        vis['lwraw'] /= 2
-        if vis['lwraw'] < 1: vis['lwraw'] = 1
 
     if isinstance(sel_indiv,int): sel_indiv = [sel_indiv]
 
@@ -565,6 +562,8 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
         assert drdim, 'argument "drdim" should have a value'
         assert len(drdim) == len(drlim_set), '"drdim" and "drlim_set" should be the same length'
         assert (len(json_fnames)==1) or json_path_is_file, 'argument "drlim_set" works only for one file'
+
+    cmap = plt.get_cmap("tab10")
 
     for json_fn in json_fnames:
 
@@ -613,9 +612,8 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                 if vis['show'] == 'ind':
                     n_sp = n_series*n_persons + n_series*2 - 1
                     i_sp = 1
-                minmax_frames = [data_red_df.index.min(),data_red_df.index.max()]
+                minmax_frames_raw = [data_red_df.index.min(),data_red_df.index.max()]
                 colours = []
-
                 for i_s in range(n_series):
                     if vis['show'] == 'ind': new_series = True
                     elif (vis['show'] is True) or rawfig_path:
@@ -623,8 +621,7 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                         legend = []
                     n_frames = []
                     colours.append([])
-                    for i_p in persons_range:
-
+                    for i_n, i_p in enumerate(persons_range):
                         data_red_p_df = data_red_df[kp_labels[i_s]][data_red_df.idx == i_p]
                         if vis['show'] or rawfig_path:
                             if vis['show'] == 'ind':
@@ -634,11 +631,13 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                                 plt.subplot(n_sp,1,i_sp)
                                 i_sp += 1
 
-                            ax = data_red_p_df.plot(linewidth=vis['lwraw'],alpha=0.7)
-                            colours[i_s].append( ax.get_lines()[-1].get_color())
+                            data_red_p_df.plot( linewidth=vis['lwraw'], alpha=0.7, color=cmap(i_n))
+                            colours[i_s].append(cmap(i_n))
 
                             if vis['show'] == 'ind':
-                                plt.xlim(minmax_frames)
+                                data_red_p_df.plot( marker='.', linestyle='none',
+                                                    markersize=vis['markersize'], color='k')
+                                plt.xlim(minmax_frames_raw)
                                 plt.xticks(fontsize=7)
                                 plt.yticks(fontsize=7)
                                 if new_series:
@@ -796,22 +795,42 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
 
             # Plot pre-processed data:
             if vis['show'] or prepfig_path:
+                minmax_frames_pp = [data_rar_df.index.min(),data_rar_df.index.max()]
+                i_sp = 1
                 for i_s in range(n_series):
-                    plt.subplot(n_series,1,i_s+1)
-                    legend = []
+                    if vis['show'] == 'ind': new_series = True
+                    else:
+                        plt.subplot(n_series,1,i_s+1)
+                        legend = []
                     names_cols = [ f'{n}_{kp_labels[i_s]}' for n in range(n_persons)]
                     for i_nc, nc in enumerate(names_cols):
+                        if vis['show'] == 'ind':
+                            if new_series:
+                                i_sp += 1
+                                if i_s > 0: i_sp += 1
+                            plt.subplot(n_sp,1,i_sp)
+                            i_sp += 1
+
                         data_rar_slice_df = data_rar_df[nc]
                         this_colour = colours_ra[i_s][i_nc]
                         data_rar_slice_df.plot(linewidth=vis['lwprep'],color=this_colour)
 
-                        legend.append(nc.split('_')[0])
-                    plt.ylabel(kp_labels[i_s])
-                    if i_s == 0:
-                        plt.legend(legend,loc='upper right', bbox_to_anchor=(1.2, 1.02))
+                        if vis['show'] == 'ind':
+                                plt.xlim(minmax_frames_pp)
+                                plt.xticks(fontsize=7)
+                                plt.yticks(fontsize=7)
+                                if new_series:
+                                    plt.title(f'\n{kp_labels[i_s]}')
+                                    new_series = False
+                        else: legend.append(nc.split('_')[0])
+
+                    if vis['show'] != 'ind':
+                        plt.ylabel(kp_labels[i_s])
+                        if i_s == 0:
+                            plt.legend(legend,loc='upper right', bbox_to_anchor=(1.2, 1.02))
                 plt.suptitle(fn_ne+'\nPre-processed')
                 plt.xlabel('time (video frames)')
-                plt.tight_layout()
+                if vis['show'] != 'ind': plt.tight_layout()
                 if prepfig_path:
                     fig_ffn = prepfig_path + '/' + fn_ne + '_PREP.png'
                     plt.savefig(fig_ffn)
