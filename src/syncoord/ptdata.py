@@ -627,7 +627,7 @@ def winplv( ptdata, window_duration, window_hop=None, pairs_axis=0,
                 fixed_axes = -1
             if dd_in[k].ndim < 2:
                 raise Exception('number of dimensions in data arrays should be at least 2')
-        dd_out[k], pairs_idx = ndarr.apply_to_pairs( dd_in[k], ndarr.windowed_plv,
+        dd_out[k], pairs_idx, _ = ndarr.apply_to_pairs( dd_in[k], ndarr.windowed_plv,
                                                      pairs_axis, fixed_axes=fixed_axes,
                                                      window_length=window_length, mode=mode,
                                                      window_step=window_step,
