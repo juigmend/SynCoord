@@ -991,7 +991,7 @@ def aggrax( ptdata, axis=0, function='mean' ):
     vis = {**ptdata.vis, 'groupby':axis, 'sections':True}
     if len(dim_names) == 1:
         vis['vistype'] = 'line'
-        vis['dlattr'] = 'b-2'
+        vis['dlattr'] = '-1'
     other =  deepcopy(ptdata.other)
     if 'frequency' not in ptdata.names.dim:
         if 'y_ticks' in vis: del vis['y_ticks']
