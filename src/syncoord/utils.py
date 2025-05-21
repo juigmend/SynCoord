@@ -235,7 +235,6 @@ def testdata(*args,**kwargs):
     Returns:
         N-D array with dimensions [points,axes,frames]
     '''
-    # TO-DO: allow seed for random generator as argument
     if args:
         kwargs = args[0]
 
@@ -269,6 +268,7 @@ def testdata(*args,**kwargs):
                 wavargs['vertical_offset'] = ax[3]
                 wavargs['irregularity']  = ax[4]
                 wavargs['noise_strength'] = ax[5]
+                wavargs['seed'] += 1
                 test_data[i_p,i_ax,i_start_section:i_end_section] = supersine(wavargs)
         i_start_section = i_end_section
     return test_data
