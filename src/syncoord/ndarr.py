@@ -173,8 +173,7 @@ def windowed_plv( arrs, window_length=None, window_step=1, mode='same', axis=-1 
     '''
     return slwin( arrs, plv, window_length, window_step, mode=mode, axis=axis )
 
-def xwt_nd( arrlist, minmaxf, fps, projout=False, matlabeng=None,
-            gxwt_path=None, xwtnd_path=None, verbose=True ):
+def xwt_nd( arrlist, minmaxf, fps, **kwargs ):
     '''
     Wrapper for Matlab functions cwt.m, cwtensor.m, genxwt.m, xwtnd.m
     Multi-Dimensional Cross-Wavelet Transform.
@@ -187,14 +186,15 @@ def xwt_nd( arrlist, minmaxf, fps, projout=False, matlabeng=None,
         minmaxf: list with minimum and maximum frequency (Hz).
         fps: sampling rate (fps or Hz).
         Optional:
+            get_result (str): 'abs', 'angle', 'complex', 'real', 'imag'. Default = 'abs'
             projout: boolean, to include power projections in returns.
             matlabeng: matlab.engine object (useful when running multiple times).
                        Otherwise the following arguments are valid:
             gxwt_path: path to folder containing functions cwtensor.m, and genxwt.m
-        xwspectr: cross-wavelet spectrum array with dimensions [channels,frames].
+    Returns:
+        result: Result with dimensions [channels,frames], depending on argument 'get'.
         freqs: frequencies (Hz).
-        Optional:
-            powproj: if projout = True, tuple of arrays (one per input) with power projections.
+        powproj: if projout = True, tuple of arrays (one per input) with power projections.
                      The arrays have dimensions [channels,frequencies,frames]
     Non-Python dependencies:
         Matlab, Wavelet Toolbox for Matlab, cwtensor.m, and genxwt.m
@@ -204,6 +204,13 @@ def xwt_nd( arrlist, minmaxf, fps, projout=False, matlabeng=None,
     ass_msg = 'First and second arguments should be lists with two elements.'
     assert isinstance(arrlist,list) and isinstance(minmaxf,list), ass_msg
     assert (len(arrlist)==2) and (len(minmaxf)==2), ass_msg
+
+    get_result = kwargs.get('get_result','abs')
+    projout = kwargs.get('projout',False)
+    matlabeng = kwargs.get('matlabeng',None)
+    gxwt_path = kwargs.get('gxwt_path',None)
+    xwtnd_path = kwargs.get('xwtnd_path',None)
+    verbose = kwargs.get('verbose',True)
 
     if projout: nout = 4
     else: nout = 2
@@ -216,9 +223,16 @@ def xwt_nd( arrlist, minmaxf, fps, projout=False, matlabeng=None,
 
     xwtnd_result = matlabeng.xwtnd( arrlist[0].T, arrlist[1].T, float(fps),
                                     minmaxf[0], minmaxf[1], nargout=nout )
-    xwspectr = np.flip( np.abs(np.array(xwtnd_result[0])), axis=0 )
+    result = np.array(xwtnd_result[0])
+    if get_result == 'abs': result = np.abs(result)
+    elif get_result == 'angle': result = np.angle(result)
+    elif get_result == 'complex': pass
+    elif get_result == 'real': result = np.real(result)
+    elif get_result == 'imag': result = np.imag(result)
+    else: raise Exception('value for argument "get_result" is invalid')
+    result = np.flip(result, axis=0 )
     freqs = np.flip( np.squeeze( np.array(xwtnd_result[1]) ))
-    output = [xwspectr,freqs]
+    output = [result,freqs]
     if projout:
         powproj = []
         for i in range(2,4):
