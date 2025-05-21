@@ -343,7 +343,7 @@ def gensec( ptdata, n, print_info=False ):
             else:
                 print('Invalid response. Valid responses are: "n" or enter for no; "y" for yes.\n')
         if response in ('n',''):
-            print('Warning: function exited without updating ptdata.topinfo')
+            print('gensec warning: function exited without updating ptdata.topinfo')
             return
     all_equal_sex_f = []
     all_equal_sex_s = []
@@ -372,6 +372,23 @@ def gensec( ptdata, n, print_info=False ):
 
 # .............................................................................
 # ANALYSIS-ORIENTED OPERATIONS:
+
+def norm( ptdata, order, axis=-2 ):
+    '''
+    Compute norm.
+    Wrapper for numpy.linalg.norm
+    Args:
+        ptdata (PtData): PtData object. See documentation for syncoord.ptdata.PtData
+        order (int,str): 1 = taxicab, 2 = euclidean. More in documentation for numpy.linalg.norm
+        axis (int): Axis (dimension) along wihich to apply vector norms. Default = -2
+    Returns:
+        New PtData object.
+    '''
+    norm_ptd = apply( ptdata, np.linalg.norm, ord=order, axis=axis )
+    del norm_ptd.names.dim[axis]
+    del norm_ptd.labels.dim[axis]
+    del norm_ptd.labels.dimel[axis]
+    return norm_ptd
 
 def smooth( ptdata,**kwargs ):
     '''
@@ -1165,7 +1182,7 @@ def apply( ptdata, func,*args, **kwargs ):
         main_name = rf'{ptdata.names.main[:].capitalize()} $^{args_list[0]}$'
         main_label = rf'{ptdata.labels.main[:]}$^{args_list[0]}$'
     else:
-        print('Warning: output "dim" field copied from input.')
+        print('apply warning: output "dim" field copied from input.')
         main_name = f'{fn}({ptdata.names.main})'
         main_label = fn
 
@@ -1457,7 +1474,7 @@ def visualise( ptdata, **kwargs ):
 # TO-DO: case no sections in annotations
     sections_appaxis_exist = f'trimmed_sections_{appaxis_lbl}s' in ptdata.topinfo.columns
     if (appaxis_lbl in kwargs) and sections and sections_appaxis_exist:
-        print(f'Warning: sections are disabled for {appaxis_lbl} selection.')
+        print(f'visualise warning: sections are disabled for {appaxis_lbl} selection.')
         sections = False
 # TO-DO:
     # select time maybe by xlims instead of select_data.
