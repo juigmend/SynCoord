@@ -343,7 +343,7 @@ def gensec( ptdata, n, print_info=False ):
             else:
                 print('Invalid response. Valid responses are: "n" or enter for no; "y" for yes.\n')
         if response in ('n',''):
-            print('gensec warning: function exited without updating ptdata.topinfo')
+            print('gensec - warning: function exited without updating ptdata.topinfo')
             return
     all_equal_sex_f = []
     all_equal_sex_s = []
@@ -1182,7 +1182,7 @@ def apply( ptdata, func,*args, **kwargs ):
         main_name = rf'{ptdata.names.main[:].capitalize()} $^{args_list[0]}$'
         main_label = rf'{ptdata.labels.main[:]}$^{args_list[0]}$'
     else:
-        print('apply warning: output "dim" field copied from input.')
+        print('apply - warning: output "dim" field copied from input.')
         main_name = f'{fn}({ptdata.names.main})'
         main_label = fn
 
@@ -1474,7 +1474,7 @@ def visualise( ptdata, **kwargs ):
 # TO-DO: case no sections in annotations
     sections_appaxis_exist = f'trimmed_sections_{appaxis_lbl}s' in ptdata.topinfo.columns
     if (appaxis_lbl in kwargs) and sections and sections_appaxis_exist:
-        print(f'visualise warning: sections are disabled for {appaxis_lbl} selection.')
+        print(f'visualise - warning: sections are disabled for {appaxis_lbl} selection.')
         sections = False
 # TO-DO:
     # select time maybe by xlims instead of select_data.
