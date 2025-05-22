@@ -294,7 +294,7 @@ def listfiles(path):
             fnames = [os.path.basename(path)]
         return fnames
 
-def load_data( preproc_data, *prop_path, annot_path=None, topdata_Name=None,
+def load_data( preproc_data, *prop_path, fps=None, annot_path=None, topdata_Name=None,
                max_n_files=None, print_info=True, **kwargs):
     '''
     Args:
@@ -302,6 +302,10 @@ def load_data( preproc_data, *prop_path, annot_path=None, topdata_Name=None,
                       If str: folder with parquet files for preprocesed data
                               (e.g., r"~/preprocessed"), or "make" to produce synthetic data
                               with default values (calls syncoord.utils.testdata).
+                              The parquet data is a numerical matrix with a sequential numerical
+                              index, and columns labelled as "pointnumber_dimension".
+                              For example, for two points in two dimensions the column names
+                              shall be: ['0_x','0_y','1_x','1_y']
                       If dict: as returned by syncoord.utils.init_testdatavars
                       If np.ndarray: as returned by syncoord.utils.testdata
         prop_path: path for properties CSV file (e.g., r"~/properties.csv").
