@@ -399,6 +399,7 @@ def load_data( preproc_data, *props, annot_path=None, topdata_Name=None,
     elif properties: topinfo = properties
 
     prep_data = {}
+    axes_labels = None
     if isinstance(preproc_data,str):
         if preproc_data == 'make':
             if not annot_path: topinfo, tdv = make_topinfo_tdv(**kwargs)
@@ -411,16 +412,23 @@ def load_data( preproc_data, *props, annot_path=None, topdata_Name=None,
                 top_arr_nd = np.array(top_df_ra)
                 top_arr_nd = np.transpose(top_arr_nd,(1,0,2))
                 prep_data[i] = top_arr_nd
+            axlbl = list(dict.fromkeys([s.split('_')[1] for s in top_df.columns.values]))
+            axlbl.reverse()
+            axes_labels = [f'${s}$' for s in axlbl]
     elif isinstance(preproc_data,dict):
         prep_data[0] = testdata(preproc_data)
         if not annot_path: topinfo, _ = make_topinfo_tdv(**kwargs)
     elif isinstance(preproc_data,np.ndarray):
         prep_data[0] = preproc_data
         if not annot_path: topinfo, _ = make_topinfo_tdv(**kwargs)
+
+    if axes_labels is None:
+        axlbl = ['z','y','x']
+        axes_labels = [f'${axlbl[i]}$' for i in range(prep_data[0].ndim)]
     dim_names = ['point','axis','frame']
     dim_labels = ['point','axes','time (frames)']
     dimel_labels = [['p. '+str(i) for i in range(prep_data[0].shape[dim_names.index('point')])],
-                  ['$y$','$x$'],None]
+                  axes_labels,None]
     if isinstance(topdata_Name,list):
         topinfo["Name"] = topdata_Name
     elif (topdata_Name=='idx') or ("Name" not in topinfo):
