@@ -299,19 +299,32 @@ def load_data( preproc_data, *props, annot_path=None, topdata_Name=None,
     '''
     Args:
         preproc_data (str,dict,numpy.ndarray):
-            If str: Folder with parquet files for preprocesed data (e.g., r"~/preprocessed"),
-                    or "make" to produce synthetic data with default values
-                    (calls syncoord.utils.testdata). The parquet data is a numerical matrix with a
-                    sequential numerical index, and columns labelled as "pointnumber_dimension".
+            If str: Path to folder with parquet files for preprocesed data
+                    (e.g., r"~/preprocessed"), or "make" to produce synthetic data with default
+                    values (calls syncoord.utils.testdata). Data in the parquet file is a numerical
+                    matrix with an index, and columns labelled as "point-number_dimension-label".
                     For example, for two points in two dimensions the column names
-                    shall be: ['0_x','0_y','1_x','1_y']
+                    are: ['0_x','0_y','1_x','1_y']
             If dict: as returned by syncoord.utils.init_testdatavars
             If np.ndarray: as returned by syncoord.utils.testdata
-        props (str,dict): Optional or ignored if preproc_data = "make".
+        props (str,dict): Optional or ignored if preproc_data = "make"
             If str: Path for properties CSV file (e.g., r"~/properties.csv").
+                    The properties file contain one or both of:
+                    1) Arbitrary number of header rows as in dict, with comma-separated pairs of
+                       property and value for all files.
+                       Example:
+                               fps,30
+                               ndim,3
+                    2) Properties for each file, where columns are properties and rows are files.
+                       The first row of the table or after the headers, is for column names.
+                       Example:
+                               ID, fps
+                               file_1,25
+                               file_2,29.97
             If dict: The same properties (dict keys) will apply to all loaded files.
                      Properties:
-                         props['fps']: sample rate
+                         props['fps'] (int): sample rate
+                         props['ndim'] (int): number of dimensions. Default = 2
         Optional:
             annot_path (str): Path for annotations CSV file
                               (e.g., r"~/Pachelbel_Canon_in_D_String_Quartet.csv").
@@ -331,8 +344,28 @@ def load_data( preproc_data, *props, annot_path=None, topdata_Name=None,
         prep_data (dict): N-D numpy arrays containing preprocessed data.
         * dimensions = axes of the N-D Numpy array, where the rightmost is the fastest changing.
     '''
-    if prop_path[0]:
-        properties = pd.read_csv(prop_path[0][0])
+    properties = None
+    ndim = 2
+    if props[0] and isinstance(props[0][0],str):
+        properties = pd.read_csv(props[0][0])
+        if 'ID' not in properties.columns:
+            params = [properties.columns.values.tolist()]
+            if 'ID' in properties.iloc[:,0].values:
+                i_start = np.where(properties.iloc[:,0] == 'ID')[0].item()
+                properties.columns = properties.iloc[i_start]
+                params.extend(properties[0:i_start].values.tolist())
+                properties = properties.drop(properties.index[0:i_start])
+                properties = properties.reset_index()
+                properties = properties.drop('index',axis=1)
+                properties.columns.name = ''
+            else:
+                params.extend(properties.values.tolist())
+                properties = None
+            del props
+            props = (({},),)
+            for k,v in params:
+                if k == 'ndim': ndim = int(v)
+                else: props[0][0][k] = v
 
     def make_topinfo_tdv(**kwargs):
         tdv = init_testdatavars(**kwargs)
@@ -350,12 +383,20 @@ def load_data( preproc_data, *props, annot_path=None, topdata_Name=None,
         annotations = pd.read_csv(annot_path)
         if max_n_files:
             annotations = annotations[:max_n_files]
-        if properties.shape[0] != annotations.shape[0]:
-            raise Exception('The lengths of properties and annotations are not equal.')
-        topinfo = pd.merge(annotations,properties,on='ID')
+        if properties:
+            check_len_prop = properties.shape[0] != annotations.shape[0]
+            assert check_len_prop, 'The lengths of properties and annotations are not equal.'
+            topinfo = pd.merge(annotations,properties,on='ID')
+        else:
+            assert isinstance(props[0][0],dict), 'argument "props" should be dict or str'
+            topinfo = annotations
+            for k,v in props[0][0].items():
+                check_v = isinstance(v,(int,float))
+                assert check_v, '"props" should have only one value (int or float) per key'
+                if k != 'ndim': topinfo[k] = v
         if 'Sections' in topinfo:
             topinfo['trimmed_sections_frames'] = trim_sections_to_frames(topinfo)
-    elif prop_path[0]: topinfo = properties
+    elif properties: topinfo = properties
 
     prep_data = {}
     if isinstance(preproc_data,str):
@@ -366,7 +407,8 @@ def load_data( preproc_data, *props, annot_path=None, topdata_Name=None,
             for i in range(topinfo.shape[0]):
                 ID = topinfo['ID'].iloc[i]
                 top_df = pd.read_parquet(preproc_data + '/' + ID + '.parquet')
-                top_arr_nd = np.array([ top_df.iloc[:,1::2].T , top_df.iloc[:,::2].T ])
+                top_df_ra = [ top_df.iloc[:,i_d::ndim].T for i_d in range(ndim) ]
+                top_arr_nd = np.array(top_df_ra)
                 top_arr_nd = np.transpose(top_arr_nd,(1,0,2))
                 prep_data[i] = top_arr_nd
     elif isinstance(preproc_data,dict):
