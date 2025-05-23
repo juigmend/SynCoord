@@ -294,40 +294,41 @@ def listfiles(path):
             fnames = [os.path.basename(path)]
         return fnames
 
-def load_data( preproc_data, *prop_path, fps=None, annot_path=None, topdata_Name=None,
+def load_data( preproc_data, *props, annot_path=None, topdata_Name=None,
                max_n_files=None, print_info=True, **kwargs):
     '''
     Args:
-        preproc_data: str, dict or np.ndarray.
-                      If str: folder with parquet files for preprocesed data
-                              (e.g., r"~/preprocessed"), or "make" to produce synthetic data
-                              with default values (calls syncoord.utils.testdata).
-                              The parquet data is a numerical matrix with a sequential numerical
-                              index, and columns labelled as "pointnumber_dimension".
-                              For example, for two points in two dimensions the column names
-                              shall be: ['0_x','0_y','1_x','1_y']
-                      If dict: as returned by syncoord.utils.init_testdatavars
-                      If np.ndarray: as returned by syncoord.utils.testdata
-        prop_path: path for properties CSV file (e.g., r"~/properties.csv").
-                   Optional or ignored if preproc_data = "make".
+        preproc_data (str,dict,numpy.ndarray):
+            If str: Folder with parquet files for preprocesed data (e.g., r"~/preprocessed"),
+                    or "make" to produce synthetic data with default values
+                    (calls syncoord.utils.testdata). The parquet data is a numerical matrix with a
+                    sequential numerical index, and columns labelled as "pointnumber_dimension".
+                    For example, for two points in two dimensions the column names
+                    shall be: ['0_x','0_y','1_x','1_y']
+            If dict: as returned by syncoord.utils.init_testdatavars
+            If np.ndarray: as returned by syncoord.utils.testdata
+        props (str,dict): Optional or ignored if preproc_data = "make".
+            If str: Path for properties CSV file (e.g., r"~/properties.csv").
+            If dict: The same properties (dict keys) will apply to all loaded files.
+                     Properties:
+                         props['fps']: sample rate
         Optional:
-            annot_path: path for annotations CSV file
-                        (e.g., r"~/Pachelbel_Canon_in_D_String_Quartet.csv").
-            topdata_Name: 'idx' for element index (e.g., anonymise),  list, or None for "Name" in
-                           annotation file.
-            max_n_files: number of files to extract from the beginning of annotations.
-                         None or scalar.
-            print_info (bool): show index, name and duration of data.
+            annot_path (str): Path for annotations CSV file
+                              (e.g., r"~/Pachelbel_Canon_in_D_String_Quartet.csv").
+            topdata_Name (str,list): 'idx' for element index (e.g., anonymise),  list, or None
+                                      for "Name" in annotation file.
+            max_n_files (int): Number of files to extract from the beginning of annotations.
+            print_info (bool): Print index, name and duration of data.
             **kwargs: passed to syncoord.utils.init_testdatavars if preproc_data = "make"
     Returns:
-        topinfo: Pandas dataframe with properties and annotations (if they exist), and
-                 trimmed sections in frames if column "Sections" exist.
-        dim_names: names of N-D array's dimensions*
-                   (short, used e.g., to select data, in groupby, etc.)
-        dim_labels: labels for N-D array's dimensions*
-                    (less short, used e.g, as labels for visualisations)
-        dimel_labels: labels for each element of N-D array's dimensions*.
-        prep_data: dictionary of multidimensional numpy arrays containing preprocessed data
+        topinfo (pandas.DataFrame): Properties and annotations (if they exist), and
+                                    trimmed sections in frames if column "Sections" exist.
+        dim_names (list): names of N-D array's dimensions*
+                          (short, used e.g., to select data, in groupby, etc.)
+        dim_labels (list): labels for N-D array's dimensions*
+                           (less short, used e.g, as labels for visualisations)
+        dimel_labels (list): labels for each element of N-D array's dimensions*.
+        prep_data (dict): N-D numpy arrays containing preprocessed data.
         * dimensions = axes of the N-D Numpy array, where the rightmost is the fastest changing.
     '''
     if prop_path[0]:
