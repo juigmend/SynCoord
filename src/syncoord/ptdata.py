@@ -74,7 +74,7 @@ class PtData:
 
     def copy(self,*arg):
         _self = deepcopy(self)
-        if arg[0] == 'nodata': _self.data = {}
+        if arg and arg[0] == 'nodata': _self.data = {}
         return _self
 
     def print_shape(self):
@@ -82,10 +82,12 @@ class PtData:
         for k in self.data: print(f'key = {k}, shape = {self.data[k].shape}')
         print()
 
-    def print(self):
+    def print(self,*arg):
         print(f'names:\n{vars(self.names)}\n')
         print(f'labels:\n{vars(self.labels)}\n')
-        if self.data: self.print_shape()
+        if arg and arg[0] == 'nodata': print_data = False
+        else: print_data = True
+        if print_data and self.data: self.print_shape()
         if self.vis: print(f'vis:\n{self.vis}\n')
         if self.other: print(f'other:\n{self.other}\n')
 
