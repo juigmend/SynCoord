@@ -90,12 +90,15 @@ def trim_topinfo_start( ptdata, trim_s ):
         topinfo = deepcopy(ptdata.topinfo)
         old_start = topinfo['Start']
         topinfo['Start'] = trim_s
-        topinfo['trimmed_sections_frames'] = trim_sections_to_frames(topinfo)
+        try:
+            topinfo['trimmed_sections_frames'] = trim_sections_to_frames(topinfo)
+        except KeyError: pass
         topinfo['Start'] = old_start + trim_s
     else:
         topinfo = ptdata.topinfo.assign( Start =
                                          [trim_s for _ in range(ptdata.topinfo.shape[0])] )
-        topinfo['trimmed_sections_frames'] = trim_sections_to_frames(topinfo)
+        try: topinfo['trimmed_sections_frames'] = trim_sections_to_frames(topinfo)
+        except KeyError: pass
     return topinfo
 
 def supersine(argdict):
