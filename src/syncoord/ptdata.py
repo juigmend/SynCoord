@@ -1035,27 +1035,41 @@ def aggrax( ptdata, axis=0, function='mean' ):
     agg.other = other
     return agg
 
-def aggrtop( ptdata, function='mean' ):
+def aggrtop( ptdata, function='mean', axis=0):
     '''
-    Wrapper for numpy.sum or numpy.mean
     Aggregate top-level homogeneous N-D data arrays.
     Args:
         ptdata: PtData object, see documentation for syncoord.ptdata.PtData
         Optional:
-            function: 'sum' or 'mean'
+            function: 'sum', 'mean', or 'concat'.
+            axis: Axis along which the arrays will be joined. Only for 'concat'.
     Returns:
         New PtData object. Property 'topinfo' will retain only columns whose rows are identical,
         collapsed into a single row.
     '''
     dd_in = ptdata.data
-    arr_nd_out = np.zeros(dd_in[next(iter(dd_in))].shape)
-    for k in dd_in: arr_nd_out += dd_in[k]
-    if function == 'mean': arr_nd_out = arr_nd_out/len(dd_in)
+    isarray = dd_in[next(iter(dd_in))].ndim
+    if function == 'concat':
+        if not isarray: arr_1d_out = []
+        first = True
+        for k in dd_in:
+            if isarray:
+                if first: arr_nd_out = dd_in[k]
+                arr_nd_out = np.concatenate((arr_nd_out, dd_in[k]), axis)
+            else:
+                arr_1d_out.append(dd_in[k])
+        if not isarray: arr_nd_out = np.array(arr_1d_out)
+        function_lbl = 'Concatenated'
+    else:
+        arr_nd_out = np.zeros(dd_in[next(iter(dd_in))].shape)
+        for k in dd_in: arr_nd_out += dd_in[k]
+        if function == 'sum': function_lbl = 'Added'
+        elif function == 'mean':
+            arr_nd_out = arr_nd_out/len(dd_in)
+            function_lbl = 'Mean'
     dd_out = {0:arr_nd_out}
 
     main_name = ptdata.names.main
-    if function == 'sum': function_lbl = 'Added'
-    elif function == 'mean': function_lbl = 'Mean'
     aggr_lbl = f'\n({function_lbl} top-level data)'
     colnames_identical = []
     for colname in ptdata.topinfo:
@@ -1071,6 +1085,7 @@ def aggrtop( ptdata, function='mean' ):
     agg.labels.dimel = ptdata.labels.dimel.copy()
     agg.data = dd_out
     agg.vis = {**ptdata.vis, 'groupby':0, 'sections':True}
+    if not isarray: agg.vis['x_ticklabelling'] = 'default'
     agg.other = deepcopy(ptdata.other)
     return agg
 
@@ -1268,13 +1283,15 @@ def apply2( ptd_1, ptd_2, func,*args, **kwargs ):
 # VISUALISATION:
 
 def visualise( ptdata, **kwargs ):
+    # TO-DO: add optional argument 'vistypeopt', which could be a dict with options for each vistype.
+    #       For example, if vistype='spectrogram', then vistypeopt['scale']='dB'
     '''
     Visualise data of a PtData object, which normally contains default visualisation information,
     mostly in the 'labels' and 'vis' fields. These may be modified with the optional arguments.
     Args:
         ptdata: PtData object, see documentation for syncoord.ptdata.PtData
         Optional:
-            vistype: 'line', 'cline' (circle and line),'spectrogram', or 'imshow'
+            vistype: 'line', 'cline' (circle and line),'spectrogram', or 'imshow'.
             groupby: int, str, or list, indicating N-D array's dimensions to group.
                      'default' = use defaults: line = 0, spectrogram = -2
             rescale: bool, rescale visualisation (not data) to min-max of all arrays.
@@ -1301,6 +1318,7 @@ def visualise( ptdata, **kwargs ):
             savepath: full path (directories and filename with extension) to save as PNG
             more **kwargs: selection to display, passed to syncoord.ptdata.select_data
     '''
+
     def xticks_minsec_( fps, length_x, vistype, minseps=2 ):
         '''
         Convert and cast xticks expressed in frames to format "minutes:seconds".
@@ -1472,7 +1490,8 @@ def visualise( ptdata, **kwargs ):
             if arr_max > minmax[1]: minmax[1] = arr_max
     else: minmax = [None,None]
     if not isinstance(axes,list): axes = [axes]
-    appaxis_lbl = ptdata.names.dim[axes[-1]]
+    try: appaxis_lbl = ptdata.names.dim[axes[-1]]
+    except: appaxis_lbl = ''
 # TO-DO: case no sections in annotations
     sections_appaxis_exist = f'trimmed_sections_{appaxis_lbl}s' in ptdata.topinfo.columns
     if (appaxis_lbl in kwargs) and sections and sections_appaxis_exist:
