@@ -10,41 +10,23 @@ from . import utils
 # .............................................................................
 # ANALYSIS-ORIENTED OPERATIONS:
 
-def tder2D( arr_nd_in, order=1 ):
+def tder( arr_nd_in, order=1 ):
     '''
-    Differentiation per point. First order difference is euclidean distance
-    among consecutive two-dimensional points [x,y]. Second order difference is simple difference.
-    The operation is applied per consecutive pairs of rows in dimension -2 among dimension -1,
-    and the output has the same shape as the input, except dimension -2 has half the size.
+    Differentiation along dimension -1. First order difference is Euclidean distance among
+    consecutive two-dimensional or three-dimensional points.
+    Second order difference is simple difference.
     Args:
-        N-D array where length of dimension -2 is 2 (x,y) or a multiple of 2 (x1,y1,x2,y2,...)
+        arr_nd_in (np.ndarray): N-D array with 1 <= arr_nd_in.shape[-2] <= 3
         Optional:
             order: 1 (default) or 2
     Returns:
-        N-D array
+        (np.ndarray)
     '''
-    if arr_nd_in.ndim > 2: arr_nd_out = np.empty(arr_nd_in.shape)
-    n_points = arr_nd_in.shape[-2]//2
-    dim_out = list(arr_nd_in.shape)
-    dim_out[-2] = n_points
-    arr_nd_out = np.empty(tuple(dim_out))
-    diff_arr = np.empty(tuple(dim_out[-2:]))
-    for idx in np.ndindex(arr_nd_in.shape[:-2]):
-        if arr_nd_in.ndim == 2: arr_nd_slc = arr_nd_in
-        else: arr_nd_slc = np.squeeze(arr_nd_in[idx,:,:])
-        for i_point in range(n_points):
-            i_row = i_point*2
-            coldiff = np.diff(arr_nd_slc[i_row:i_row+2,:])
-            diff_arr[i_row,1:] = np.linalg.norm( coldiff, axis=0) # absolute 1st. order diff. (speed)
-            diff_arr[i_row,0] = diff_arr[i_row,1]
-            if order == 2:
-                diff_arr[i_row,1:] = np.diff(diff_arr[i_row,:]) # 2nd. order diff. (acceleration)
-                diff_arr[i_row,0] = diff_arr[i_row,1]
-        if arr_nd_in.ndim == 2:
-            arr_nd_out = diff_arr
-        else:
-            arr_nd_out[idx,:,:] = diff_arr
-    return np.squeeze(arr_nd_out)
+    assert 1 <= arr_nd_in.shape[-2] <= 3, 'length of axis -2 should be 1, 2 or 3'
+    assert 1 <= order <= 2, 'argument "order" should be 1 or 2'
+    arr_nd_out = np.linalg.norm(np.diff(arr_nd_in),axis=-2)
+    if order == 2: arr_nd_out = np.diff(arr_nd_out)
+    return arr_nd_out
 
 def peaks_to_phase( arr_nd, axis=-1 ):
     '''
