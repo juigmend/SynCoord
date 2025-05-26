@@ -426,8 +426,8 @@ def load_data( preproc_data, *props, annot_path=None, topdata_Name=None,
         if not annot_path: topinfo, _ = make_topinfo_tdv(**kwargs)
 
     if axes_labels is None:
-        axlbl = ['z','y','x']
-        axes_labels = [f'${axlbl[i]}$' for i in range(prep_data[0].ndim)]
+        axlbl = ['x','y','z']
+        axes_labels = [f'${axlbl[i]}$' for i in reversed(range(prep_data[0].shape[-2]))]
     dim_names = ['point','axis','frame']
     dim_labels = ['point','axes','time (frames)']
     dimel_labels = [['p. '+str(i) for i in range(prep_data[0].shape[dim_names.index('point')])],
