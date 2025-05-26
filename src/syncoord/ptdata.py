@@ -1217,7 +1217,7 @@ def apply( ptdata, func,*args, **kwargs ):
 
     dd_out = {}
     for k in dd_in:
-        if (fn in ['speed','tder']) or (fn != 'kuramoto_r']):
+        if (fn in ['speed','tder']) or (fn != 'kuramoto_r'):
             dd_out[k] = func(dd_in[k],*args,**kwargs)
         elif dd_in[k].shape[axis-1] > 2:
             arr_in = dd_in[k].copy()
