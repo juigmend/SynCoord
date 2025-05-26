@@ -1007,7 +1007,8 @@ def aggrax( ptdata, axis=0, function='mean' ):
     dd_out = {}
     for k in dd_in:
         if function == 'sum': dd_out[k] = np.nansum(dd_in[k],axis=axis)
-        elif function == 'mean': dd_out[k] = np.nanmean(dd_in[k],axis=axis)
+        elif function == 'mean':
+            dd_out[k] = np.nanmean(dd_in[k],axis=axis)
     main_name = ptdata.names.main
     if function == 'sum':
         function_lbl = 'added'
@@ -1649,7 +1650,7 @@ def visualise( ptdata, **kwargs ):
                                 numcolour=[0.6,0.1,0.2], num_hvoffset=snum_hvoff )
             for i in i_ch:
                 if isinstance(ptdata.labels.dimel[i],dict): # dict: different labels for each top array
-                    sp_lbl = ptdata.labels.dimel[i][i_top][i_nd[i]]
+                    sp_lbl = ptdata.labels.dimel[i][data_dict_keys[i_top]][i_nd[i]]
                 elif isinstance(ptdata.labels.dimel[i],list):
                     sp_lbl = ptdata.labels.dimel[i][i_nd[i]] # list: same labels for all top arrays
                 else:
