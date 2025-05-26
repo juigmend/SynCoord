@@ -510,11 +510,17 @@ def smooth( ptdata,**kwargs ):
     filtered.other = other
     return filtered
 
-def tder2D( ptdata, **kwargs ):
+def tder( ptdata, **kwargs ):
     '''
-    Wrapper for syncoord.ndarr.tder2D
+    Wrapper for syncoord.ndarr.tder
     '''
-    return apply( ptdata, ndarr.tder2D, **kwargs )
+    return apply( ptdata, ndarr.tder, **kwargs )
+
+def speed( ptdata ):
+    '''
+    Another wrapper for syncoord.ndarr.tder but order is always 1.
+    '''
+    return apply( ptdata, ndarr.tder, order=1 )
 
 def peaks_to_phase( ptdata, **kwargs ):
     '''
@@ -1173,7 +1179,7 @@ def apply( ptdata, func,*args, **kwargs ):
     dd_in = ptdata.data
     fn = func.__name__
 
-    if fn == 'tder2D':
+    if fn == 'tder':
         del dim_names[axis-1]
         del dim_labels[axis-1]
         del dimel_labels[axis-1]
@@ -1182,6 +1188,12 @@ def apply( ptdata, func,*args, **kwargs ):
         if ('order' in kwargs) and (kwargs['order'] == 2):
             main_name = 'Absolute Acceleration'
             main_label = '| $a$ |'
+    elif fn == 'speed':
+        del dim_names[axis-1]
+        del dim_labels[axis-1]
+        del dimel_labels[axis-1]
+        main_name = 'Speed'
+        main_label = '| $v$ |'
     elif fn == 'peaks_to_phase':
         main_name = 'Peaks Phase'
         main_label = r'$\phi$'
@@ -1205,7 +1217,7 @@ def apply( ptdata, func,*args, **kwargs ):
 
     dd_out = {}
     for k in dd_in:
-        if (fn not in ['tder2D','kuramoto_r']) or (dd_in[k].shape[axis-1] == 2):
+        if (fn in ['speed','tder']) or (fn != 'kuramoto_r']):
             dd_out[k] = func(dd_in[k],*args,**kwargs)
         elif dd_in[k].shape[axis-1] > 2:
             arr_in = dd_in[k].copy()
