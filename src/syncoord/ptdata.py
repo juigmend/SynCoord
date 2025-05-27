@@ -541,7 +541,7 @@ def fourier( ptdata, window_duration, **kwargs ):
         ptdata: PtData object, see documentation for syncoord.ptdata.PtData
         window_duration: length of the FFT window in seconds unless optional parameter fps = None.
         Optional:
-            **kwargs: input parameters to the fourier_transform function.
+            **kwargs: input parameters to syncoord.ndarr.fourier_transform
                       See documentation for syncoord.ndarr.fourier_transform
             Note: If mode='valid', the sections (ptdata.topinfo['Sections'] and
                   ptdata.topinfo['trimmed_sections_frames']) will be shifted accordingly.
@@ -1061,7 +1061,9 @@ def aggrtop( ptdata, function='mean', axis=0):
         first = True
         for k in dd_in:
             if isarray:
-                if first: arr_nd_out = dd_in[k]
+                if first:
+                    arr_nd_out = dd_in[k]
+                    first = False
                 arr_nd_out = np.concatenate((arr_nd_out, dd_in[k]), axis)
             else:
                 arr_1d_out.append(dd_in[k])
@@ -1206,8 +1208,10 @@ def apply( ptdata, func,*args, **kwargs ):
         del dim_labels[axis-1]
         del dimel_labels[axis-1]
         vis = {**vis, 'dlattr':'1.2','vlattr':'r:2f'}
-        if isinstance(dimel_labels[-2],list) or isinstance(dimel_labels[-2],dict):
-            vis['vistype'] = 'imshow'
+        try:
+            if isinstance(dimel_labels[-2],list) or isinstance(dimel_labels[-2],dict):
+                vis['vistype'] = 'imshow'
+        except: vis['vistype'] = 'line'
     elif fn == 'power':
         main_name = rf'{ptdata.names.main[:].capitalize()} $^{args_list[0]}$'
         main_label = rf'{ptdata.labels.main[:]}$^{args_list[0]}$'

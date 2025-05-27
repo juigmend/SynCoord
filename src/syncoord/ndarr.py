@@ -16,7 +16,7 @@ def tder( arr_nd_in, order=1 ):
     consecutive two-dimensional or three-dimensional points.
     Second order difference is simple difference.
     Args:
-        arr_nd_in (np.ndarray): N-D array with 1 <= arr_nd_in.shape[-2] <= 3
+        arr_nd_in (np.ndarray): 1-D array, or N-D array with 1 <= arr_nd_in.shape[-2] <= 3
         Optional:
             order: 1 (default) or 2
     Returns:
@@ -24,7 +24,8 @@ def tder( arr_nd_in, order=1 ):
     '''
     assert 1 <= arr_nd_in.shape[-2] <= 3, 'length of axis -2 should be 1, 2 or 3'
     assert 1 <= order <= 2, 'argument "order" should be 1 or 2'
-    arr_nd_out = np.linalg.norm(np.diff(arr_nd_in),axis=-2)
+    arr_nd_out = np.diff(arr_nd_in,axis=-1)
+    if arr_nd_in.ndim > 1: arr_nd_out = np.linalg.norm(arr_nd_out,axis=-2)
     if order == 2: arr_nd_out = np.diff(arr_nd_out)
     return arr_nd_out
 
