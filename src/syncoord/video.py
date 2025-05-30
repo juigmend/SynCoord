@@ -621,9 +621,7 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                 colours = []
                 for i_s in range(n_series):
                     if vis['show'] == 'ind': new_series = True
-                    elif (vis['show'] is True) or rawfig_path:
-                        plt.subplot(n_series,1,i_s+1)
-                        legend = []
+                    elif (vis['show'] is True) or rawfig_path: plt.subplot(n_series,1,i_s+1)
                     n_frames = []
                     colours.append([])
                     for i_n, i_p in enumerate(persons_range):
@@ -648,6 +646,7 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                                 if new_series:
                                     plt.title(f'\n{kp_labels[i_s]}')
                                     new_series = False
+                                plt.legend([i_p], loc='upper right', bbox_to_anchor=(1.2, 1.02))
                         n_frames.append(len(data_red_p_df))
 
                     if vis['show'] or rawfig_path or drdim:
@@ -820,14 +819,16 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                         this_colour = colours_ra[i_s][i_nc]
                         data_rar_slice_df.plot(linewidth=vis['lwprep'],color=this_colour)
 
+                        nc_num = nc.split('_')[0]
                         if vis['show'] == 'ind':
-                                plt.xlim(minmax_frames_pp)
-                                plt.xticks(fontsize=7)
-                                plt.yticks(fontsize=7)
-                                if new_series:
-                                    plt.title(f'\n{kp_labels[i_s]}')
-                                    new_series = False
-                        else: legend.append(nc.split('_')[0])
+                            plt.xlim(minmax_frames_pp)
+                            plt.xticks(fontsize=7)
+                            plt.yticks(fontsize=7)
+                            if new_series:
+                                plt.title(f'\n{kp_labels[i_s]}')
+                                new_series = False
+                            plt.legend([nc_num], loc='upper right', bbox_to_anchor=(1.2, 1.02))
+                        else: legend.append(nc_num)
 
                     if vis['show'] != 'ind':
                         plt.ylabel(kp_labels[i_s])
