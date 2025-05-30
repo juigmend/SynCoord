@@ -708,7 +708,7 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                     if vis['show'] != 'ind': plt.tight_layout()
                     if rawfig_path:
                         fig_ffn = rawfig_path + '/' + fn_ne + '_RAW.png'
-                        plt.savefig(fig_ffn)
+                        plt.savefig(fig_ffn,bbox_inches='tight')
                     if vis['show']: plt.show()
                     else: plt.close(plt.gcf())
 
@@ -839,7 +839,7 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                 if vis['show'] != 'ind': plt.tight_layout()
                 if prepfig_path:
                     fig_ffn = prepfig_path + '/' + fn_ne + '_PREP.png'
-                    plt.savefig(fig_ffn)
+                    plt.savefig(fig_ffn,bbox_inches='tight')
                 if vis['show']: plt.show()
                 else: plt.close(plt.gcf())
 
