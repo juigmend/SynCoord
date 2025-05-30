@@ -495,8 +495,8 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
             kp_labels (list): Labels for keypoints. Default = ['x','y']
             kp_horizontal (int): Keypoint index of horizontal axis. Default = 0
             n_indiv (int,str): Expected number of individuals to be tracked. Default = 'auto'
-            sel_indiv (int,list,str): Selection of individuals with index in json file starting
-                                      at 1. Default = 'all'
+            sel_indiv (int,list[int],str): Selection of individuals with index in json file starting
+                                           at 1. Default = 'all'
             skip_done (bool): Skip if corresponding preprocessed parquet file exists.
             suffix (str): Label to be added to the names of the resulting files.
             trange (list): Time-range selection [start,end]. Default = None
