@@ -535,7 +535,7 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
     n_indiv = kwargs.get('n_indiv','auto')
     sel_indiv = kwargs.get('sel_indiv','all')
     skip_done = kwargs.get('skip_done',True)
-    suffix = kwargs.get('suffix',None)
+    suffix = kwargs.get('suffix','')
     trange = kwargs.get('trange',None)
     scorefac = kwargs.get('scorefac',0.7)
     drdim = kwargs.get('drdim',None)
@@ -575,7 +575,7 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
         fn_ne = os.path.splitext(json_fn)[0]
         if verbose: print(f'{json_fn} :',end=' ')
 
-        parquet_fn = f'{fn_ne}.parquet'
+        parquet_fn = f'{fn_ne}{suffix}.parquet'
         new_file = True
         if skip_done: new_file = parquet_fn not in parquet_fnames
 
@@ -707,7 +707,7 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                     plt.gcf().supxlabel('stacked frames (as in json file)')
                     if vis['show'] != 'ind': plt.tight_layout()
                     if rawfig_path:
-                        fig_ffn = rawfig_path + '/' + fn_ne + '_RAW.png'
+                        fig_ffn = rawfig_path + '/' + fn_ne + suffix + '_RAW.png'
                         plt.savefig(fig_ffn,bbox_inches='tight')
                     if vis['show']: plt.show()
                     else: plt.close(plt.gcf())
@@ -838,7 +838,7 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                 plt.xlabel('time (video frames)')
                 if vis['show'] != 'ind': plt.tight_layout()
                 if prepfig_path:
-                    fig_ffn = prepfig_path + '/' + fn_ne + '_PREP.png'
+                    fig_ffn = prepfig_path + '/' + fn_ne + suffix + '_PREP.png'
                     plt.savefig(fig_ffn,bbox_inches='tight')
                 if vis['show']: plt.show()
                 else: plt.close(plt.gcf())
