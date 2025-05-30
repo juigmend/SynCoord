@@ -203,38 +203,38 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
             - Windows 11, CPU
             - SLURM, CPU and GPU
     Args:
-        video_in_path: str, absolute path for input video file or folder with input video files.
-        json_path: str, absolute path of folder for resulting json tracking files.
-        AlphaPose_path: str, absolute path of folder where AlphaPose code is.
+        video_in_path (str): Path for input video file or folder with input video files.
+        json_path (str): Path of folder for resulting json tracking files.
+        AlphaPose_path (str): Path of folder where AlphaPose code is.
         Optional:
-            video_out_path: str. Path of folder for resulting tracking video files
-                            with superimposed skeletons. None = Don't make video.
-            trim_range = list. [start,end] in seconds or 'end'.
-            log_path: str. Path of folder for log file.
-            skip_done: skip if corresponding json file exists in json_path, default = False
-            idim: int or list. Size of the detection network, multiple of 32.
-            nms: float or list. NMS threshold for detection in (0...1]
-            conf: float or list. Confidence threshold for detection in (0...1]
-            parlbl: bool. Add [idim,nms,conf] to the names of the resulting files.
-            suffix: str. Label to be added to the names of the resulting files.
-            audio: bool. Extract audio from tracking video and add to AlphaPose video files.
-                   Audio files will be saved in video_in_path, video files with added audio
-                   will be saved in video_out_path.
-            sp: bool. Run on a single process. Forcefully True if operating system is Windows.
-            gpus: str. Index of CUDA device. Comma to use several, e.g. "0,1,2,3".
+            video_out_path (str): Path of folder for resulting tracking video files
+                                  with superimposed skeletons. None = Don't make video.
+            trim_range (list): [start,end] in seconds or 'end'.
+            log_path (str): str. Path of folder for log file.
+            skip_done (bool): Skip if corresponding json file exists in json_path, default = False
+            idim (int, list[int]): Size of the detection network, multiple of 32.
+            nms (float, list[float]): NMS threshold for detection in (0...1]
+            conf (float, list[float]): Confidence threshold for detection in (0...1]
+            parlbl (bool): Add [idim,nms,conf] to the names of the resulting files.
+            suffix (str): str. Label to be added to the names of the resulting files.
+            audio (bool): Extract audio from tracking video and add to AlphaPose video files.
+                          Audio files will be saved in video_in_path, video files with added audio
+                          will be saved in video_out_path.
+            sp (bool): Run on a single process. Forcefully True if operating system is Windows.
+            gpus (str): str. Index of CUDA device. Comma to use several, e.g. "0,1,2,3".
                        Use "-1" for cpu only. Default="0"
-            program: str or None (default).
+            program (str): str or None (default).
                      If str: 'inference' (module) or 'demo_inference' (script)
                               The former prints nicely on a Python IDE (e.g., Jupyter),
                               but may not work with GPU.
                      If None and gpus = "-1": use module AlphaPose/inference.py
                      Else: run script AlphaPose/scripts/demo_inference.py
-            flip: bool. Enable flip testing. It might improve accuracy.
-            detector: str. See documentation for available detectors. Default = 'yolo'
-            model: str. Path for pretrained model (A.K.A. checkpoint).
-            config: str. Path for pretrained model's configuration file.
-            vis_fast: bool. Simpler and faster visualisation. Default = True
-            verbosity: 0 (minimal), 1 (progress bar), or 2 (full). Default = 1
+            flip (bool): Enable flip testing. It might improve accuracy.
+            detector (str): str. See documentation for available detectors. Default = 'yolo'
+            model (str): str. Path for pretrained model (A.K.A. checkpoint).
+            config (str): str. Path for pretrained model's configuration file.
+            vis_fast (bool): Simpler and faster visualisation. Default = True
+            verbosity (int): 0 (minimal), 1 (progress bar), or 2 (full). Default = 1
     Dependencies:
         AlphaPose fork: https://github.com/juigmend/AlphaPose
         ffmpeg installed in system (callable by command line)
@@ -270,8 +270,15 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
     vis_fast = kwargs.get('vis_fast',True)
     verbosity = kwargs.get('verbosity',1)
 
-    if video_in_path: video_in_path = os.path.abspath(video_in_path)
-    if json_path: json_path = os.path.abspath(json_path)
+    video_in_path = os.path.abspath(video_in_path)
+    if os.path.isfile(video_in_path):
+        video_in_folder = os.path.dirname(video_in_path)
+        fnames = [os.path.basename(video_in_path)]
+    else:
+        video_in_folder = video_in_path
+        fnames = utils.listfiles(video_in_path)
+
+    json_path = os.path.abspath(json_path)
     if video_out_path: video_out_path = os.path.abspath(video_out_path)
     if log_path: log_path = os.path.abspath(log_path)
 
@@ -285,11 +292,11 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
                      and (isinstance(trim_range[1],(float,int)) or (trim_range[1] == 'end'))
         assert check_trim, 'Trim range values are incorrect.'
         trim_lbl = f'_{round(trim_range[0],2)}-{round(trim_range[1],2)}'
-        video_out_folder = video_in_path + '/trimmed'
+        video_out_folder = video_in_folder + '/trimmed'
         if not os.path.exists(video_out_folder): os.makedirs(video_out_folder)
     else:
         trim_lbl = ''
-        video_out_folder = video_in_path
+        video_out_folder = video_in_folder
 
     if skip_done:
         json_saved_fn = []
@@ -300,8 +307,6 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
     if audio:
         audio_out_folder = os.path.join(video_out_folder,'audio')
         if not os.path.exists(audio_out_folder): os.makedirs(audio_out_folder)
-
-    fnames = utils.listfiles(video_in_path)
 
     cwd = os.getcwd()
     sys.path.append(AlphaPose_path)
@@ -386,7 +391,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
     def _one_posetrack( idim_, nms_, conf_ ):
 
         for fn in fnames:
-            ffn = os.path.join(video_in_path,fn)
+            ffn = os.path.join(video_in_folder,fn)
             split_fn = os.path.splitext(fn)
             fn_ne = split_fn[0] + trim_lbl
             if parlbl or log_path: par_str_short = f'[{idim_},{nms_},{conf_}]'
