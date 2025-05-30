@@ -212,9 +212,9 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
             trim_range (list): [start,end] in seconds or 'end'.
             log_path (str): str. Path of folder for log file.
             skip_done (bool): Skip if corresponding json file exists in json_path, default = False
-            idim (int, list[int]): Size of the detection network, multiple of 32.
-            nms (float, list[float]): NMS threshold for detection in (0...1]
-            conf (float, list[float]): Confidence threshold for detection in (0...1]
+            idim (int,list[int]): Size of the detection network, multiple of 32.
+            nms (float,list[float]): NMS threshold for detection in (0...1]
+            conf (float,list[float]): Confidence threshold for detection in (0...1]
             parlbl (bool): Add [idim,nms,conf] to the names of the resulting files.
             suffix (str): str. Label to be added to the names of the resulting files.
             audio (bool): Extract audio from tracking video and add to AlphaPose video files.
@@ -658,8 +658,8 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
 
                     # Identify disjoint ranges by clustering:
                     if drdim and (i_s in drdim):
-                        assert vis['show'] != 'ind', ''.join[ "disjoint ranges cannot be applied ",
-                                                              "when vis['show']='ind'"]
+                        assert vis['show'] != 'ind', ''.join([ "disjoint ranges cannot be applied ",
+                                                              "when vis['show']='ind'"])
                         if drlim_set:
                             dim_max = this_series.max()
                             drlim_file[i_drlim] = [0] + drlim_file[i_drlim] + [dim_max]
