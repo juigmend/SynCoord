@@ -10,22 +10,24 @@ from . import utils
 # .............................................................................
 # ANALYSIS-ORIENTED OPERATIONS:
 
-def tder( arr_nd_in, order=1 ):
+def tder( arr_nd_in, dim=None, order=1 ):
     '''
-    Differentiation along dimension -1. First order difference is Euclidean distance among
-    consecutive two-dimensional or three-dimensional points.
-    Second order difference is simple difference.
+    Differentiation of 1 dimension (axis -1) or more dimensions (axes -2 and -1).
+    If more than one dimension, the first order difference is Euclidean distance among
+    consecutive points. The second order difference is simple difference.
     Args:
         arr_nd_in (np.ndarray): 1-D array, or N-D array with 1 <= arr_nd_in.shape[-2] <= 3
+        dim (int): number of dimensions to apply the time.derivative
         Optional:
             order: 1 (default) or 2
     Returns:
         (np.ndarray)
     '''
+    assert dim, "missing 1 required keyword argument: 'dim'"
     assert 1 <= arr_nd_in.shape[-2] <= 3, 'length of axis -2 should be 1, 2 or 3'
     assert 1 <= order <= 2, 'argument "order" should be 1 or 2'
     arr_nd_out = np.diff(arr_nd_in,axis=-1)
-    if arr_nd_in.ndim > 1: arr_nd_out = np.linalg.norm(arr_nd_out,axis=-2)
+    if dim > 1: arr_nd_out = np.linalg.norm(arr_nd_out,axis=-2)
     if order == 2: arr_nd_out = np.diff(arr_nd_out)
     return arr_nd_out
 
