@@ -516,11 +516,11 @@ def tder( ptdata, **kwargs ):
     '''
     return apply( ptdata, ndarr.tder, **kwargs )
 
-def speed( ptdata ):
+def speed( ptdata, **kwargs ):
     '''
     Another wrapper for syncoord.ndarr.tder but order is always 1.
     '''
-    return apply( ptdata, ndarr.tder, order=1 )
+    return apply( ptdata, ndarr.tder, order=1, **kwargs )
 
 def peaks_to_phase( ptdata, **kwargs ):
     '''
@@ -1183,9 +1183,11 @@ def apply( ptdata, func,*args, **kwargs ):
     fn = func.__name__
 
     if fn == 'tder':
-        del dim_names[axis-1]
-        del dim_labels[axis-1]
-        del dimel_labels[axis-1]
+        assert kwargs['dim'], "missing 1 required keyword argument: 'dim'"
+        if kwargs['dim'] > 1:
+            del dim_names[axis-1]
+            del dim_labels[axis-1]
+            del dimel_labels[axis-1]
         main_name = 'Speed'
         main_label = '| $v$ |'
         if ('order' in kwargs) and (kwargs['order'] == 2):
