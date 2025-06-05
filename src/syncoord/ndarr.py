@@ -34,6 +34,7 @@ def tder( arr_nd_in, dim=None, order=1 ):
 def peaks_to_phase( arr_nd, axis=-1 ):
     '''
     Generate ramps between signal peaks, with amplitude {-pi,pi}
+    The first ramp starts at zero and the last ramp ends at zero.
     Args:
         N-D array
         Options:
@@ -43,13 +44,18 @@ def peaks_to_phase( arr_nd, axis=-1 ):
         N-D array
     '''
     def pks2ph(sig):
-        phi = np.zeros(len(sig))
+        len_sig = len(sig)
+        phi = np.zeros(len_sig)
         idx_pks = signal.find_peaks(sig)
         for i in range(len(idx_pks[0])-1):
             i_start = idx_pks[0][i]
             i_end = idx_pks[0][i+1]
             ramp_length = int(np.diff(idx_pks[0][i:i+2])[0])
             phi[i_start:i_end] = np.linspace( start = -np.pi, stop = np.pi, num = ramp_length )
+        if idx_pks[0][0] != 0:
+            phi[0:idx_pks[0][0]] = np.linspace(0, np.pi, idx_pks[0][0])
+        if idx_pks[0][-1] != (len_sig-1):
+            phi[idx_pks[0][-1]:-1] = np.linspace(-np.pi, 0, len_sig-idx_pks[0][-1]-1)
         return phi
     return np.apply_along_axis(pks2ph,axis,arr_nd)
 
