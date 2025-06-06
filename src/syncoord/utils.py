@@ -8,6 +8,11 @@ import pandas as pd
 
 np.set_printoptions(suppress=True)
 
+def nanbordz(a,margin):
+    '''Converts zeros to nan within a margin at beginning and ending of a vector'''
+    for am in [a[:margin],a[-margin:]]: am[am == 0] = np.nan
+    return a
+
 def frames_to_minsec_str( frames, fps, ms=False ):
     '''
     Convert frames (int) into a string with format "minutes:seconds" (default)
