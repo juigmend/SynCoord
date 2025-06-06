@@ -9,7 +9,7 @@ import pandas as pd
 np.set_printoptions(suppress=True)
 
 def nanbordz(a,margin):
-    '''Converts zeros to nan within a margin at beginning and ending of a vector'''
+    '''Converts zeros to nan within a margin at the beginning and ending of a vector'''
     for am in [a[:margin],a[-margin:]]: am[am == 0] = np.nan
     return a
 
