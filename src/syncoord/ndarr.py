@@ -31,15 +31,17 @@ def tder( arr_nd_in, dim=None, order=1 ):
     if order == 2: arr_nd_out = np.diff(arr_nd_out)
     return arr_nd_out
 
-def peaks_to_phase( arr_nd, axis=-1 ):
+def peaks_to_phase( arr_nd, endstart=False, axis=-1 ):
     '''
     Generate ramps between signal peaks, with amplitude {-pi,pi}
-    The first ramp starts at zero and the last ramp ends at zero.
     Args:
-        N-D array
+        arr_nd (numpy.ndarray): N-D array
         Options:
-            axis: int, default = -1
-                  Note: axis is a dimension of the N-D array. The rightmost axis is the fastest changing.
+            endstart (bool): True will add a ramp from zero before the first peak, and a ramp ending
+                             in zero after the last peak. False will leave zeros before the first
+                             peak and after the last peak.
+            axis (int): Axis along which to execute the operation.
+                Note: axis is a dimension of the N-D array. The axis that changes the most is -1
     Returns:
         N-D array
     '''
@@ -52,10 +54,11 @@ def peaks_to_phase( arr_nd, axis=-1 ):
             i_end = idx_pks[0][i+1]
             ramp_length = int(np.diff(idx_pks[0][i:i+2])[0])
             phi[i_start:i_end] = np.linspace( start = -np.pi, stop = np.pi, num = ramp_length )
-        if idx_pks[0][0] != 0:
-            phi[0:idx_pks[0][0]] = np.linspace(0, np.pi, idx_pks[0][0])
-        if idx_pks[0][-1] != (len_sig-1):
-            phi[idx_pks[0][-1]:-1] = np.linspace(-np.pi, 0, len_sig-idx_pks[0][-1]-1)
+        if endstart:
+            if idx_pks[0][0] != 0:
+                phi[0:idx_pks[0][0]] = np.linspace(0, np.pi, idx_pks[0][0])
+            if idx_pks[0][-1] != (len_sig-1):
+                phi[idx_pks[0][-1]:-1] = np.linspace(-np.pi, 0, len_sig-idx_pks[0][-1]-1)
         return phi
     return np.apply_along_axis(pks2ph,axis,arr_nd)
 
