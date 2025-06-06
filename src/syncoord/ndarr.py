@@ -45,7 +45,7 @@ def peaks_to_phase( arr_nd, endstart=False, axis=-1 ):
     Returns:
         N-D array
     '''
-    def pks2ph(sig):
+    def pks2ph(sig,endstart):
         len_sig = len(sig)
         phi = np.zeros(len_sig)
         idx_pks = signal.find_peaks(sig)
@@ -60,7 +60,7 @@ def peaks_to_phase( arr_nd, endstart=False, axis=-1 ):
             if idx_pks[0][-1] != (len_sig-1):
                 phi[idx_pks[0][-1]:-1] = np.linspace(-np.pi, 0, len_sig-idx_pks[0][-1]-1)
         return phi
-    return np.apply_along_axis(pks2ph,axis,arr_nd)
+    return np.apply_along_axis(pks2ph,axis,arr_nd,endstart)
 
 def fourier_transform( arr_nd, window_length, fps=None, output='spectrum', window_shape=None,
                        mode='same', first_fbin=1, axis=-1 ):
