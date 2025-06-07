@@ -53,7 +53,7 @@ def trop( path_in, path_out, **kwargs):
     sp_cmd_b = []
     if trim: sp_cmd_b += ['-ss', str(trim[0]), '-to', str(trim[1])]
     if crop: sp_cmd_b += ['-vf',f'crop={crop}']
-    sp_cmd_b += ['-acodec', 'copy']
+    sp_cmd_b += ['-acodec', 'copy','-vcodec', 'copy']
 
     for fn in utils.listfiles(path_in):
         ffn_in = os.path.join(video_in_path,fn)
