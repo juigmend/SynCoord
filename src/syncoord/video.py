@@ -15,16 +15,16 @@ def trop( path_in, path_out, **kwargs):
     '''
     Trim and crop video files.
     Args:
-        path_in: input video file or folder
-        path_out: output video file or folder
-        Optional:
+        path_in (str): Input video file or folder.
+        path_out (str): Output video file or folder.
+        Optional kwargs:
         (either trim or crop are optional)
             trim (list): [start,end] in seconds.
             crop (str): 'width:height:right:down' *
                 Example: '400:200:50:10' results in 400 px. (pixels) of width, 200 px. of height,
                          at 50 px. right and 10 px. down from the top-left corner.
             skip_done (bool): Skip if output file exists. Default = False
-            lbl (str): suffix for the output file's name or '--auto'. Default = None
+            lbl (str): Suffix for the output file's name or '--auto'. Default = None
     * Documentation: https://ffmpeg.org/ffmpeg-filters.html#crop
     '''
     trim = kwargs.get('trim',None)
@@ -77,17 +77,17 @@ def download( ID, mode, **kwargs):
     Download video from Youtube, get information, preview, and write text file 'properties.csv'
     with ID (identificaion code of the video), and fps (frames per second).
     Args:
-        ID: str, identification code at the end of the video's Youtube page URL.
-            The Youtube ID follows this string in the URL: "www.youtube.com/watch?v="
-        mode: 'download', 'preview', or 'info'. They may be combined.
-        Optional:
-            video_folder: path to save the downloaded video file.
-            prop_folder: path to save the properties file. Default is video_folder
-            fn: name for the resulting file. If None, ID will be used.
-            maxh: maximum height of video to download. Default = 720
-            maxfps: maximum frame rate of video to download. Default = 60
-            ext: file extension (encapsulation format) for resulting video.
-            verbose
+        ID (str): Identification code at the end of the video's Youtube page URL.
+                  Note: The Youtube ID follows this string in the URL: "www.youtube.com/watch?v="
+        mode (str): 'download', 'preview', or 'info'. They may be combined.
+        Optional kwargs:
+            video_folder (str): Path to save the downloaded video file.
+            prop_folder (str): path to save the properties file. Default is video_folder
+            fn (str): Name for the resulting file. If None, ID will be used.
+            maxh (int): Maximum height of video to download. Default = 720
+            maxfps (int): Maximum frame rate of video to download. Default = 60
+            ext (str): File extension (encapsulation format) for resulting video.
+            verbose (bool)
     Dependency:
         https://github.com/yt-dlp/yt-dlp
     '''
@@ -148,16 +148,14 @@ def getaudio( ffn_in, ffn_ne_out=None ):
     '''
     Extract audio from video file.
     Args:
-        ffn_in: str, filename of input video file, with full or relative path stem.
-        ffn_ne_out: str or None.
-                    If str: filename of output audio file, with no extension,
-                            with full or relative path stem.
-                    If None: The audio file will have the same name and will be placed
-                             in the same folder, as the input ideo file.
+        ffn_in (str): Filename of input video file, with full or relative path stem.
+        ffn_ne_out (str): Filename of output audio file, with no extension, with full or relative
+                          path stem. If None, the audio file will have the same name and will be
+                          placed in the same folder, as the input ideo file.
     Returns:
-        str, extension (format) of the audio file
+        (str): Extension (format) of the audio file.
     Dependencies:
-        ffmpeg and ffprobe installed in system (callable by command line)
+        ffmpeg and ffprobe installed in system (callable by command line).
     '''
     # TO-DO: handle exceptions
     audio_ext = ((subprocess.run([ "ffprobe","-v","error","-select_streams","a","-show_entries",
@@ -176,13 +174,13 @@ def setaudio( ffn_video_in, ffn_audio_in, ffn_video_out=None ):
     '''
     Put or replace audio in a video file.
     Args:
-        ffn_video_in: Filename of input video file.*
-        ffn_audio_in: Filename of input audio file.*
-        ffn_video_out: Filename of output audio file.* If None, the fill will be saved in the same
-                       folder as the input video file, with the same name plus label "+audio".
-            * file names should include full or relative path
+        ffn_video_in (str): Filename of input video file.*
+        ffn_audio_in (str): Filename of input audio file.*
+        ffn_video_out (str): Filename of output audio file.* If None, the file will be saved in the
+                             same folder as input video file, with same name plus label "+audio".
+        * file names should include full or relative path
     Dependency:
-        ffmpeg installed in system (callable by command line)
+        ffmpeg installed in system (callable by command line).
     '''
     # TO-DO: handle exceptions
     if not ffn_video_out:
@@ -206,7 +204,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
         video_in_path (str): Path for input video file or folder with input video files.
         json_path (str): Path of folder for resulting json tracking files.
         AlphaPose_path (str): Path of folder where AlphaPose code is.
-        Optional:
+        Optional kwargs:
             video_out_path (str): Path of folder for resulting tracking video files
                                   with superimposed skeletons. None = Don't make video.
             trim_range (list): [start,end] in seconds or 'end'.
