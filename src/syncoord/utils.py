@@ -42,10 +42,11 @@ def frames_to_minsec_str( frames, fps, ms=False ):
 def minsec_str_to_frames(ts_str_in,fps):
     '''
     Args:
-        ts_str_in: comma-separated string of times as seconds, minutes:seconds, or minutes:seconds.decimals
-        fps
+        ts_str_in (str): comma-separated string of times as seconds, minutes:seconds,
+                         or minutes:seconds.decimals
+        fps (int): frames per second
     Returns:
-        list of int: frames
+        (list[int]): frames
     '''
     if not ts_str_in[-1].isnumeric():
         ts_str_in = ts_str_in[:-1]
@@ -88,8 +89,8 @@ def trim_topinfo_start( ptdata, trim_s ):
     '''
     Modifies ptdata.topinfo such that the sections in frames reflect a negative offset in time.
     Args:
-        ptdata object
-        trim_s: trim at the beginning, in seconds.
+        ptdata (PtData): object
+        trim_s (float): trim at the beginning (seconds)
     '''
     if 'Start' in ptdata.topinfo.columns:
         topinfo = deepcopy(ptdata.topinfo)
@@ -110,20 +111,20 @@ def supersine(argdict):
     '''
     Produce a sine wave with optional variables for distortion.
     Arg:
-            wavargs = dict()
-        Required values:
-            wavargs['frequency'] = f
-            wavargs['phase_shift'] = ps
-            wavargs['amplitude'] = a
-            wavargs['sampling_frequency'] = sf
-            wavargs['length'] = l
-        Optional values:
-            wavargs['vertical_offset'] = vo
-            wavargs['irregularity'] = irr
-            wavargs['noise_strength'] = ns
-            wavargs['seed'] = s
+        argdict (dict):
+            Required values:
+                argdict['frequency'] = f
+                argdict['phase_shift'] = ps
+                argdict['amplitude'] = a
+                argdict['sampling_frequency'] = sf
+                argdict['length'] = l
+            Optional values:
+                argdict['vertical_offset'] = vo
+                argdict['irregularity'] = irr
+                argdict['noise_strength'] = ns
+                argdict['seed'] = s
     Returns:
-        array
+        (numpy.ndarray): signal
     '''
     from scipy.interpolate import CubicSpline
 
@@ -167,13 +168,13 @@ def init_testdatavars(**kwargs):
     All arguments are keywords. If no arguments are given, a dictionary with default values
     will be produced (e.g., for quick testing).
     Args:
-        Optional:
-            fps: scalar
-            durations_sections: list, durations of sections in seconds
-            n_points: number of oscillating points
-            n_axes: number of spatial axes
-            seed: None or int; seed for the pseudorandom generator (e.g., for reproducibility)
-            nan: True returns array 'data_vars' as NaN. False returns default values.
+        Optional kwargs:
+            fps (int): Frames per second.
+            durations_sections (list[int]): Durations of sections in seconds.
+            n_points (int): Number of oscillating points.
+            n_axes (int): Number of spatial axes.
+            seed (int): Seed for the pseudorandom generator (e.g., for reproducibility).
+            nan (bool): True returns array 'data_vars' as NaN. False returns default values.
             verbose: display values for variales, except 'data_vars' (see Returns below).
     Returns:
         Dictionary of variables for syncoord.utils.testdata with all the optional arguments plus
@@ -241,7 +242,7 @@ def testdata(*args,**kwargs):
     Args:
         See documentation for syncoord.utils.init_testdatavars
     Returns:
-        N-D array with dimensions [points,axes,frames]
+        (numpy.ndarray): N-D array with dimensions [points,axes,frames]
     '''
     if args:
         kwargs = args[0]
@@ -287,9 +288,9 @@ def listfiles(path):
         If dir, return list of file names in folder.
         If file, return file name as list.
         Arg:
-            path: str, path of folder or file
+            path (str): path of folder or file
         Returns:
-            fnames: list, file names with extensions
+            fnames (list[str]): file names with extensions
         '''
         if os.path.isdir(path):
             fnames = []
@@ -460,8 +461,8 @@ def matlab_eng( addpaths=None, verbose=True ):
     '''
     Connects to Matab and returns a matlab.engine object.
     Optional args:
-        addpaths: str or list, path(s) to add to Matlab, or None.
-        verbose: True or False.
+        addpaths (str,list[str]): Path(s) to add to Matlab, or None.
+        verbose (bool)
     '''
     if verbose: print('Connecting to Matlab...')
     import matlab.engine
@@ -483,12 +484,12 @@ def invexaxes(exaxes, s, d=None ):
     The last dimension will always be included.
     Useful to delete names or labels of dimensions that will not exist after a process.
     Args:
-        exaxes: dimensions to exclude.
-        s: shape of the array before processing.
-        d: ndim (number of dimensions) of the array before processing.
+        exaxes (tuple): dimensions to exclude.
+        s (tuple): Shape of the array before processing.
+        d (int): number of dimensions of the array before processing.
     Returns:
-        graxes: opposite to input except last.
-        exaxes: as input; iterable if it is not.
+        graxes (numpy.ndarray): opposite to input except last.
+        exaxes (numpy.ndarray): as input; iterable if it is not.
     '''
     try:
         iter(exaxes)
