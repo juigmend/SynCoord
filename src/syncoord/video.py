@@ -302,7 +302,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
             ffn_json = os.path.join(json_path, fn)
             if os.path.isfile(ffn_json): json_saved_fn.append( fn )
 
-    if audio:
+    if audio and video_out_path:
         audio_out_folder = os.path.join(video_out_folder,'audio')
         if not os.path.exists(audio_out_folder): os.makedirs(audio_out_folder)
 
