@@ -16,12 +16,12 @@ def tder( arr_nd_in, dim=None, order=1 ):
     If more than one dimension, the first order difference is Euclidean distance among
     consecutive points. The second order difference is simple difference.
     Args:
-        arr_nd_in (np.ndarray): 1-D array, or N-D array with 1 <= arr_nd_in.shape[-2] <= 3
+        arr_nd_in (numpy.ndarray): 1-D array, or N-D array with 1 <= arr_nd_in.shape[-2] <= 3
         dim (int): number of dimensions to apply the time.derivative
         Optional:
-            order: 1 (default) or 2
+            order (int): 1 (default) or 2
     Returns:
-        (np.ndarray)
+        (numpy.ndarray): array
     '''
     assert dim, "missing 1 required keyword argument: 'dim'"
     assert 1 <= arr_nd_in.shape[-2] <= 3, 'length of axis -2 should be 1, 2 or 3'
@@ -43,7 +43,7 @@ def peaks_to_phase( arr_nd, endstart=False, axis=-1 ):
             axis (int): Axis along which to execute the operation.
                 Note: axis is a dimension of the N-D array. The axis that changes the most is -1
     Returns:
-        N-D array
+        (numpy.ndarray): N-D array
     '''
     def pks2ph(sig,endstart):
         len_sig = len(sig)
@@ -68,19 +68,19 @@ def fourier_transform( arr_nd, window_length, fps=None, output='spectrum', windo
     Wrapper for scipy.fft.rfft
     Fast Fourier transform for a signal of real numbers.
     Args:
-        arr_nd: N-D array
-        window_length: length of the FFT window vector, in seconds if the fps parameter is given.
+        arr_nd (numpy.ndarray): N-D array
+        window_length (int): length of the FFT window, in seconds if the fps parameter is given.
         Options:
-            fps
-            output: 'phase'(radians), 'amplitude', 'spectrum' (complex)
-            window_shape: main_name of the window shape (eg.'hann'). See help(scipy.signal.windows) or
-                          https://docs.scipy.org/doc/scipy/reference/signal.windows.html
-            mode: 'same' (post-process zero-padded, same size of input) or 'valid' (only FFT result).
-            first_fbin: Remove frequency bins under this number. Default = 1 (removes DC offset).
-            axis: int, default = -1 (last dimension of the N-D array).
-                  Note: axis is a dimension of the N-D array. The rightmost axis (-1) is the fastest changing.
+            fps (int): frames per second
+            output (str): 'phase'(radians), 'amplitude', 'spectrum' (complex)
+            window_shape (str): name of the window shape (eg.'hann'). See help(scipy.signal.windows)
+                                or https://docs.scipy.org/doc/scipy/reference/signal.windows.html
+            mode (str): 'same' (post-process zero-padded) or 'valid'
+            first_fbin (int): Remove frequency bins under this index. Default = 1 (DC offset).
+            axis (int): Default = -1 (last dimension of the N-D array).
+                Note: axis is a dimension of the N-D array. The rightmost axis (-1) is the fastest changing.
     Returns:
-        N-D array, whose two last two dimensions are the result of this function.
+        (numpy.ndarray): N-D array, whose two last two dimensions are the result of this function.
     '''
     if fps: window_length = round(window_length * fps)
     fft_window = 1
@@ -112,11 +112,11 @@ def kuramoto_r(arr_nd):
     '''
     Row-wise kuramoto order parameter r.
     Args:
-        N-D array of phase angles,
-        where dim = -2 is rows for points and dim = -1 is columns for observations.
+        arr_nd (numpy.ndarray): N-D array of phase angles, where dim = -2 is rows for points
+                                and dim = -1 is columns for observations.
         Singleton dimensions will be removed firstly.
     Returns:
-        1-D array of Kuramoto order parameter r.
+        (numpy.ndarray): 1-D array of Kuramoto order parameter r.
     '''
     if 1 in arr_nd.shape: arr_nd_sqz = np.squeeze(arr_nd)
     else: arr_nd_sqz = arr_nd
@@ -129,9 +129,9 @@ def kuramoto_r(arr_nd):
 def phasediff( phi_1, phi_2 ):
     '''
     Args:
-        phi_1, phi_2: scalars of vectors that are phase angles.
+        phi_1, phi_2 (numpy.ndarray,list): phase angles
     Returns:
-        Phase difference.
+        (numpy.ndarray): phase difference
     '''
     return np.arctan2( np.cos(phi_1) * np.sin(phi_2) - np.sin(phi_1) * np.cos(phi_2),
                        np.cos(phi_1) * np.cos(phi_2) + np.sin(phi_1) * np.sin(phi_2) )
@@ -140,12 +140,12 @@ def plv( a1, a2, axis=0 ):
     '''
     Phase-Locking Value for two vectors of phase angles.
     Args:
-        a1, a2: phase angles.
+        a1, a2 (numpy.ndarray,list): phase angles.
         Optional:
-            axis
+            axis (int): Dimension to which the operation will be applied.
             Note: axis is a dimension of the N-D array. The rightmost axis (-1) is the fastest changing.
     Returns:
-        Phase-locking value.
+        (numpy.ndarray): Phase-locking values.
     '''
     diff_complex = np.exp(complex(0,1)*(a1-a2))
     plv_result = np.abs(np.sum(diff_complex,axis=axis))/diff_complex.shape[axis]
@@ -155,12 +155,13 @@ def windowed_plv( arrs, window_length=None, window_step=1, mode='same', axis=-1 
     '''
     Sliding-window phase-locking values.
     Args:
-        arrs: 1-D array or a list with two 1-D arrays with the same length.
-        window_length: length of the window vector.
-        window_setp: window step.
+        arrs (numpy.ndarray,list[numpy.ndarray]): 1-D array or a list with two 1-D arrays
+                                                  with the same length.
+        window_length (int): Length of the window vector (frames).
+        window_setp (int): Window step (frames).
         Optional:
-            mode: 'same' (post-ptocess zero-padded, same size of input) or 'valid' (only func result).
-            axis to apply plv
+            mode (str): 'same' (post-process zero-padded) or 'valid'.
+            axis (int): Dimension to apply the process.
                 Note: axis is a dimension of the N-D array. The rightmost axis (-1) is the fastest changing.
     Returns:
         Array whose dimensions depend on func.
@@ -172,24 +173,24 @@ def xwt_nd( arrlist, minmaxf, fps, **kwargs ):
     Wrapper for Matlab functions cwt.m, cwtensor.m, genxwt.m, xwtnd.m
     Multi-Dimensional Cross-Wavelet Transform.
     Args:
-        arrlist: list with two N-D or 1-D arrays having dimensions [channels,frames]
-                 or [frames], respectively.
+        arrlist (list): Two N-D or 1-D arrays having dimensions [channels,frames]
+                        or [frames], respectively.
                  Note: 'channels' are individual signals whose covariance will be measured.
                        For example, in the context of motion, each channel is a spatial
                        dimension (e.g., x, y).
-        minmaxf: list with minimum and maximum frequency (Hz).
-        fps: sampling rate (fps or Hz).
+        minmaxf (list[float]): Minimum and maximum frequency (Hz).
+        fps (int): frames per second
         Optional:
             get_result (str): 'abs', 'angle', 'complex', 'real', 'imag'. Default = 'abs'
-            projout: boolean, to include power projections in returns.
-            matlabeng: matlab.engine object (useful when running multiple times).
-                       Otherwise the following arguments are valid:
-            gxwt_path: path to folder containing functions cwtensor.m, and genxwt.m
+            projout (bool): Include power projections in returns.
+            matlabeng (matlab.engine): object (useful when running multiple times).
+                Otherwise the following arguments are valid:
+            gxwt_path (str): path to folder containing functions cwtensor.m and genxwt.m
     Returns:
-        result: Result with dimensions [channels,frames], depending on argument 'get'.
-        freqs: frequencies (Hz).
-        powproj: if projout = True, tuple of arrays (one per input) with power projections.
-                     The arrays have dimensions [channels,frequencies,frames]
+        result (numpy.ndarray): Array with dimensions [channels,frames], depending on argument 'get'.
+        freqs (numpy.ndarray): frequencies (Hz).
+        powproj (tuple(numpy.ndarray)): If projout = True, one array per with power projections.
+                                        The arrays have dimensions [channels,frequencies,frames]
     Non-Python dependencies:
         Matlab, Wavelet Toolbox for Matlab, cwtensor.m, and genxwt.m
     Reference:
@@ -248,15 +249,15 @@ def isochronal_sections( data_list, idx_sections, last=False, axis=-1 ):
     The length of the resulting sections will be the length of the largest process axis of all
     N-D arrays.
     Args:
-        data_list: a list of N-D arrays with the data.
-        idx_sections: corresponding list of lists with the index of sections.
-        Optional:
-            last: If True, from the last index of sections to the end will be the last section.
-            axis to apply the process.
+        data_list (list[numpy.ndarray]): N-D arrays with the data.
+        idx_sections (list[list]): Index of sections for each N-D array.
+        Optional kwargs:
+            last (bool): If True, from the last index of sections to the end will be the last section.
+            axis (int): Dimension to apply the process.
               Note: axis is a dimension of the N-D array. The rightmost axis (-1) is the fastest changing.
     Returns:
-        isochr_data: list of arrays with the processed data.
-        idx_isochr_sections: list with the index of isochronal sections.
+        isochr_data (list[numpy.ndarray]): processed data
+        idx_isochr_sections (list): index of isochronal sections
     '''
     n_sections = np.inf
     for i in range(len(idx_sections)):
@@ -303,19 +304,19 @@ def section_stats( arr_nd, idx_sections, fps, last=False, margins=None, axis=-1,
     '''
     Descriptive statistics for sections of an N-D array.
     Args:
-        arr_nd: N-D array.
-        idx_sections: index of the sections.
-        fps
+        arr_nd (numpy.ndarray): N-D array
+        idx_sections (list): index of the sections
+        fps (int): frames per second
         Optional:
-            last: If True, from the last index of sections to the end will be the last section.
-            margins: scalar or list. Trim at the beginning and ending, in seconds.
-                     If scalar: same trim bor beginning and ending.
-                     If list: trims for beginning and ending. Nested lists for sections.
-            axis to run the process.
-            statnames: str or list of statistics to compute. Default is all.
+            last (bool): If True, last section starts at the last index.
+            margins (float,list[float]). Trim at the beginning and ending, in seconds.
+                     If float: Same trim bor beginning and ending.
+                     If list: Trims for beginning and ending. Nested lists for sections.
+            axis (int): Dimension to apply the process.
+            statnames (str,list[str]): Statistics to compute. Default is all.
     Return:
-        N-D array of same dimensions of the input arr_nd, except the two last dimensions are
-        [statistic, section]. The order of statistics will be as in the argument 'statnames'.
+        (numpy.ndarray): N-D array of same dimensions of the input arr_nd, except the two last
+                         dimensions are [statistic, section]. Order as in argument 'statnames'.
     '''
 
     if isinstance(statnames,str): statnames = [statnames]
@@ -368,15 +369,15 @@ def diter( arr_nd, lockdim=None ):
     '''
     Generator that iterates over dimensions of an N-D data array.
     Args:
-        arr_nd: N-D data array (C-style, row major), or tuple with the shape of an array.
-        Optional:
-            lockdim: dimension (int) or dimensions (list) to not iterate over.
+        arr_nd (numpy.ndarray,tuple): N-D data array (row major), or tuple with shape of an array.
+        Optional kwarg:
+            lockdim (int,list[int]): Dimension(s) to not iterate over.
     Returns:
-        arr_out: slice of d corresponding to the iteration, only if d is np.ndarray.
-                 If arr_nd is a tuple this is not returned.
-        i_chdim: (list) index of changing dimensions.
-        multi_idx: (list) multi-index of the current slice. If lockdim is not None,
-                   elements at lockdim are replaced with ':'.
+        arr_out (numpy.ndarray): slice of d corresponding to the iteration, only if d is np.ndarray.
+                                 If arr_nd is a tuple this is not returned.
+        i_chdim (list): Index of changing dimensions.
+        multi_idx (list): Multi-index of the current slice. If lockdim is not None,
+                          elements at lockdim are replaced with ':'.
     '''
     if isinstance(arr_nd,tuple):
         s = list(arr_nd)
@@ -436,12 +437,12 @@ def slwin( arrs, func, window_length, window_step=1, mode='same', **kwargs ):
     '''
     Apply a function to a sliding window over the last dimension (-1) of one or two numpy arrays.
     Args:
-        arrs: 1-D or N-D array or a list with two of such arrays having the same dimensions.
-        func: function to apply, with one or two required inputs (consistent with arrs).
-        window_length: length of the window vector.
-        window_step: window step.
-        Optional:
-            mode: 'same' (post-process zero-padded, same size of input) or 'valid' (only func result).
+        arrs (numpy.ndarray,list[numpy.ndarray]): One or two 1-D or N-D array(s) with same dimensions.
+        func (Callable): Function to apply, with one or two required inputs (consistent with arrs).
+        window_length (int): Length of the window vector.
+        window_step (int): Step or "hop" of the moving window.
+        Optional kwargs:
+            mode (str): 'same' (post-process zero-padded) or 'valid'.
             **kwargs = keyword arguments to be passed to func.
     Returns:
         Array whose dimensions depend on func.
@@ -474,23 +475,23 @@ def apply_to_pairs( arr_nd, func, pairs_axis, fixed_axes=-1, imout=0, verbose=Fa
     '''
     Apply a function to pairs of dimensions of an N-D array.
     Args:
-        arr_nd: N-D array.
-        func: function to apply, whose first argument is a list with each N-D array of the pair.
-        pairs_axis: axis to run the pairwise process.
-        Optional:
-            fixed_axes: axis (int) or axes (list) that are the input to func. Should be equal or
+        arr_nd (numpy.ndarray): N-D array.
+        func (Callable): Function to apply. Its first argument is a list with N-D arrays of the pair.
+        pairs_axis (int): Dimension to run the pairwise process.
+        Optional kwargs:
+            fixed_axes (int,list[int]): Dimension(s) that are the input to func. Should be equal or
                         less than the dimensions in the output array of func, and should not include
                         pairs_axis. Default is last axis *.
-            imout: index of N-D array in returned tuple of func, if func has multiple returns.
-            verbose: display progress.
+            imout (int): Index of N-D array in returned tuple of func, if func has multiple returns.
+            verbose (bool): Display progress.
             **kwargs = optional arguments and keyword arguments passed to func.
     Returns:
-        arr_nd_out: N-D array. The length of the pairs dimension originanlly
-                    of length N, is ((N*N)-N)/2.
-        pairs_idx: list of pairs.
-        multi_results: tuple with func returns other than indicated by argument 'imout',
-                       otherwise empty list. Consecutively equal results will be discarded.
-        new_fixed_axes:)
+        arr_nd_out (numpy.ndarray): N-D array. The length of the pairs dimension originanlly
+                                    of length N, is ((N*N)-N)/2.
+        pairs_idx (list): pairs
+        multi_results (tuple): func returns other than indicated by argument 'imout', otherwise
+                               empty. Consecutively equal results will be discarded.
+        new_fixed_axes (list)
     * axes = dimensions of the N-D array, where the rightmost axis is the fastest changing.
     '''
     shape_in = list(arr_nd.shape)
@@ -585,19 +586,17 @@ def apply_dimgroup( arr_in, func, exaxes=None, i_out=0, n_out='all' ):
     Group dimensions and apply a function: func( arr_2D,*args,**kwargs),
     where arr_2D is a 2-dimensional array, and func returns a 1-dimensional array.
     Args:
-        arr_in: input N-D array.
-        func: function to apply.
+        arr_in (numpy.ndarray): input N-D array
+        func (Callable): function to apply
         Optional:
-            exaxes: int or None.
-                    If int: dimension(s) to exclude from grouping, except last dimension.
-                    If None: all dimensions except last will be grouped.
-            i_out: int or str.
-                   If int: index of function's return to cast to output N-D array.
-                   If str: 'tuple' to return the function's return.
-                            Only if arr_in is 2-dimensional or if exaxes=None.
-            n_out: number of elements in last dimension of function's output: 'all' or 1.
+            exaxes (int): Dimension(s) to exclude from grouping, except last dimension.
+                          If None, all dimensions except last will be grouped.
+            i_out (int,str): If int, index of function's return to cast to output N-D array.
+                             If str, tuple to return the function's return only if arr_in is
+                             2-dimensional or if exaxes=None.
+            n_out (int): number of elements in last dimension of function's output: 'all' or 1.
     Returns:
-        output: N-D array or tuple, depending on i_out.
+        output (numpy.ndarray,tuple)
     '''
     if arr_in.ndim < 2:
         raise Exception('input dimensions should be at least 2')
