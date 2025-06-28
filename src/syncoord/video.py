@@ -500,13 +500,13 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
             trange (list): Time-range selection [start,end]. Default = None
             scorefac (float): NMS score factor to discard raw data. 0 >= scorefac <= 1
                               Default = 0.7
-            drdim (str,int,list): Dimensions to apply disjoint ranges for tracked individuals.
-                                  'all' to try all dimensions. Works only if keypoint trajectories
-                                  don't overlap. Default = None
-            drlim_set (list): Set manual limits for disjoint ranges, only if json_path is a file or
-                              is a folder with only one file. Format is nested lists for dimensions.
-                              The order should be consistent with drdim. Default = None
-                              Example: [[lim0_dim0,lim1_dim0], [lim0_dim1,lim1_dim1]]
+            drdim (str,int,list[int]): Dimensions to apply automatic classification of individuals
+                                       by clustering. 'all' to try all dimensions. Works only if
+                                       keypoint trajectories in selected dimensions don't overlap.
+            drlim_set (list[int]): Set manual limits to classify individuals, only if json_path is a
+                                   file or a folder with only one file. Format is nested lists for
+                                   dimensions. The order should be consistent with drdim.
+                                   Example: [[lim0_dim0,lim1_dim0], [lim0_dim1,lim1_dim1]]
             fillgaps (bool): Fill missing data with cubic spline. Default = True
             verbose (bool): Default = True
     Returns:
@@ -563,6 +563,7 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
 
     if drlim_set:
         assert drdim, 'argument "drdim" should have a value'
+        if not any(isinstance(v, list) for v in drlim_set): drlim_set = [drlim_set]
         assert len(drdim) == len(drlim_set), '"drdim" and "drlim_set" should be the same length'
         assert (len(json_fnames)==1) or json_path_is_file, 'argument "drlim_set" works only for one file'
 
@@ -601,6 +602,7 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
             else:
                 n_persons = len(sel_indiv)
                 persons_range = sel_indiv
+            idx_p = range(n_persons)
 
             # Inspect, plot selected raw data, and cluster:
             if vis['show'] or rawfig_path or log_path or drdim:
@@ -617,13 +619,15 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                     i_sp = 1
                 minmax_frames_raw = [data_red_df.index.min(),data_red_df.index.max()]
                 colours = []
-                for i_s in range(n_series):
+                for i_s in range(n_series): # each series correspond to one keypoint and vice-versa
                     if vis['show'] == 'ind': new_series = True
                     elif (vis['show'] is True) or rawfig_path: plt.subplot(n_series,1,i_s+1)
                     n_frames = []
                     colours.append([])
+                    if drlim_set and (i_s in drdim): drdim_means = []
                     for i_n, i_p in enumerate(persons_range):
                         data_red_p_df = data_red_df[kp_labels[i_s]][data_red_df.idx == i_p]
+                        if drlim_set: drdim_means.append(data_red_p_df.mean())
                         if vis['show'] or rawfig_path:
                             if vis['show'] == 'ind':
                                 if new_series:
@@ -653,36 +657,34 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                         this_series.plot( marker='.', linestyle='none',
                                           markersize=vis['markersize'], color='k')
 
-                    # Identify disjoint ranges by clustering:
+                    #  Classify individuals with disjoint ranges:
                     if drdim and (i_s in drdim):
-                        assert vis['show'] != 'ind', ''.join([ "disjoint ranges cannot be applied ",
-                                                              "when vis['show']='ind'"])
-                        if drlim_set:
+                        if drlim_set: # add minimum and maximum limits
                             dim_max = this_series.max()
                             drlim_file[i_drlim] = [0] + drlim_file[i_drlim] + [dim_max]
                             drlim_series = drlim_file[i_drlim]
                             plot_hlines = True
                             i_drlim += 1
-                        else:
+                            idx_p = np.argsort(drdim_means)
+                        else: # estimate by clustering
                             mcs = int(len(this_series)/(n_persons*2))
                             clustering = HDBSCAN( min_cluster_size=mcs, store_centers="centroid",
                                                   metric="cityblock" )
                             clustering.fit(np.reshape(this_series, (-1, 1)))
                             centroids = np.squeeze(clustering.centroids_)
-                            if centroids.size == n_persons:
-                                drlim_series = centroids[:-1] + np.diff(centroids)/2
-                                drlim_series = np.insert( drlim_series, [0,len(centroids)-1],
-                                                          [0,this_series.max()] )
-                                drlim_file.append(np.sort(drlim_series).tolist())
-                                plot_hlines = True
-                            else:
-                                drlim_file.append(None)
-                                print( ''.join([ 'Warning: no disjoint ranges for axis',
-                                                 f'{i_s}', ' (', f'{kp_labels[i_s]}', ')' ]))
-                                plot_hlines = False
-                        if plot_hlines: plt.hlines( drlim_series[1:-1], 0, data_red_df.index.max(),
-                                                    linestyles='dashed',
-                                                    colors='tab:gray', linewidths=0.8 )
+                            drlim_series = centroids[:-1] + np.diff(centroids)/2
+                            drlim_series = np.insert( drlim_series, [0,len(centroids)-1],
+                                                      [0,this_series.max()] )
+                            drlim_file.append(np.sort(drlim_series).tolist())
+                            if centroids.size != n_persons:
+                                print( ''.join([ 'Warning: Automatic classification of individuals',
+                                                f' not applied with axis {i_s} ({kp_labels[i_s]})',
+                                                f'\n         because the number of found',
+                                                f' clusters is {centroids.size},\n         but the',
+                                                f' expected number of individuals is {n_indiv}.' ]))
+                        if vis['show'] != 'ind':
+                            plt.hlines( drlim_series[1:-1], 0, data_red_df.index.max(),
+                                        linestyles='dashed', colors='tab:gray', linewidths=0.8 )
 
                     if vis['show'] != 'ind':
                         plt.ylabel(kp_labels[i_s])
@@ -720,14 +722,14 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
             if drdim:
                 i_l = 0
                 for i_drdim in drdim:
-                    if isinstance(drlim_file[i_drdim],list):
+                    if (len(drlim_file[i_drdim]) -1) == n_persons:
                         for i_p, _ in enumerate(drlim_file[i_l][:-1]):
                             col_lbl = kp_labels[i_drdim]
                             idx_lo = data_red_df[col_lbl] > drlim_file[i_l][i_p]
                             idx_hi = data_red_df[col_lbl] <= drlim_file[i_l][i_p+1]
                             idx_sel = idx_lo & idx_hi
                             data_red_df.loc[idx_sel,'idx'] = i_p+1
-                        drlim_file[i_l] = drlim_file[i_l][1:-1] # for output
+                    drlim_file[i_l] = drlim_file[i_l][1:-1] # for output
                     i_l += 1
 
             # Rearrange such that each row is a frame (image_id):
@@ -805,7 +807,7 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                         plt.subplot(n_series,1,i_s+1)
                         legend = []
                     names_cols = [ f'{n}_{kp_labels[i_s]}' for n in range(n_persons)]
-                    for i_nc, nc in enumerate(names_cols):
+                    for i_nc, nc in zip(idx_p,names_cols):
                         if vis['show'] == 'ind':
                             if new_series:
                                 i_sp += 1
