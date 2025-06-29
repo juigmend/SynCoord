@@ -500,11 +500,13 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
             trange (list): Time-range selection [start,end]. Default = None
             scorefac (float): NMS score factor to discard raw data. 0 >= scorefac <= 1
                               Default = 0.7
-            drdim (str,int,list[int]): Dimensions to apply automatic classification of individuals
-                                       by clustering. 'all' to try all dimensions. Works only if
-                                       keypoint trajectories in selected dimensions don't overlap.
-            drlim_set (list[int]): Set manual limits to classify individuals, only if json_path is a
-                                   file or a folder with only one file. Format is nested lists for
+            drdim (str,int,list[int]): Dimensions to apply classification of individuals. Clustering
+                                       is used if drlim_set is not specified. 'all' to try all
+                                       dimensions. Works only if keypoint trajectories in selected
+                                       dimensions don't overlap.
+            drlim_set (list[int]): Set manual limits of disjoint ranges to classify individuals,
+                                   only if json_path is a file or a folder with only one file.
+                                   Format is one list if one dimension or nested lists for more
                                    dimensions. The order should be consistent with drdim.
                                    Example: [[lim0_dim0,lim1_dim0], [lim0_dim1,lim1_dim1]]
             fillgaps (bool): Fill missing data with cubic spline. Default = True
