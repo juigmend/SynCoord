@@ -23,41 +23,41 @@ class PtData:
     Data-oriented class.
     Attributes:
         names:
-            names.main: str, main name of the object. Descriptive.
-                        It may grow as the names of processes to the data are added.
-            names.dim: list of str, dimensions of the object. Concise, used for selection.
+            names.main (str): Main name of the object. Descriptive.
+                              It may grow as the names of processes to the data are added.
+            names.dim (list[str]): Dimensions of data. Concise, used for selection.
         labels:
-            labels.main: str, main label of the object. Concise or abbreviated.
-            labels.dim: list of str, dimensions of the object. Concise or abbreviated.
-                         Used for visualisations.
-            labels.dimel: list of str, elements of dimensions. It can also be a dict
-                          of lists with one item per data array, if the arrays are inhomogeneous.
-                          Used for visualisations.
-        data: dict where each item should be an N-D data array (type numpy.ndarray) containig data.
-              Each item is at the top level of the data hierarchy. Its order and index should
-              directly correspond to the index of topinfo.
-        topinfo: Pandas dataframe with information for each entry at the top level.
-                 See documentation for syncoord.utils.load_data
-        vis: dict of keyword arguments for default visualisation parameters,
-             when the ptdata object is passsed to ptdata.visualise
-        other: empty dict, for any other information.
+            labels.main (str): Main label of the object. Concise or abbreviated.
+            labels.dim  (list[str]): Dimensions of data. Concise or abbreviated.
+                                     Used for visualisations.
+            labels.dimel (list[str]): Elements of dimensions. It can also be a dict of lists with
+                                      one item per data array, if the arrays are inhomogeneous.
+                                      Used for visualisations.
+        data (dict): Each item should be an N-D data array (type numpy.ndarray), and is at the top
+                     of the data hierarchy. Its order and index should directly correspond to the
+                     index of topinfo.
+        topinfo (pandas.DataFrame): Contains information for each entry at the top level.
+                                    See documentation for syncoord.utils.load_data
+        vis (dict): Arguments for default visualisation parameters. Used when the PtData object is
+                    passsed to syncoord.ptdata.visualise
+        other (dict): Intialised empty, for any other information.
     Methods:
-        print_shape(): prints shape of data arrays.
-        print(): prints attributes and shape of data arrays
-        checkdim(verbose=True): checks consistency of dimensions of data arrays (shape),
+        print_shape(): Prints shape of data arrays.
+        print(): Prints attributes and shape of data arrays.
+        checkdim(verbose=True): Checks consistency of dimensions of data arrays (shape),
                                 except last dimension.
                                 Returns -1 if empty, 0 if inconsistent, 1 if consistent.
         copy(*arg): Returns a deep copy of the object. Optional: 'nodata' to exclude data.
-        visualise(**kwargs): calls syncoord.ptdata.visualise with the same optional arguments.
+        visualise(**kwargs): Calls syncoord.ptdata.visualise
     Note:
-        Use command vars to see content of subfields.
+        Use command "vars" to see the content of subfields.
         Examples:
             ptdata = PtData(topinfo)   # initialise data object
             ptdata.names.main = 'Juan' # assign main name
             vars(ptdata.names)
             returns: {'main': 'Juan'}
     Args:
-        topinfo: See documentation for syncoord.utils.load_data
+        topinfo (pandas.DataFrame): See documentation for syncoord.utils.load_data
     '''
     def __init__(self,topinfo=None):
         self.names = SubField()
@@ -119,24 +119,26 @@ class PtData:
 def load( preproc_data, *prop_path, annot_path=None, max_n_files=None,
               print_info=True, **kwargs ):
     '''
+    Load data.
     Args:
-        preproc_data: str, dict or np.ndarray
-                      If str: folder with parquet files for preprocesed data
+        preproc_data (str,dict,numpy.ndarray):
+                      If str: Folder with parquet files for preprocesed data
                               (e.g., r"~/preprocessed"),
                               or "make" to produce synthetic data with default values.
-                      If dict: as returned by syncoord.utils.testdata
-                      If np.ndarray: as returned by syncoord.utils.init_testdatavars
-        prop_path: str, path and filename for properties CSV file (e.g., r"~/properties.csv").
-                   Optional or ignored if preproc_data = "make"
+                      If dict: As returned by syncoord.utils.testdata.
+                      If numpy.ndarray: As returned by syncoord.utils.init_testdatavars
+        prop_path (str): Path for properties CSV file (e.g., r"~/properties.csv").
+                         See documentation for syncoord.utils.load_data
+                         Optional or ignored if preproc_data = "make"
         Optional:
-            annot_path: str, path and filename of annotations CSV file
-                        (e.g., r"~/String_Quartet_annot.csv").
-            max_n_files: None (all) or scalar, number of files to load.
-            print_info: bool, print durations of data.
-            **kwargs: passed to syncoord.utils.load_data
+            annot_path (str): Path and filename for annotations CSV file
+                              (e.g., r"~/String_Quartet_annot.csv").
+            max_n_files (int): Number of files to load, otherwise loads all files in folder.
+            print_info (bool): Print durations of data.
+            **kwargs: Passed to syncoord.utils.load_data
                       and syncoord.utils.init_testdatavars if preproc_data = "make"
     Returns:
-        PtData object with loaded data (dictionary of mutlti dimensional numpy arrays).
+        PtData object with loaded data.
     '''
     # TO-DO: get main name and label from preprocessed data file
     load_out = utils.load_data( preproc_data, prop_path, annot_path=annot_path,
@@ -155,17 +157,17 @@ def load( preproc_data, *prop_path, annot_path=None, max_n_files=None,
 
 def select( ptdata,*args,**kwargs ):
     '''
+    Select data from a PtData object.
     Args:
-        ptdata: PtData object
+        ptdata (PtData): Data object.
         Either of these:
-            * Location for top-level and dimensions,
-              as a list ordered as [top-level, dim 1, dim 2, ...].
-            * Arbitrary number of keywords and values, separated or in a dictionary.
-              Keywords are 'top' and dimension names.
+            - List of location for top-level and dimensions, e.g. [top-level, dim 1, dim 2, ...]
+            - Arbitrary number of keywords and values, separated or in a dictionary.
+                      Keywords are 'top' and dimension names.
             In both cases values are locations or index. They may be 'all', int,
             or slice(start,end), separated or in a nested list with non-continguous values.
     Returns:
-        sel: PtData object containing the selected data and topinfo.
+        PtData object containing the selected data and topinfo.
     Examples:
         sel = select_data(ptdata, [1,slice(0,180),1,'all'])
         sel = select_data(ptdata, top = [0,1],  point = 1, frame = slice(0,600))
@@ -326,12 +328,12 @@ def gensec( ptdata, n, print_info=False ):
     Generate equally spaced sections for each data array (along the last dimension).
     The object will be updated in place.
     Args:
-        ptdata: a ptdata object. A prompt will ask to replace the following columns
-                of ptdata.topinfo if they exist: ptdata.topinfo['Sections'];
-                                                 ptdata.topinfo['trimmed_sections_frames']
-        n: number of equally spaced sections, conforming to rounding precision.
+        ptdata (PtData): Data object. A prompt will ask to replace the following columns
+            of syncoord.ptdata.topinfo if they exist: ptdata.topinfo['Sections'];
+            ptdata.topinfo['trimmed_sections_frames']
+        n (int): Number of equally spaced sections, conforming to rounding precision.
         Optional:
-            print_info: Boolean. True will print sections' length and difference in frames.
+            print_info (bool): Print sections' length and difference in frames.
     '''
     check_1 = 'Sections' in ptdata.topinfo
     check_2 = 'trimmed_sections_frames' in ptdata.topinfo
@@ -380,7 +382,7 @@ def norm( ptdata, order, axis=-2 ):
     Compute norm.
     Wrapper for numpy.linalg.norm
     Args:
-        ptdata (PtData): PtData object. See documentation for syncoord.ptdata.PtData
+        ptdata (PtData): Data object. See documentation for syncoord.ptdata.PtData
         order (int,str): 1 = taxicab, 2 = euclidean. More in documentation for numpy.linalg.norm
         axis (int): Axis (dimension) along wihich to apply vector norms. Default = -2
     Returns:
@@ -394,21 +396,21 @@ def norm( ptdata, order, axis=-2 ):
 
 def smooth( ptdata,**kwargs ):
     '''
-    Apply filter to ptdata, row-wise, to a dimension of N-D arrays (default is last dimension).
+    Apply filter row-wise, to a dimension of N-D arrays (default is last dimension).
     Args:
-        ptdata: PtData object. See documentation for syncoord.ptdata.PtData
-        filter_type: 'butter' or 'mean'
-        Options:
-            axis: int or str, default = -1.
-                  Note: axis is a dimension of the N-D array.
-                        The rightmost axis (-1) is the fastest changing.
+        ptdata (PtData): Data object. See documentation for syncoord.ptdata.PtData
+        Optional kwargs:
+            filter_type (str): 'butter' (default) or 'mean'
+            axis (int,str): Default = -1
+                Note: Axis is a dimension of the N-D array, specified by index or name.
+                      The rightmost axis (-1) is the fastest changing.
             If filter_type = 'butter':
-                freq_response: 'lowpass' (LPF),'highpass' (HPF), or 'bandpass' (BPF).
-                cutoff_freq (float or list): cutoff (LPF and HPF) or center frequency(BPF) (Hz).
+                freq_response (str): 'lowpass' (LPF),'highpass' (HPF), or 'bandpass' (BPF).
+                cutoff_freq (float,list[float]): cutoff (LPF and HPF) or center frequency (BPF) (Hz).
                 order (int)
-                bandwidth (float): only for 'bandpass' (Hz).
+                bandwidth (float): Only for 'bandpass' (Hz).
             If filter_type = 'mean':
-                window_size (float or list): (seconds)
+                window_size (float,list[float]): (seconds)
     Returns:
         New PtData object.
     '''
@@ -518,7 +520,7 @@ def tder( ptdata, **kwargs ):
 
 def speed( ptdata, **kwargs ):
     '''
-    Another wrapper for syncoord.ndarr.tder but order is always 1.
+    Another wrapper for syncoord.ndarr.tder but order is always 1
     '''
     return apply( ptdata, ndarr.tder, order=1, **kwargs )
 
@@ -538,11 +540,10 @@ def fourier( ptdata, window_duration, **kwargs ):
     '''
     Wrapper for syncoord.ndarr.fourier_transform
     Args:
-        ptdata: PtData object, see documentation for syncoord.ptdata.PtData
-        window_duration: length of the FFT window in seconds unless optional parameter fps = None.
+        ptdata (PtData): Data object. See documentation for syncoord.ptdata.PtData
+        window_duration (float): Length of the FFT window (seconds) unless fps = None.
         Optional:
-            **kwargs: input parameters to syncoord.ndarr.fourier_transform
-                      See documentation for syncoord.ndarr.fourier_transform
+            **kwargs: Input parameters. See documentation for syncoord.ndarr.fourier_transform
             Note: If mode='valid', the sections (ptdata.topinfo['Sections'] and
                   ptdata.topinfo['trimmed_sections_frames']) will be shifted accordingly.
     Returns:
@@ -609,15 +610,15 @@ def winplv( ptdata, window_duration, window_hop=None, pairs_axis=0,
     '''
     Pairwise sliding-window Phase-Locking Values.
     Args:
-        ptdata: PtData object, see documentation for syncoord.ptdata.PtData
+        ptdata (PtData): Data object. See documentation for syncoord.ptdata.PtData
                 N-D arrays should have at least 2 dimensions.
-        window_duration: window length in seconds
+        window_duration (float): Window length in seconds.
         Optional:
-            window_hop: window step in seconds. None for a step of 1 frame.
-            pairs_axis: axis to form the pairs.
-            fixed_axes: axis (int) or axes (list) that are passed to the windowed PLV function.
-                        Defaults: [-2,-1] if N-D array dimensions are 3 or more; -1 if 2 dimensions.
-            plv_axis: axis to perform the windowed PLV function.
+            window_hop (float): Window step in seconds. None for a step of 1 frame.
+            pairs_axis (int): Dimension to form the pairs.
+            fixed_axes (int,list[int]): Dimension or dimensions passed to the windowed PLV function.
+                       Default is [-2,-1] if N-D array dimensions are 3 or more; -1 if 2 dimensions.
+            plv_axis (int): Dimension to perform the windowed PLV function.
                       For example:
                           data.shape = (4,1,15,9000)
                           pairs_axis = 0:
@@ -629,11 +630,11 @@ def winplv( ptdata, window_duration, window_hop=None, pairs_axis=0,
                               each of the 15 vectors.
                 Note: axis is a dimension of the N-D array.
                       The rightmost axis (-1) is the fastest changing.
-            mode: 'same' (post-process zero-padded, same size as input)
-                   or 'valid' (result of windowed process).
-                   Note: If mode='valid', the sections (ptdata.topinfo['Sections'] and
-                   ptdata.topinfo['trimmed_sections_frames']) will be shifted accordingly.
-            verbose: Display progress.
+            mode (str): 'same' (post-process zero-padded, same size as input)
+                        or 'valid' (result of windowed process).
+                        Note: If mode='valid', the sections (ptdata.topinfo['Sections'] and
+                        ptdata.topinfo['trimmed_sections_frames']) will be shifted accordingly.
+            verbose (bool): Display progress.
     Returns:
         New PtData object.
     '''
@@ -715,14 +716,14 @@ def xwt( ptdata, minmaxf, pairs_axis, fixed_axes, **kwargs ):
     Wrapper for syncoord.ndarr.xwt_nd
     Pairwise multi-dimensional cross-wavelet spectrum.
     Args:
-        ptdata: PtData object, see documentation for syncoord.ptdata.PtData
+        ptdata (PtData): Data object. See documentation for syncoord.ptdata.PtData
                 N-D arrays should have at least 2 dimensions.
-        minmaxf: list with minimum and maximum frequency (Hz).
-        pairs_axis: axis to form the pairs.
-        fixed_axes: axis (int) or axes (list) that are passed to the xwt_nd function.
-        Optional:
+        minmaxf (list[float]): Minimum and maximum frequency (Hz).
+        pairs_axis (list): Dimensions to form the pairs.
+        fixed_axes (int,list[int]): Dimension(s) passed to the xwt_nd function.
+        Optional kwargs:
             Keyword arguments to syncoord.ndarr.xwt_nd
-            verbose: bool, it will apply to syncoord.ndarr.apply_to_pairs and syncoord.ndarr.xwt_nd
+            verbose (bool): It will apply to syncoord.ndarr.apply_to_pairs and syncoord.ndarr.xwt_nd
     Returns:
         New PtData object.
     '''
@@ -796,14 +797,14 @@ def rho( ptdata, exaxes=None, mode='all' ):
     Group synchrony.
     Wrapper for multiSyncPy.synchrony_metrics.rho
     Args:
-        ptdata: PtData object with phase angles.
+        ptdata (PtData): Data object with phase angles.
                 See documentation for syncoord.ptdata.PtData
-        exaxes: int or None.
-                If int: dimension(s) to exclude from grouping, except last dimension.
-                If None: all dimensions except last will be grouped.
+        exaxes (int,None):
+                If int: Dimension(s) to exclude from grouping, except last dimension.
+                If None: Dll dimensions except last will be grouped.
                 Set to -2 if that dimension's name is 'frequency'.
         Optional:
-            mode: 'all' or 'mean'
+            mode (str): 'all' or 'mean'
     Returns:
         New PtData object.
     References:
@@ -864,13 +865,13 @@ def isochrsec( ptdata, last=False, axis=-1 ):
     Time-rescale data so that it fits into sections of the same length.
     The length of the resulting sections will be the length of the largest input index of sections.
     Args:
-        ptdata: PtData object with topinfo containing column 'trimmed_sections_frames'.
+        ptdata (PtData): Data object with topinfo containing column 'trimmed_sections_frames'.
                 See documentation for syncoord.utils.load_data
         Optional:
-            last: If True, from the last index of sections to the end will be the last section.
-            axis: axis to apply the process.
-                  Note: axis is a dimension of the N-D array.
-                        The rightmost axis (-1) is the one that changes most frequently.
+            last (bool): If True, the last section is from the last index of sections to the end.
+            axis (int): Dimension to apply the process.
+                Note: Axis is a dimension of the N-D array.
+                      The rightmost axis (-1) is the one that changes most frequently.
     Returns:
         New PtData object, with 'trimmed_sections_frames' modified.
     '''
@@ -905,23 +906,23 @@ def aggrsec( ptdata, aggregate_axes=[-2,-1], sections_axis=1,
     '''
     Aggregate sections.
     Args:
-        ptdata: PtData object, see documentation for syncoord.ptdata.PtData
+        ptdata (PtData): Data object. See documentation for syncoord.ptdata.PtData
                 The field topinfo should have columns 'trimmed_sections_frames',
                 with lists having equally spaced indices.
                 See documentation for syncoord.ptdata.isochrsec
         Optional:
-            aggregate_axes: scalar or list indicating the axes to aggregate.
-            sections_axis: the axes of the aggregated axes where the sections are taken from.
+            aggregate_axes (int,list[int]): Dimension(s) to aggregate.
+            sections_axis: Index of aggregated dimensions, where the sections are taken from.
                   For example:
                       data.shape = (6,1,15,9000)
                       aggregate_axes = [-2,-1]:
-                          shape of aggregated axes: (15,9000)
+                          shape of aggregated dimensions: (15,9000)
                       sections_axis = 1:
-                          The sections are taken from the axis with length 9000 points.
-                Note: axis is a dimension of the N-D array.
+                          The sections are taken from the dimension with length 9000 points.
+                Note: Axis is a dimension of the N-D array.
                       The rightmost axis (-1) is the fastest changing.
-            omit: int or list or sections to omit
-            function: 'mean' or 'sum'
+            omit (int,list[int]): sections to omit
+            function (str): 'mean' or 'sum'
     Returns:
         New PtData object.
     '''
@@ -994,11 +995,11 @@ def aggrax( ptdata, axis=0, function='mean' ):
     Wrapper for numpy.sum or numpy.mean
     Aggregate axes of N-D data arrays.
     Args:
-        ptdata: PtData object, see documentation for syncoord.ptdata.PtData
+        ptdata (PtData): Data object. See documentation for syncoord.ptdata.PtData
         Optional:
-            function: 'sum' or 'mean'
-            axis to run the operation
-                Note: axis is a dimension of the N-D array.
+            function (str): 'sum' or 'mean'
+            axis (int): Dimension to which the operation will be applied.
+                Note: Axis is a dimension of the N-D array.
                       The rightmost axis (-1) is the fastest changing.
     Returns:
         New PtData object.
@@ -1046,10 +1047,10 @@ def aggrtop( ptdata, function='mean', axis=0):
     '''
     Aggregate top-level homogeneous N-D data arrays.
     Args:
-        ptdata: PtData object, see documentation for syncoord.ptdata.PtData
+        ptdata (PtData): Data object. See documentation for syncoord.ptdata.PtData
         Optional:
-            function: 'sum', 'mean', or 'concat'.
-            axis: Axis along which the arrays will be joined. Only for 'concat'.
+            function (str): 'sum', 'mean', or 'concat'.
+            axis (int): Dimension along which the arrays will be joined. Only for 'concat'.
     Returns:
         New PtData object. Property 'topinfo' will retain only columns whose rows are identical,
         collapsed into a single row.
@@ -1103,17 +1104,17 @@ def secstats( ptdata, **kwargs ):
     Wrapper for syncoord.ndarr.section_stats
     Descriptive statistics for sections of N-D data arrays.
     Args:
-        ptdata: PtData object, see documentation for syncoord.ptdata.PtData
+        ptdata (PtData): Data object. See documentation for syncoord.ptdata.PtData
         Optional:
-            last: If True, from the last index of sections to the end will be the last section.
-            margins: scalar, list, or dict. Trim at the beginning and ending, in seconds.
-                     If scalar: same trim bor beginning and ending.
-                     If list: trims for beginning and ending. Nested lists for sections.
-                     If dict: items correspond to N-D data arrays, keys are same as ptdata.data
+            last (bool): If True, the last section is from the last index of sections to the end.
+            margins (int,list[int],dict). Trim at the beginning and ending, in seconds.
+                     If scalar: Same trim bor beginning and ending.
+                     If list: Trims for beginning and ending. Nested lists for sections.
+                     If dict: Items correspond to N-D data arrays, keys are same as ptdata.data
                               (and as in ptdata.topinfo), and values are lists.
-            axis to run the process.
-            statnames: str or list of statistics to compute. Default is all.
-                       Available stats: 'mean','median','min','max','std'.
+            axis (int): Dimension upon which to run the process.
+            statnames (str,list[str]): Statistics to compute. Default is all.
+                     Available options: 'mean','median','min','max','std'.
     Returns:
         New PtData object.
     '''
@@ -1164,10 +1165,10 @@ def apply( ptdata, func,*args, **kwargs ):
     Note: ptdata.dim is copied from the input and may not correspond to the output, except
           for these functions from syncoord.ndarr: tder2D, peaks_to_phase, kuramoto_r, power.
     Args:
-        ptdata: PtData object, see documentation for syncoord.ptdata.PtData
-        func: a function to operate on each N-D array of the dictionary.
+        ptdata (PtData): Data object. See documentation for syncoord.ptdata.PtData
+        func (Callable): A function to operate on each N-D array of the dictionary.
         Optional:
-            axis: dimension to apply process. Default is -1.
+            axis: Dimension to apply process. Default is -1
             *args, **kwargs: input arguments and keyword-arguments to the function, respectively.
     Returns:
         New PtData object.
@@ -1264,9 +1265,9 @@ def apply2( ptd_1, ptd_2, func,*args, **kwargs ):
     Apply a function to corresponding pairs of N-D data arrays in two PtData objects.
     For example, element-wise multiplication of a and b: apply2(a, b, numpy.multiply).
     Args:
-        ptd_1, pt_2: PtData objects with same number of N-D arrays. See documentation for
-                     syncoord.ptdata.PtData
-        func: a numpy function to operate on corresponsing N-D arrays.
+        ptd_1, pt_2 (PtData): Data objects with same number of N-D arrays.
+                              See documentation for syncoord.ptdata.PtData
+        func (Callable): A numpy function to operate on corresponsing N-D arrays.
         Optional:
             *args, **kwargs: input arguments and keyword-arguments to the function, respectively.
     Returns:
@@ -1308,45 +1309,44 @@ def visualise( ptdata, **kwargs ):
     Visualise data of a PtData object, which normally contains default visualisation information,
     mostly in the 'labels' and 'vis' fields. These may be modified with the optional arguments.
     Args:
-        ptdata: PtData object, see documentation for syncoord.ptdata.PtData
-        Optional:
-            vistype: 'line', 'cline' (circle and line),'spectrogram', or 'imshow'.
-            groupby: int, str, or list, indicating N-D array's dimensions to group.
-                     'default' = use defaults: line = 0, spectrogram = -2
-            rescale: bool, rescale visualisation (not data) to min-max of all arrays.
-            vscale: float, vertical scaling.
-            dlattr: str, data lines' attributes colour, style, and width (e.g. 'k-0.6')
-            sections: display vertical lines for sections. True or False.
-            vlattr: vertical lines' attributes. str with one character for
-                    colour, style, width, f (full vertical) or b (bits at the top and bottom).
-                    For example: 'r:2f' means red, dotted, width=2, full vertical line.
-            snum_hvoff: list with horizontal and vertical offset factor for section numbers.
-            y_lim: list with minimum and maximum for vertical axes. Overrides arg. 'rescale'.
-            y_label: label for vertical axis. 'default' uses ptdata.labels.main
-                     or 'Hz' if ptdata.names.dim[-2] = 'frequency'
-            y_ticks: labels for vertical axis ticks when vistype = 'imshow', otherwise ignored.
-            x_ticklabelling: labelling of horizontal axis;
-                             's' = 'time (seconds)',
-                             '25%' = xticks as specified percentage,
-                             '%' = xticks as automatic percentage,
-                             'dim x' = use ptdata.labels.dim[x],
-                             'default', or None.
-            figtitle: figure title. If None, ptdata.name.main will be used.
-            axes: dimensions to visualise. One for 'line' and'spectrogram', two for 'imshow'.
-            sel_list: selection to display with list *
-            savepath: full path (directories and filename with extension) to save as PNG
-            more **kwargs: selection to display, passed to syncoord.ptdata.select_data
+        ptdata (PtData): Data object. See documentation for syncoord.ptdata.PtData
+        Optional kwargs:
+            vistype (str): 'line', 'cline' (circle and line),'spectrogram', or 'imshow'.
+            groupby (int,str,list): N-D array's dimensions to group.
+                                    'default' = use defaults: line = 0, spectrogram = -2
+            rescale (bool): Rescale visualisation (not data) to min-max of all arrays.
+            vscale (float): Vertical scaling.
+            dlattr (str): Data lines' attributes colour, style, and width (e.g. 'k-0.6')
+            sections (bool): Display vertical lines for sections.
+            vlattr (str): Vertical lines' attributes colour, style, width, f (full vertical)
+                          or b (bits at the top and bottom).
+                          Example: 'r:2f' means red, dotted, width=2, full vertical line.
+            snum_hvoff (list[float]): Horizontal and vertical offset factor for section numbers.
+            y_lim (list[float]): Minimum and maximum for vertical axes. Overrides "rescale".
+            y_label (str): Label for vertical axis. 'default' uses ptdata.labels.main
+                           or 'Hz' if ptdata.names.dim[-2] = 'frequency'
+            y_ticks (list[str]): Labels for vertical axis ticks if vistype = 'imshow'
+            x_ticklabelling (str): labelling of horizontal axis;
+                                   's' = 'time (seconds)',
+                                   '25%' = xticks as specified percentage,
+                                   '%' = xticks as automatic percentage,
+                                   'dim x' = use ptdata.labels.dim[x],
+                                   'default', or None.
+            figtitle (str): Figure's title. If None, ptdata.name.main will be used.
+            axes (int): Dimensions to visualise. 1 for 'line' and'spectrogram', 2 for 'imshow'.
+            sel_list (list): Selection to display. See documentation for syncoord.ptdata.select
+            savepath (str): Full path (directories, filename, and extension) to save as PNG
     '''
 
     def xticks_minsec_( fps, length_x, vistype, minseps=2 ):
         '''
         Convert and cast xticks expressed in frames to format "minutes:seconds".
         Args:
-            fps: frame-rate.
-            length_x: size of the horizontal axis.
-            vistype: parent function's argument
+            fps (float): frame rate
+            length_x (float): length of the horizontal axis
+            vistype (str): parent function's argument
             Optional:
-                miseps: minimum separation between the rightmost ticks (seconds)
+                miseps (float): minimum separation between the rightmost ticks (seconds)
         '''
         loc_old, _ = plt.xticks()
         if vistype == 'spectrogram':
@@ -1377,10 +1377,10 @@ def visualise( ptdata, **kwargs ):
         '''
         Make and cast xticks as percentage.
         Args:
-            x_percent: (int) percentage for ticks or None for automatic.
-            length_x: size of the horizontal axis.
+            x_percent (int): percentage for ticks or None for automatic
+            length_x (float): length of the horizontal axis
             Optional:
-                idx_isochrsec: index of isochronal sections, if x_percent = None.
+                idx_isochrsec (list[int]): index of isochronal sections if x_percent = None
         '''
         if not x_percent:
             if idx_isochrsec: xt = idx_isochrsec
@@ -1423,18 +1423,17 @@ def visualise( ptdata, **kwargs ):
 
     def overlay_vlines_( ax, loc, vlattr, numcolour='k', num_hvoffset=None ):
         '''
+        Overlay vertical lines.
         Args:
-            ax: pyplot axis object where to overlay vertical lines.
-            loc: list with the location of the lines, in horizontal axis units.
-            vlatrr: str with one character for each of these:
-                    colour, style, width, f (full vertical) or b (bits at the top and bottom).
-                    For example: 'r:2f' means red, dotted, width=2, full vertical line.
+            ax (matplotlib.axes): Axis object where to overlay vertical lines.
+            loc (list[float]): Location of the lines, in horizontal axis units.
+            vlatrr (str): One character for colour, style, width, f (full vertical)
+                          or b (bits at the top and bottom).
+                          Example: 'r:2f' means red, dotted, width=2, full vertical line.
             Optional:
-                numcolor: Colour for numbers. None for no numbers.
-                num_hvoffset: horizontal and vertical offset for the numbers,
-                              as percentage of axes' lengths.
-        Returns:
-            none
+                numcolor (str): Colour for numbers. None for no numbers.
+                num_hvoffset (float): Horizontal and vertical offset for the numbers,
+                                      as percentage of axes' lengths.
         '''
         if not vlattr: vlattr='r:2f'
         ylims = ax.get_ylim()
