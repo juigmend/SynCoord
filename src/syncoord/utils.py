@@ -400,8 +400,11 @@ def load_data( preproc_data, *props, annot_path=None, topdata_Name=None,
             assert isinstance(props[0][0],dict), 'argument "props" should be dict or str'
             topinfo = annotations
             for k,v in props[0][0].items():
-                check_v = isinstance(v,(int,float))
-                assert check_v, '"props" should have only one value (int or float) per key'
+                try: v = float(v)
+                except:
+                    pkw_lbl = ''.join([f'Wrong value "{v}" for property key {k}.',
+                                        'Value should be int or float, or str.'])
+                    raise Exception(pkw_lbl)
                 if k != 'ndim': topinfo[k] = v
         if 'Sections' in topinfo:
             topinfo['trimmed_sections_frames'] = trim_sections_to_frames(topinfo)
