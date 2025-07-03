@@ -1193,7 +1193,7 @@ def apply( ptdata, func,*args, **kwargs ):
     fn = func.__name__
 
     if fn == 'tder':
-        assert kwargs['dim'], "missing 1 required keyword argument: 'dim'"
+        assert 'dim' in kwargs, "missing 1 required keyword argument: 'dim'"
         if kwargs['dim'] > 1:
             del dim_names[axis-1]
             del dim_labels[axis-1]
