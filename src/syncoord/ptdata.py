@@ -400,21 +400,22 @@ def smooth( ptdata,**kwargs ):
     Args:
         ptdata (PtData): Data object. See documentation for syncoord.ptdata.PtData
         Optional kwargs:
-            filter_type (str): 'butter' (default) or 'mean'
+            filter_type (str): 'savgol' (default), 'mean', or 'butter'
             axis (int,str): Default = -1
                 Note: Axis is a dimension of the N-D array, specified by index or name.
                       The rightmost axis (-1) is the fastest changing.
+            If filter_type = 'savgol' or 'mean':
+                window_size (float,list[float]): (seconds)
             If filter_type = 'butter':
                 freq_response (str): 'lowpass' (LPF),'highpass' (HPF), or 'bandpass' (BPF).
                 cutoff_freq (float,list[float]): cutoff (LPF and HPF) or center frequency (BPF) (Hz).
-                order (int)
                 bandwidth (float): Only for 'bandpass' (Hz).
-            If filter_type = 'mean':
-                window_size (float,list[float]): (seconds)
+            If filter_type = 'savgol' or 'butter':
+                order (int): Polynomial order to fit samples (savgol) or half filter order (butter).
     Returns:
         New PtData object.
     '''
-    filter_type = kwargs.get('filter_type','butter')
+    filter_type = kwargs.get('filter_type','savgol')
     if filter_type is None: return ptdata
     freq_response = kwargs.get('freq_response','lowpass')
     cutoff_freq = kwargs.get('cutoff_freq',2)
@@ -451,14 +452,19 @@ def smooth( ptdata,**kwargs ):
         main_name =  f'Filtered ({freq_response})'
         if ptdata.names.main: main_name = f'{main_name}\n{ptdata.names.main}'
         other = dict(list(kwargs.items())[:4]+list(kwargs.items())[5:])
-        def butter_(arr,b,a):
-            return signal.filtfilt(b, a, arr)
-    if filter_type == 'mean':
+        def sosfiltfilt_(arr,sos):
+            return signal.sosfiltfilt(sos, arr)
+    elif filter_type in ['savgol','mean']:
         multiband_param = window_size
-        main_name =  f'Filtered (moving mean)\n{ptdata.names.main}'
+        if filter_type == 'savgol':
+            main_name =  f'Filtered (Savitzky-Golay)\n{ptdata.names.main}'
+            def savgol_(arr,ws):
+                return signal.savgol_filter( arr, ws, order)
+        elif filter_type == 'mean':
+            main_name =  f'Filtered (moving mean)\n{ptdata.names.main}'
+            def mean_(arr,ws):
+                return np.convolve( arr, np.ones(round(ws))/round(ws), mode='same')
         other = dict(list(kwargs.items())[4:])
-        def mean_(arr,ws):
-            return np.convolve( arr, np.ones(round(ws))/round(ws), mode='same')
     if isinstance(multiband_param,np.ndarray): pass
     elif isinstance(multiband_param,tuple): multiband_param = list(multiband_param)
     elif not isinstance(multiband_param,list): multiband_param = [multiband_param]
@@ -475,7 +481,7 @@ def smooth( ptdata,**kwargs ):
             dim_names.insert(axis,'frequency')
             dim_labels.insert(axis,'freq.')
             dimel_labels.insert(axis, [f'{m}Hz' for m in means] )
-        if filter_type == 'mean':
+        elif filter_type in ['savgol','mean']:
             dim_names.insert(axis,'window')
             dim_labels.insert(axis,'w.')
             dimel_labels.insert(axis, [f'w={m}s' for m in means] )
@@ -491,10 +497,13 @@ def smooth( ptdata,**kwargs ):
             transposed_axes = [idx[axis]-1] + idx_adj
         for mbp in multiband_param:
             if filter_type == 'butter':
-                b, a = signal.butter(order, mbp, freq_response, fs=fps)
-                arr_out = np.apply_along_axis(butter_, axis,  dd_in[i_top], b, a)
-            elif filter_type == 'mean':
-                arr_out = np.apply_along_axis(mean_, axis,  dd_in[i_top], int(mbp*fps))
+                sos = signal.butter(order, mbp, freq_response, fs=fps, output='sos')
+                arr_out = np.apply_along_axis(sosfiltfilt_, axis,  dd_in[i_top], sos)
+            else:
+                if filter_type == 'savgol':
+                    arr_out = np.apply_along_axis(savgol_, axis,  dd_in[i_top], int(mbp*fps))
+                if filter_type == 'mean':
+                    arr_out = np.apply_along_axis(mean_, axis,  dd_in[i_top], int(mbp*fps))
             out_matrix.append(arr_out)
         if (axis != 0) and (n_mbp > 1):
             dd_out[i_top] = np.transpose( np.array(out_matrix) , np.argsort(transposed_axes) )
