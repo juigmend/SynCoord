@@ -89,7 +89,7 @@ def trim_topinfo_start( ptdata, trim_s ):
     '''
     Modifies ptdata.topinfo such that the sections in frames reflect a negative offset in time.
     Args:
-        ptdata (PtData): object
+        ptdata (PtData): data object
         trim_s (float): trim at the beginning (seconds)
     '''
     if 'Start' in ptdata.topinfo.columns:
