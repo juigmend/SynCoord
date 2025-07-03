@@ -810,7 +810,7 @@ def rho( ptdata, exaxes=None, mode='all' ):
                 See documentation for syncoord.ptdata.PtData
         exaxes (int,None):
                 If int: Dimension(s) to exclude from grouping, except last dimension.
-                If None: Dll dimensions except last will be grouped.
+                If None: All dimensions except last will be grouped.
                 Set to -2 if that dimension's name is 'frequency'.
         Optional:
             mode (str): 'all' or 'mean'
