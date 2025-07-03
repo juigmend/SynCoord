@@ -1145,14 +1145,23 @@ def secstats( ptdata, **kwargs ):
         if margins_dict: kwargs['margins'] = kwargs['margins'][k]
         dd_out[k] = ndarr.section_stats( dd_in[k], idx_sections, fps, **kwargs )
 
-    main_name = ptdata.names.main + '\nsections statistics'
     dim_names = deepcopy(ptdata.names.dim)
-    dim_names.insert(axis,'statistics')
     main_label = ptdata.labels.main
     dim_labels = deepcopy(ptdata.labels.dim)
-    dim_labels.insert(axis,'stats')
     dimel_labels = deepcopy(ptdata.labels.dimel)
-    dimel_labels.insert(axis,kwargs['statnames'])
+    dim_names[-1] = 'section'
+    dim_labels[-1] = 'sec.'
+    dimel_labels[-1] = 'sec.'
+
+    one_stat = ( isinstance(kwargs['statnames'],str)
+                 or (isinstance(kwargs['statnames'],list) and len(kwargs['statnames'])==1) )
+    if one_stat:
+        main_name = ptdata.names.main + '\n' + kwargs['statnames']
+    else:
+        main_name = ptdata.names.main + '\nsections statistics'
+        dim_names.insert(axis,'statistics')
+        dim_labels.insert(axis,'stats')
+        dimel_labels.insert(axis,kwargs['statnames'])
 
     sextats = PtData(ptdata.topinfo)
     sextats.names.main = main_name
@@ -1343,7 +1352,8 @@ def visualise( ptdata, **kwargs ):
                                    'default', or None.
             figtitle (str): Figure's title. If None, ptdata.name.main will be used.
             axes (int): Dimensions to visualise. 1 for 'line' and'spectrogram', 2 for 'imshow'.
-            sel_list (list): Selection to display. See documentation for syncoord.ptdata.select
+            sel_list (list): Selection to display. Also can be input as keywords.
+                             See documentation for syncoord.ptdata.select
             savepath (str): Full path (directories, filename, and extension) to save as PNG
     '''
 
