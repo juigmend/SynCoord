@@ -420,7 +420,7 @@ def load_data( preproc_data, *props, annot_path=None, topdata_Name=None,
             for i in range(topinfo.shape[0]):
                 ID = topinfo['ID'].iloc[i]
                 top_df = pd.read_parquet(preproc_data + '/' + ID + '.parquet')
-                top_df_ra = [ top_df.iloc[:,i_d::ndim].T for i_d in range(ndim) ]
+                top_df_ra = [ top_df.iloc[:,i_d::ndim].T for i_d in reversed(range(ndim)) ]
                 top_arr_nd = np.array(top_df_ra)
                 top_arr_nd = np.transpose(top_arr_nd,(1,0,2))
                 prep_data[i] = top_arr_nd
