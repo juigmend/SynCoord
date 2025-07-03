@@ -1037,7 +1037,7 @@ def aggrax( ptdata, axis=0, function='mean' ):
         vis['dlattr'] = '-1'
         vis['groupby'] = 0
     other =  deepcopy(ptdata.other)
-    if 'frequency' not in ptdata.names.dim:
+    if 'frequency' not in dim_names:
         if 'y_ticks' in vis: del vis['y_ticks']
         if 'freq_bins' in other: del other['freq_bins']
 
