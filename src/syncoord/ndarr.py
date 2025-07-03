@@ -316,7 +316,8 @@ def section_stats( arr_nd, idx_sections, fps, last=False, margins=None, axis=-1,
             statnames (str,list[str]): Statistics to compute. Default is all.
     Return:
         (numpy.ndarray): N-D array of same dimensions of the input arr_nd, except the two last
-                         dimensions are [statistic, section]. Order as in argument 'statnames'.
+                         dimensions are [statistic, section] unless only one statistic has been
+                         specified in statnames. Order as in argument 'statnames'.
     '''
 
     if isinstance(statnames,str): statnames = [statnames]
@@ -359,8 +360,9 @@ def section_stats( arr_nd, idx_sections, fps, last=False, margins=None, axis=-1,
                 elif this_statname == 'std':
                     arr_1d_out[i_stat,i_sec] = np.std(this_section)
         return arr_1d_out
-
-    return np.apply_along_axis( sstats_, axis, arr_nd, n_sections, statnames, n_stats, margins_f )
+    result = np.apply_along_axis(sstats_, axis, arr_nd, n_sections, statnames, n_stats, margins_f)
+    if 1 in result.shape: result = np.squeeze(result)
+    return result
 
 # .............................................................................
 # APPLICATION:
