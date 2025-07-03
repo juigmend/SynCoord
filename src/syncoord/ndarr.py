@@ -21,7 +21,7 @@ def tder( arr_nd_in, dim=None, order=1 ):
         Optional:
             order (int): 1 (default) or 2
     Returns:
-        (numpy.ndarray): array
+        numpy.ndarray
     '''
     assert dim, "missing 1 required keyword argument: 'dim'"
     assert 1 <= arr_nd_in.shape[-2] <= 3, 'length of axis -2 should be 1, 2 or 3'
