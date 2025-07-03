@@ -350,7 +350,7 @@ def gensec( ptdata, n, print_info=False ):
             print('gensec - warning: function exited without updating ptdata.topinfo')
             return
     all_equal_sex_f = []
-    all_equal_sex_s = []
+    # all_equal_sex_s = []
     d_keys = list(ptdata.data.keys())
     info_title = True
     for i,k in enumerate(ptdata.topinfo.index):
@@ -361,8 +361,8 @@ def gensec( ptdata, n, print_info=False ):
         equal_sex_f = [round(i*length_sec) for i in range(1,n)]
         all_equal_sex_f.append(equal_sex_f)
         fps = ptdata.topinfo.loc[k,'fps']
-        equal_sex_s = [v/fps for v in equal_sex_f]
-        all_equal_sex_s.append(equal_sex_s)
+        # equal_sex_s = [v/fps for v in equal_sex_f]
+        # all_equal_sex_s.append(equal_sex_s)
         if print_info:
             if info_title:
                 print("key; sections' length (frames); difference (frames):")
