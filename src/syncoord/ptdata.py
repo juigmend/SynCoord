@@ -1160,7 +1160,7 @@ def secstats( ptdata, **kwargs ):
     one_stat = ( isinstance(kwargs['statnames'],str)
                  or (isinstance(kwargs['statnames'],list) and len(kwargs['statnames'])==1) )
     if one_stat:
-        main_name = ptdata.names.main + '\n' + kwargs['statnames']
+        main_name = ptdata.names.main + '\n' + "sections' " + kwargs['statnames']
     else:
         main_name = ptdata.names.main + '\nsections statistics'
         dim_names.insert(axis,'statistics')
