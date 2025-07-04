@@ -1062,7 +1062,7 @@ def aggrtop( ptdata, function='mean', axis=0):
             axis (int): Dimension along which the arrays will be joined. Only for 'concat'.
     Returns:
         New PtData object. Property 'topinfo' will retain only columns whose rows are identical,
-        collapsed into a single row, except when function = 'vstack'.
+        collapsed into a single row.
     '''
     dd_in = ptdata.data
     isarray = dd_in[next(iter(dd_in))].ndim
@@ -1091,21 +1091,28 @@ def aggrtop( ptdata, function='mean', axis=0):
     dd_out = {0:arr_nd_out}
 
     main_name = ptdata.names.main
-    aggr_lbl = f'\n({function_lbl} top-level data)'
-    if function == 'vstack': agg = PtData(ptdata.topinfo)
-    else:
-        colnames_identical = []
-        for colname in ptdata.topinfo:
-            if len(ptdata.topinfo[colname].drop_duplicates()) == 1:
-                colnames_identical.append(colname)
-        topinfo = ptdata.topinfo[colnames_identical].iloc[0].copy().to_frame().T.reset_index(drop=True)
-        agg = PtData(topinfo)
+    dim_names = deepcopy(ptdata.names.dim)
+    dim_labels = deepcopy(ptdata.labels.dim)
+    dimel_labels = deepcopy(ptdata.labels.dimel)
 
+    if function == 'vstack':
+        dim_names = ['topstack']+dim_names
+        dim_labels = ['tops.']+dim_labels
+        dimel_labels = ['tops.']+dimel_labels
+
+    aggr_lbl = f'\n({function_lbl} top-level data)'
+    colnames_identical = []
+    for colname in ptdata.topinfo:
+        if len(ptdata.topinfo[colname].drop_duplicates()) == 1:
+            colnames_identical.append(colname)
+    topinfo = ptdata.topinfo[colnames_identical].iloc[0].copy().to_frame().T.reset_index(drop=True)
+
+    agg = PtData(topinfo)
     agg.names.main = ptdata.names.main + aggr_lbl
-    agg.names.dim = ptdata.names.dim.copy()
+    agg.names.dim = dim_names
     agg.labels.main = ptdata.labels.main
-    agg.labels.dim = ptdata.labels.dim.copy()
-    agg.labels.dimel = ptdata.labels.dimel.copy()
+    agg.labels.dim = dim_labels
+    agg.labels.dimel = dimel_labels
     agg.data = dd_out
     agg.vis = {**ptdata.vis, 'groupby':0, 'sections':True}
     if not isarray: agg.vis['x_ticklabelling'] = 'default'
