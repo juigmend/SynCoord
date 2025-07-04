@@ -1067,17 +1067,12 @@ def aggrtop( ptdata, function='mean', axis=0):
     dd_in = ptdata.data
     isarray = dd_in[next(iter(dd_in))].ndim
     if function == 'concat':
-        if not isarray: arr_1d_out = []
+        arr_nd_out = []
         first = True
         for k in dd_in:
-            if isarray:
-                if first:
-                    arr_nd_out = dd_in[k]
-                    first = False
-                arr_nd_out = np.concatenate((arr_nd_out, dd_in[k]), axis)
-            else:
-                arr_1d_out.append(dd_in[k])
-        if not isarray: arr_nd_out = np.array(arr_1d_out)
+            if isarray: arr_nd_out = np.concatenate((arr_nd_out, dd_in[k]), axis)
+            else: arr_nd_out.append(dd_in[k])
+        arr_nd_out = np.array(arr_nd_out)
         function_lbl = 'Concatenated'
     else:
         arr_nd_out = np.zeros(dd_in[next(iter(dd_in))].shape)
