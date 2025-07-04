@@ -1058,20 +1058,27 @@ def aggrtop( ptdata, function='mean', axis=0):
     Args:
         ptdata (PtData): Data object. See documentation for syncoord.ptdata.PtData
         Optional:
-            function (str): 'sum', 'mean', or 'concat'.
+            function (str): 'sum', 'mean', 'concat', or 'vstack'
             axis (int): Dimension along which the arrays will be joined. Only for 'concat'.
     Returns:
         New PtData object. Property 'topinfo' will retain only columns whose rows are identical,
-        collapsed into a single row.
+        collapsed into a single row, except when function = 'vstack'.
     '''
     dd_in = ptdata.data
     isarray = dd_in[next(iter(dd_in))].ndim
-    if function == 'concat':
+    if function in ['concat','vstack']:
         arr_nd_out = []
         first = True
         for k in dd_in:
-            if isarray: arr_nd_out = np.concatenate((arr_nd_out, dd_in[k]), axis)
-            else: arr_nd_out.append(dd_in[k])
+            if function == 'vstack':
+                if first:
+                    arr_nd_out = dd_in[k]
+                    first = False
+                else:
+                    arr_nd_out = np.vstack((arr_nd_out, dd_in[k]))
+            else:
+                if isarray: arr_nd_out = np.concatenate((arr_nd_out, dd_in[k]), axis)
+                else: arr_nd_out.append(dd_in[k])
         arr_nd_out = np.array(arr_nd_out)
         function_lbl = 'Concatenated'
     else:
@@ -1085,13 +1092,15 @@ def aggrtop( ptdata, function='mean', axis=0):
 
     main_name = ptdata.names.main
     aggr_lbl = f'\n({function_lbl} top-level data)'
-    colnames_identical = []
-    for colname in ptdata.topinfo:
-        if len(ptdata.topinfo[colname].drop_duplicates()) == 1:
-            colnames_identical.append(colname)
-    topinfo = ptdata.topinfo[colnames_identical].iloc[0].copy().to_frame().T.reset_index(drop=True)
+    if function == 'vstack': agg = PtData(ptdata.topinfo)
+    else:
+        colnames_identical = []
+        for colname in ptdata.topinfo:
+            if len(ptdata.topinfo[colname].drop_duplicates()) == 1:
+                colnames_identical.append(colname)
+        topinfo = ptdata.topinfo[colnames_identical].iloc[0].copy().to_frame().T.reset_index(drop=True)
+        agg = PtData(topinfo)
 
-    agg = PtData(topinfo)
     agg.names.main = ptdata.names.main + aggr_lbl
     agg.names.dim = ptdata.names.dim.copy()
     agg.labels.main = ptdata.labels.main
