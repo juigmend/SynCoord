@@ -1027,15 +1027,22 @@ def aggrax( ptdata, axis=0, function='mean' ):
     aggr_lbl = f'{function_lbl} dim. "{ptdata.names.dim[axis]}"'
     if main_name[-1] == ')': main_name = ''.join([main_name[:-1],', ',aggr_lbl,')'])
     else: main_name = ''.join([main_name,'\n(',aggr_lbl,')'])
-    dim_names = ptdata.names.dim.copy()
+    dim_names = deepcopy(ptdata.names.dim)
     del dim_names[axis]
-    dim_labels = ptdata.labels.dim.copy()
+    dim_labels = deepcopy(ptdata.labels.dim)
     del dim_labels[axis]
-    vis = {**ptdata.vis, 'groupby':axis, 'sections':True}
+    vis = {**ptdata.vis, 'sections':True}
+    ndim_in = dd_in[next(iter(dd_in))].ndim
+    if (axis==-2) or ((ndim_in - axis)==2):
+        vis['groupby'] = None
+        vis['vistype'] = 'line'
+    else: vis['groupby'] = axis
     if len(dim_names) == 1:
         vis['vistype'] = 'line'
         vis['dlattr'] = '-1'
         vis['groupby'] = 0
+    dimel_labels = deepcopy(ptdata.labels.dimel)
+    del dimel_labels[axis]
     other =  deepcopy(ptdata.other)
     if 'frequency' not in dim_names:
         if 'y_ticks' in vis: del vis['y_ticks']
@@ -1046,7 +1053,7 @@ def aggrax( ptdata, axis=0, function='mean' ):
     agg.names.dim = dim_names
     agg.labels.main = ptdata.labels.main
     agg.labels.dim = dim_labels
-    agg.labels.dimel = dim_labels
+    agg.labels.dimel = dimel_labels
     agg.data = dd_out
     agg.vis = vis
     agg.other = other
