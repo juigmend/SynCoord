@@ -459,15 +459,15 @@ def smooth( ptdata,**kwargs ):
     elif filter_type in ['savgol','mean']:
         multiband_param = window_size
         if filter_type == 'savgol':
-            main_name =  f'Filtered (Savitzky-Golay)\n{ptdata.names.main}'
+            main_name =  f'Filtered with Savitzky-Golay\n{ptdata.names.main}'
             def savgol_(arr,ws):
                 return signal.savgol_filter( arr, ws, order)
         elif filter_type == 'mean':
             # mean (moving average) disabled until topinfo start and sections are offset when
             # mode = 'valid'
-            raise Exception(" filter_type = 'mean' option not available")
+            raise Exception("filter_type = 'mean' option not available")
             mode = kwargs.get('mode','same')
-            main_name =  f'Filtered (moving mean)\n{ptdata.names.main}'
+            main_name =  f'Filtered with moving mean)\n{ptdata.names.main}'
             def mean_(arr,ws,mode):
                 wsr = round(ws)
                 return np.convolve( arr, np.ones(wsr)/wsr, mode=mode)
