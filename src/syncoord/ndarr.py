@@ -24,7 +24,8 @@ def tder( arr_nd_in, dim=None, order=1 ):
         numpy.ndarray
     '''
     assert dim, "missing 1 required keyword argument: 'dim'"
-    assert 1 <= arr_nd_in.shape[-2] <= 3, 'length of axis -2 should be 1, 2 or 3'
+    if arr_nd_in.ndim > 1:
+        assert 1 <= arr_nd_in.shape[-2] <= 3, 'length of axis -2 should be 1, 2 or 3'
     assert 1 <= order <= 2, 'argument "order" should be 1 or 2'
     arr_nd_out = np.diff(arr_nd_in,axis=-1)
     if dim > 1: arr_nd_out = np.linalg.norm(arr_nd_out,axis=-2)
