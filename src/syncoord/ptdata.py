@@ -323,7 +323,7 @@ def select( ptdata,*args,**kwargs ):
         sel.names.main = sel.names.main + f'\n{subtitle}'
     return sel
 
-def gensec( ptdata, n, print_info=False ):
+def gensec( ptdata, n, print_info=False, get_lengths=False ):
     '''
     Generate equally spaced sections for each data array (along the last dimension).
     The object will be updated in place.
@@ -334,6 +334,9 @@ def gensec( ptdata, n, print_info=False ):
         n (int): Number of equally spaced sections, conforming to rounding precision.
         Optional:
             print_info (bool): Print sections' length and difference in frames.
+            get_lengths (bool): Return array with sections lengths.
+    Returns:
+        sec_lengths (numpy.ndarray): Sections'lengths in frames, if get_lengths = True.
     '''
     check_1 = 'Sections' in ptdata.topinfo
     check_2 = 'trimmed_sections_frames' in ptdata.topinfo
@@ -353,6 +356,7 @@ def gensec( ptdata, n, print_info=False ):
     # all_equal_sex_s = []
     d_keys = list(ptdata.data.keys())
     info_title = True
+    if get_lengths: sec_lengths = []
     for i,k in enumerate(ptdata.topinfo.index):
         if k != d_keys[i]:
             raise Exception("".join([f"ptdata.topinfo.index[{k}] doesn't match ",
@@ -371,8 +375,10 @@ def gensec( ptdata, n, print_info=False ):
             sl = [ ss[i+1]-ss[i] for i in range(len(ss)-1) ]
             d = [ sl[i+1]-sl[i] for i in range(len(sl)-1) ]
             print(f'  {k};  {sl};  {d}')
+            if get_lengths: sec_lengths.append(sl)
     # ptdata.topinfo['Sections'] = all_equal_sex_s
     ptdata.topinfo['trimmed_sections_frames'] = all_equal_sex_f
+    if get_lengths: return np.array(sec_lengths)
 
 # .............................................................................
 # ANALYSIS-ORIENTED OPERATIONS:
