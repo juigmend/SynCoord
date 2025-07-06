@@ -47,10 +47,10 @@ def peaks_to_phase( arr_nd, endstart=False, axis=-1, **kwargs ):
     Returns:
         (numpy.ndarray): N-D array
     '''
-    def pks2ph(sig,endstart):
+    def pks2ph(sig,endstart,**kwargs):
         len_sig = len(sig)
         phi = np.zeros(len_sig)
-        idx_pks = signal.find_peaks(sig)
+        idx_pks = signal.find_peaks(sig,**kwargs)
         for i in range(len(idx_pks[0])-1):
             i_start = idx_pks[0][i]
             i_end = idx_pks[0][i+1]
@@ -62,7 +62,7 @@ def peaks_to_phase( arr_nd, endstart=False, axis=-1, **kwargs ):
             if idx_pks[0][-1] != (len_sig-1):
                 phi[idx_pks[0][-1]:-1] = np.linspace(-np.pi, 0, len_sig-idx_pks[0][-1]-1)
         return phi
-    return np.apply_along_axis(pks2ph,axis,arr_nd,endstart)
+    return np.apply_along_axis(pks2ph,axis,arr_nd,endstart,**kwargs)
 
 def fourier_transform( arr_nd, window_length, fps=None, output='spectrum', window_shape=None,
                        mode='same', first_fbin=1, axis=-1 ):
@@ -80,7 +80,7 @@ def fourier_transform( arr_nd, window_length, fps=None, output='spectrum', windo
             mode (str): 'same' (post-process zero-padded) or 'valid'
             first_fbin (int): Remove frequency bins under this index. Default = 1 (DC offset).
             axis (int): Default = -1 (last dimension of the N-D array).
-                Note: axis is a dimension of the N-D array. The rightmost axis (-1) is the fastest changing.
+                Note: Axis is a dimension of the N-D array. The rightmost axis (-1) is the fastest changing.
     Returns:
         (numpy.ndarray): N-D array, whose two last two dimensions are the result of this function.
     '''
