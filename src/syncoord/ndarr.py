@@ -32,17 +32,18 @@ def tder( arr_nd_in, dim=None, order=1 ):
     if order == 2: arr_nd_out = np.diff(arr_nd_out)
     return arr_nd_out
 
-def peaks_to_phase( arr_nd, endstart=False, axis=-1 ):
+def peaks_to_phase( arr_nd, endstart=False, axis=-1, **kwargs ):
     '''
     Generate ramps between signal peaks, with amplitude {-pi,pi}
     Args:
         arr_nd (numpy.ndarray): N-D array
-        Options:
+        Optional:
             endstart (bool): True will add a ramp from zero before the first peak, and a ramp ending
                              in zero after the last peak. False will leave zeros before the first
                              peak and after the last peak.
             axis (int): Axis along which to execute the operation.
                 Note: axis is a dimension of the N-D array. The axis that changes the most is -1
+            **kwargs: Passed to scipy.signal.find_peaks.
     Returns:
         (numpy.ndarray): N-D array
     '''
