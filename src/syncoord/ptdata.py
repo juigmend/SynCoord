@@ -1359,6 +1359,7 @@ def visualise( ptdata, **kwargs ):
                                     'default' = use defaults: line = 0, spectrogram = -2
             rescale (bool): Rescale visualisation (not data) to min-max of all arrays.
             vscale (float): Vertical scaling.
+            hscale (float): Horizontal scaling.
             dlattr (str): Data lines' attributes colour, style, and width (e.g. 'k-0.6')
             sections (bool): Display vertical lines for sections.
             vlattr (str): Vertical lines' attributes colour, style, width, f (full vertical)
@@ -1517,6 +1518,7 @@ def visualise( ptdata, **kwargs ):
     groupby = kwargs.pop('groupby','default')
     rescale = kwargs.pop('rescale',False)
     vscale = kwargs.pop('vscale',1)
+    hscale = kwargs.pop('hscale',1)
     dlattr = kwargs.pop('dlattr',None)
     sections = kwargs.pop('sections',True)
     vlattr = kwargs.pop('vlattr','k:2f')
@@ -1633,7 +1635,7 @@ def visualise( ptdata, **kwargs ):
     n_title_lines = ptdata.names.main.count('\n')+1
     fig_height = (n_sp * 2.4 + n_title_lines*0.2 )*vscale
     i_sp = 1
-    fig = plt.figure(figsize=(12,fig_height))
+    fig = plt.figure(figsize=(12*hscale,fig_height))
     if y_ticks is not None:
         sp_yticks = []
         sp_axes = []
