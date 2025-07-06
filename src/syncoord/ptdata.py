@@ -586,7 +586,7 @@ def fourier( ptdata, window_duration, **kwargs ):
         freq_bins[k] = np.abs(( fftfreq(wl)*fps )[first_fbin:np.floor(wl/2 + 1).astype(int)])
         freq_bins_rounded = np.round(freq_bins[k],2)
         rdif = abs(np.mean(freq_bins_rounded-np.round(freq_bins_rounded)))
-        if rdif < 0.01: freq_bins_rounded = np.round(freq_bins_rounded,0).astype(int)
+        if rdif < 0.001: freq_bins_rounded = np.round(freq_bins_rounded,0).astype(int)
         freq_bins_labels[k] = [f'bin {i}: {f} Hz' for i,f in enumerate(freq_bins_rounded)]
 
     dim_names = ptdata.names.dim.copy()
