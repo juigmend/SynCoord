@@ -208,29 +208,29 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
             video_out_path (str): Path of folder for resulting tracking video files
                                   with superimposed skeletons. None = Don't make video.
             trim_range (list): [start,end] in seconds or 'end'.
-            log_path (str): str. Path of folder for log file.
+            log_path (str): Path of folder for log file.
             skip_done (bool): Skip if corresponding json file exists in json_path, default = False
             idim (int,list[int]): Size of the detection network, multiple of 32.
             nms (float,list[float]): NMS threshold for detection in (0...1]
             conf (float,list[float]): Confidence threshold for detection in (0...1]
             parlbl (bool): Add [idim,nms,conf] to the names of the resulting files.
-            suffix (str): str. Label to be added to the names of the resulting files.
+            suffix (str): Label to be added to the names of the resulting files.
             audio (bool): Extract audio from tracking video and add to AlphaPose video files.
                           Audio files will be saved in video_in_path, video files with added audio
                           will be saved in video_out_path.
             sp (bool): Run on a single process. Forcefully True if operating system is Windows.
-            gpus (str): str. Index of CUDA device. Comma to use several, e.g. "0,1,2,3".
-                       Use "-1" for cpu only. Default="0"
-            program (str): str or None (default).
+            gpus (str): Index of CUDA device. Comma to use several, e.g. "0,1,2,3".
+                        Use "-1" for cpu only. Default="0"
+            program (str,None):
                      If str: 'inference' (module) or 'demo_inference' (script)
                               The former prints nicely on a Python IDE (e.g., Jupyter),
                               but may not work with GPU.
-                     If None and gpus = "-1": use module AlphaPose/inference.py
+                     If None (default) and gpus = "-1": use module AlphaPose/inference.py
                      Else: run script AlphaPose/scripts/demo_inference.py
             flip (bool): Enable flip testing. It might improve accuracy.
-            detector (str): str. See documentation for available detectors. Default = 'yolo'
-            model (str): str. Path for pretrained model (A.K.A. checkpoint).
-            config (str): str. Path for pretrained model's configuration file.
+            detector (str): See documentation for available detectors. Default = 'yolo'
+            model (str): Path for pretrained model (A.K.A. checkpoint).
+            config (str): Path for pretrained model's configuration file.
             vis_fast (bool): Simpler and faster visualisation. Default = True
             verbosity (int): 0 (minimal), 1 (progress bar), or 2 (full). Default = 1
     Dependencies:
