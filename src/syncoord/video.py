@@ -489,7 +489,8 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                 vis['markersize'] (int,float): Marker size for raw data plots. Default = 0.8
                 vis['lwraw'] (int,float): Line width for raw data plots. Default = 4
                 vis['lwprep'] (int,float): Line width for pre-processed data plots. Default = 2
-            keypoints (list): Default = [0,1] ([x1,y1] for "Nose", assuming COCO format).
+            keypoints (int): Default = 0 (x1 and y1 of "Nose"). Currently only one point allowed.
+                             See "Documentation on Keypoints" below.
             kp_labels (list): Labels for keypoints. Default = ['x','y']
             kp_horizontal (int): Keypoint index of horizontal axis. Default = 0
             n_indiv (int,str): Expected number of individuals to be tracked. Default = 'auto'
@@ -514,8 +515,14 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
     Returns:
         drlim_file (list): Limits of disjoint ranges. Only if json_path is a file
                            or folder has one file, and drdim is not None.
-    Documentation:
-        https://github.com/MVIG-SJTU/AlphaPose/blob/master/docs/output.md
+    Documentation on Keypoints:
+        COCO and MPII:
+            Default: COCO (n=17), MPII (n=16)
+            cmu/open: COCO (n=18), MPII (n=15)
+            https://github.com/MVIG-SJTU/AlphaPose/blob/master/docs/output.md
+        Halpe:
+            full (n=136), body (n=26), face (n=68), hands (n=42)
+            https://github.com/Fang-Haoshu/Halpe-FullBody
     '''
     assert isinstance(savepaths,dict), 'Keyword argument "savepaths" should be dict.'
     assert savepaths['parquet'], 'savepaths["parquet"] not in input.'
@@ -526,12 +533,10 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
 
     assert isinstance(vis,dict), 'Argument "vis" should be dict.'
     vis = {'show':True,'markersize':0.8,'lwraw':4,'lwprep':2,**vis}
-    keypoints = kwargs.get('keypoints',[0,1])
+    keypoints = kwargs.get('keypoints',0)
+    assert isinstance(keypoints,int), 'Currently only one point is allowed, and it has to be int.'
     kp_labels = kwargs.get('kp_labels',['x','y'])
     kp_horizontal = kwargs.get('kp_horizontal',0)
-    if len(keypoints) > 2:
-        raise Exception(''.join([ f'Currently only one point with two dimensions (x,y) \
-                                    are allowed, but instead got this: {keypoints}' ]))
     n_indiv = kwargs.get('n_indiv','auto')
     sel_indiv = kwargs.get('sel_indiv','all')
     skip_done = kwargs.get('skip_done',True)
@@ -570,6 +575,8 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
         assert (len(json_fnames)==1) or json_path_is_file, 'argument "drlim_set" works only for one file'
 
     cmap = plt.get_cmap("tab10")
+    i_kp_x = keypoints*3
+    idx_kpdim = [i_kp_x,i_kp_x+1]
 
     for json_fn in json_fnames:
 
@@ -586,6 +593,7 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
 
             # Load data from JSON file produced by AlphaPose:
             data_raw_df = pd.read_json(json_path + '/' + json_fn)
+            if verbose: print('number of keypoints in file:',int(len(data_raw_df.keypoints[0])/3))
             if n_indiv == 'auto': n_persons = data_raw_df.idx.max()
             else: n_persons = n_indiv
 
@@ -593,8 +601,8 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
             data_red_df = data_raw_df.drop(['category_id','keypoints','score','box'],axis=1)
             score_thresh = (data_raw_df.score.max() - data_raw_df.score.min()) * scorefac
             data_red_df = data_red_df[ data_raw_df.score >= score_thresh ]
-            for lbl,i in zip(kp_labels,keypoints):
-                data_red_df[lbl] = data_raw_df.keypoints.str[i]
+            for lbl,i_kpd in zip(kp_labels,idx_kpdim): # reconstruct with dimensions of selected keypoint
+                data_red_df[lbl] = data_raw_df.keypoints.str[i_kpd]
             data_red_df.image_id = data_red_df.image_id.str.split('.').str[0].astype(int)
             if trange: t_loc = trange
             else: t_loc = [0,data_red_df.image_id.max()]
@@ -615,7 +623,7 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                         i_drlim = 0
                     else: drlim_file = []
                 if log_path: prep_log_txt = [fn_ne + '\n']
-                n_series = len(keypoints)
+                n_series = len(idx_kpdim)
                 if vis['show'] == 'ind':
                     n_sp = n_series*n_persons + n_series*2 - 1
                     i_sp = 1
