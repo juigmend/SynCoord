@@ -599,9 +599,10 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
 
             # Reduce by removing unnecessary data:
             data_red_df = data_raw_df.drop(['category_id','keypoints','score','box'],axis=1)
-            score_thresh = (data_raw_df.score.max() - data_raw_df.score.min()) * scorefac
+            score_min = data_raw_df.score.min()
+            score_thresh = ((data_raw_df.score.max() - score_min) * scorefac) + score_min
             data_red_df = data_red_df[ data_raw_df.score >= score_thresh ]
-            for lbl,i_kpd in zip(kp_labels,idx_kpdim): # reconstruct with dimensions of selected keypoint
+            for lbl,i_kpd in zip(kp_labels,idx_kpdim): # reconstruct with dimensions of selected keypoints
                 data_red_df[lbl] = data_raw_df.keypoints.str[i_kpd]
             data_red_df.image_id = data_red_df.image_id.str.split('.').str[0].astype(int)
             if trange: t_loc = trange
