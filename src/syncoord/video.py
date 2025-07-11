@@ -487,8 +487,8 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                 vis['show'] (bool,str): True (default) = Show visualisation (independent of saving).
                                         'ind' to plot individuals separately.
                 vis['markersize'] (float): Marker size for raw data plots. Default = 0.8
-                vis['lwraw'] (int,float): Line width for raw data plots. Default = 4
-                vis['lwprep'] (int,float): Line width for pre-processed data plots. Default = 2
+                vis['lwraw'] (float): Line width for raw data plots. Default = 4
+                vis['lwprep'] (float): Line width for pre-processed data plots. Default = 2
             keypoints (int): Default = 0 (x1 and y1 of "Nose"). Currently only one point allowed.
                              See "Documentation on Keypoints" below.
             kp_labels (list): Labels for keypoints. Default = ['x','y']
