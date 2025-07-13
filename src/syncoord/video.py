@@ -639,8 +639,6 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                     n_sp = n_kpdim*n_persons + n_kpdim*2 - 1
                     i_sp = 1
                 x_lims = [data_red_df.index.min(), index_max]
-                x_margin = x_lims[1]/50
-                x_lims = [ x_lims[0] - x_margin, x_lims[1] + x_margin ]
                 colours = []
                 for i_kpdim in range(n_kpdim):
                     if vis['show'] == 'ind': new_kpdim = True
