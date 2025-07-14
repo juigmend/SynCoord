@@ -484,8 +484,8 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                     savepaths['log'] (str): Path to folder for pre-processing log file.
         Optional:
             vis (dict): Visualisation options.
-                vis['show'] (bool,str): True (default) = Show visualisation (independent of saving).
-                                        'ind' to plot individuals separately.
+                vis['show'] (str): 'dim ' to plot all points of a dimension together,
+                                   'ind' to plot tracked individuals separately.
                 vis['markersize'] (float): Marker size for raw data plots. Default = 0.8
                 vis['lwraw'] (float): Line width for raw data plots. Default = 4
                 vis['lwprep'] (float): Line width for pre-processed data plots. Default = 2
@@ -548,7 +548,7 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
     fillgaps = kwargs.get('fillgaps',True)
     verbose = kwargs.get('verbose',True)
 
-    if vis['show'] or rawfig_path or prepfig_path:
+    if rawfig_path or prepfig_path:
         import matplotlib.pyplot as plt
         if plt.get_backend() == 'agg': # AlphaPose uses 'agg'
             from importlib import reload
@@ -622,118 +622,112 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
             data_red_df = data_red_df[ data_red_df.conf >= conf_thresh ]
 
             # Inspect, plot selected raw data, and cluster:
-            if vis['show'] or rawfig_path or log_path or drdim:
+            if drdim:
+                warning_n_clusters = False
+                if drlim_set:
+                    drlim_file = drlim_set
+                    i_drlim = 0
+                else:
+                    mcs = int(n_frames_in/(n_persons*2))
+                    clustering = HDBSCAN( min_cluster_size=mcs, store_centers="centroid",
+                                          metric="cityblock" )
+            if log_path: prep_log_txt = [fn_ne + '\n']
+            n_kpdim = len(idx_kpdim)
+            if vis['show'] == 'ind':
+                n_sp = n_kpdim*n_persons + n_kpdim*2 - 1
+                i_sp = 1
+            x_lims = [data_red_df.index.min(), index_max]
+            colours = []
+            for i_kpdim in range(n_kpdim):
+                if vis['show'] == 'ind': new_kpdim = True
+                else: plt.subplot(n_kpdim,1,i_kpdim+1)
+                n_frames_p = []
+                colours.append([])
+                if drlim_set and (i_kpdim in drdim): drdim_means = []
+                kpdim_df = data_red_df[['idx',kp_labels[i_kpdim]]]
+                for i_n, i_p in enumerate(persons_range):
+                    kpdim_p_df = kpdim_df[[kp_labels[i_kpdim]]][kpdim_df.idx == i_p]
+                    if drlim_set: drdim_means.append(kpdim_p_df[kp_labels[i_kpdim]].mean())
+                    if vis['show'] == 'ind':
+                        if new_kpdim:
+                            i_sp += 1
+                            if i_kpdim > 0: i_sp += 1
+                        plt.subplot(n_sp,1,i_sp)
+                        i_sp += 1
+                    kpdim_p_df[kp_labels[i_kpdim]].plot( linewidth=vis['lwraw'],
+                                                         alpha=0.7, color=cmap(i_n) )
+                    plt.xlim(x_lims)
+                    colours[i_kpdim].append(cmap(i_n))
 
-                if drdim:
-                    warning_n_clusters = False
+                    if vis['show'] == 'ind':
+                        kpdim_p_df[kp_labels[i_kpdim]].plot( marker='.', linestyle='none',
+                                                             markersize=vis['markersize'],
+                                                             color='k' )
+                        plt.xticks(fontsize=7)
+                        plt.yticks(fontsize=7)
+                        if new_kpdim:
+                            plt.title(f'\n{kp_labels[i_kpdim]}')
+                            new_kpdim = False
+                        plt.legend([i_p], loc='upper right', bbox_to_anchor=(1.2, 1.02))
+                    n_frames_p.append(len(kpdim_p_df))
+
+                this_dim_all = kpdim_df[kp_labels[i_kpdim]]
+                if vis['show'] == 'dim':
+                    this_dim_all.plot( marker='.', linestyle='none',
+                                       markersize=vis['markersize'], color='k' )
+
+                #  Classify individuals with disjoint ranges:
+                if drdim and (i_kpdim in drdim):
                     if drlim_set:
-                        drlim_file = drlim_set
-                        i_drlim = 0
-                    else:
-                        mcs = int(n_frames_in/(n_persons*2))
-                        clustering = HDBSCAN( min_cluster_size=mcs, store_centers="centroid",
-                                              metric="cityblock" )
-                if log_path: prep_log_txt = [fn_ne + '\n']
-                n_kpdim = len(idx_kpdim)
-                if vis['show'] == 'ind':
-                    n_sp = n_kpdim*n_persons + n_kpdim*2 - 1
-                    i_sp = 1
-                x_lims = [data_red_df.index.min(), index_max]
-                colours = []
-                for i_kpdim in range(n_kpdim):
-                    if vis['show'] == 'ind': new_kpdim = True
-                    elif (vis['show'] is True) or rawfig_path: plt.subplot(n_kpdim,1,i_kpdim+1)
-                    n_frames_p = []
-                    colours.append([])
-                    if drlim_set and (i_kpdim in drdim): drdim_means = []
-                    kpdim_df = data_red_df[['idx',kp_labels[i_kpdim]]]
-                    for i_n, i_p in enumerate(persons_range):
-                        kpdim_p_df = kpdim_df[[kp_labels[i_kpdim]]][kpdim_df.idx == i_p]
-                        if drlim_set: drdim_means.append(kpdim_p_df[kp_labels[i_kpdim]].mean())
-                        if vis['show'] or rawfig_path:
-                            if vis['show'] == 'ind':
-                                if new_kpdim:
-                                    i_sp += 1
-                                    if i_kpdim > 0: i_sp += 1
-                                plt.subplot(n_sp,1,i_sp)
-                                i_sp += 1
-                            kpdim_p_df[kp_labels[i_kpdim]].plot( linewidth=vis['lwraw'],
-                                                                 alpha=0.7, color=cmap(i_n) )
-                            plt.xlim(x_lims)
-                            colours[i_kpdim].append(cmap(i_n))
-
-                            if vis['show'] == 'ind':
-                                kpdim_p_df[kp_labels[i_kpdim]].plot( marker='.', linestyle='none',
-                                                                     markersize=vis['markersize'],
-                                                                     color='k' )
-                                plt.xticks(fontsize=7)
-                                plt.yticks(fontsize=7)
-                                if new_kpdim:
-                                    plt.title(f'\n{kp_labels[i_kpdim]}')
-                                    new_kpdim = False
-                                plt.legend([i_p], loc='upper right', bbox_to_anchor=(1.2, 1.02))
-                        n_frames_p.append(len(kpdim_p_df))
-
-                    if vis['show'] or rawfig_path or drdim:
-                        this_dim_all = kpdim_df[kp_labels[i_kpdim]]
+                        drlim_dim = drlim_file[i_drlim]
+                        plot_hlines = True
+                        i_drlim += 1
+                        idx_all_p = np.argsort(drdim_means)
+                    else: # estimate by clustering
+                        clustering.fit(np.reshape(this_dim_all, (-1, 1)))
+                        centroids = np.squeeze(clustering.centroids_)
+                        drlim_dim = centroids[:-1] + np.diff(centroids)/2
+                        drlim_dim = np.insert( drlim_dim, [0,len(centroids)-1],
+                                                  [0,this_dim_all.max()] )
+                        drlim_file.append(np.sort(drlim_dim).tolist())
+                        if centroids.size != n_persons:
+                            warning_n_clusters = True
+                            print( ''.join([ 'Warning: Automatic classification of individuals',
+                                            f' not applied with axis {i_kpdim} '
+                                            f'({kp_labels[i_kpdim]})\n         because the number',
+                                            f' of found clusters is {centroids.size},\n        ',
+                                            f' but the expected number of individuals is',
+                                            f' {n_indiv}.']))
                     if vis['show'] == 'dim':
-                        this_dim_all.plot( marker='.', linestyle='none',
-                                           markersize=vis['markersize'], color='k' )
+                        plt.hlines( drlim_dim[1:-1], 0, data_red_df.index.max(),
+                                    linestyles='dashed', colors='tab:gray', linewidths=0.8 )
 
-                    #  Classify individuals with disjoint ranges:
-                    if drdim and (i_kpdim in drdim):
-                        if drlim_set:
-                            drlim_dim = drlim_file[i_drlim]
-                            plot_hlines = True
-                            i_drlim += 1
-                            idx_all_p = np.argsort(drdim_means)
-                        else: # estimate by clustering
-                            clustering.fit(np.reshape(this_dim_all, (-1, 1)))
-                            centroids = np.squeeze(clustering.centroids_)
-                            drlim_dim = centroids[:-1] + np.diff(centroids)/2
-                            drlim_dim = np.insert( drlim_dim, [0,len(centroids)-1],
-                                                      [0,this_dim_all.max()] )
-                            drlim_file.append(np.sort(drlim_dim).tolist())
-                            if centroids.size != n_persons:
-                                warning_n_clusters = True
-                                print( ''.join([ 'Warning: Automatic classification of individuals',
-                                                f' not applied with axis {i_kpdim} '
-                                                f'({kp_labels[i_kpdim]})\n         because the number',
-                                                f' of found clusters is {centroids.size},\n        ',
-                                                f' but the expected number of individuals is',
-                                                f' {n_indiv}.']))
-                        if vis['show'] == 'dim':
-                            plt.hlines( drlim_dim[1:-1], 0, data_red_df.index.max(),
-                                        linestyles='dashed', colors='tab:gray', linewidths=0.8 )
+                if drdim and (i_kpdim==(n_kpdim-1)) and warning_n_clusters:
+                    print('This might be solved by increasing the value for argument "confac"')
 
-                    if drdim and (i_kpdim==(n_kpdim-1)) and warning_n_clusters:
-                        print('This might be solved by increasing the value for argument "confac"')
+                if vis['show'] == 'dim':
+                    plt.ylabel(kp_labels[i_kpdim])
+                    if i_kpdim == 0:
+                        plt.legend( list(persons_range)+['all'],loc='upper right',
+                                    bbox_to_anchor=(1.2, 1.02) )
 
-                    if vis['show'] == 'dim':
-                        plt.ylabel(kp_labels[i_kpdim])
-                        if i_kpdim == 0:
-                            plt.legend( list(persons_range)+['all'],loc='upper right',
-                                        bbox_to_anchor=(1.2, 1.02) )
+                if log_path:
+                    mean_persons = sum(n_frames_p)/n_persons
+                    for p in n_frames_p:
+                        if p != mean_persons:
+                            warning_frames = ''.join([ 'inconsistent frame count in '
+                                                      f'{kp_labels[i_kpdim]} {tuple(n_frames_p)}' ])
+                            prep_log_txt.append( warning_frames+'\n' )
+                            if verbose: print('Warning:',warning_frames)
+                            break
 
-                    if log_path:
-                        mean_persons = sum(n_frames_p)/n_persons
-                        for p in n_frames_p:
-                            if p != mean_persons:
-                                warning_frames = ''.join([ 'inconsistent frame count in '
-                                                          f'{kp_labels[i_kpdim]} {tuple(n_frames_p)}' ])
-                                prep_log_txt.append( warning_frames+'\n' )
-                                if verbose: print('Warning:',warning_frames)
-                                break
-
-                if rawfig_path or vis['show']:
-                    plt.gcf().suptitle(f'{fn_ne}\nRaw (confidence factor = {confac})')
-                    plt.gcf().supxlabel('time (stacked video frames)')
-                    if vis['show'] == 'dim': plt.tight_layout()
-                    if rawfig_path:
-                        fig_ffn = rawfig_path + '/' + fn_ne + suffix + '_RAW.png'
-                        plt.savefig(fig_ffn,bbox_inches='tight')
-                    if vis['show']: plt.show()
-                    else: plt.close(plt.gcf())
+            plt.gcf().suptitle(f'{fn_ne}\nRaw (confidence factor = {confac})')
+            plt.gcf().supxlabel('time (stacked video frames)')
+            if vis['show'] == 'dim': plt.tight_layout()
+            if rawfig_path:
+                fig_ffn = rawfig_path + '/' + fn_ne + suffix + '_RAW.png'
+                plt.savefig(fig_ffn,bbox_inches='tight')
+            plt.show()
 
             if log_path or verbose:
                 if (data_red_df.idx.max()) != n_persons:
@@ -871,15 +865,13 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
             if prepfig_path:
                 fig_ffn = prepfig_path + '/' + fn_ne + suffix + '_PREP.png'
                 plt.savefig(fig_ffn,bbox_inches='tight')
-            if vis['show']: plt.show()
-            else: plt.close(plt.gcf())
+            plt.show()
 
             # Write pre-processed data to a file:
             if savepaths['parquet']:
                 parquet_ffn = preproc_path + '/' + parquet_fn
                 data_rar_df.to_parquet(parquet_ffn)
 
-            if verbose and not vis['show']: print('done')
         else:
             if verbose: print('skipped')
 
