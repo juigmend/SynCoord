@@ -722,7 +722,7 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                             break
 
             plt.gcf().suptitle(f'{fn_ne}\nRaw (confidence factor = {confac})')
-            plt.gcf().supxlabel('time (stacked video frames)')
+            plt.gcf().supxlabel('time (video frames)')
             if vis['show'] == 'dim': plt.tight_layout()
             if rawfig_path:
                 fig_ffn = rawfig_path + '/' + fn_ne + suffix + '_RAW.png'
