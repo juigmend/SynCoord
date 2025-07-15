@@ -737,8 +737,8 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
 
             # Apply disjoint ranges:
             if drdim:
-                i_l = 0
                 data_red_df.idx = 0
+                i_l = 0
                 for i_drdim in drdim:
                     if (len(drlim_file[i_drdim]) -1) == n_persons:
                         for i_p, _ in enumerate(drlim_file[i_l][:-1]):
@@ -747,20 +747,18 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                             idx_hi = data_red_df[col_lbl] <= drlim_file[i_l][i_p+1]
                             idx_sel = idx_lo & idx_hi
                             data_red_df.loc[idx_sel,'idx'] = i_p+1
-                            if sum(idx_sel) > n_frames_in:
-                                data_sel_df = data_red_df.loc[idx_sel]
-                                data_sel_df = data_sel_df.sort_values('conf',ascending=False)
-                                data_sel_df = data_sel_df[~data_sel_df.index.duplicated(keep='first')]
-                                data_red_df = data_red_df.loc[~idx_sel]
-                                data_red_df = pd.concat([data_red_df,data_sel_df])
+                            data_sel_df = data_red_df.loc[idx_sel]
+                            data_sel_df = data_sel_df.sort_values('conf',ascending=False)
+                            data_sel_df = data_sel_df[~data_sel_df.index.duplicated(keep='first')]
+                            if i_p == 0: data_red_new_df = data_sel_df
+                            else: data_red_new_df = pd.concat([data_red_new_df,data_sel_df])
                     else:
                         if verbose: print( ''.join [ "Warning: disjoint ranges for dimension ",
                                                     f"{i_drdim} not applied as number of ranges ",
                                                      "doesn't mach number of individuals ",
                                                     f"({n_persons})" ])
                     i_l += 1
-                data_red_df = data_red_df[data_red_df.idx>0]
-                ata_red_df = data_red_df.sort_index()
+                data_red_df = data_red_new_df
 
             # Rearrange such that each row is a frame:
             data_rar_df = pd.DataFrame( index=range(n_frames_in) )
@@ -807,14 +805,16 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
             data_rar_df.columns = new_order_lbl
 
             # Fill missing data:
-            if fillgaps:
-                found_nan = data_rar_df.isnull().values.any()
-                if found_nan:
-                    data_rar_df = data_rar_df.interpolate(limit_direction='both',method='cubicspline')
-                    if log_path or verbose:
-                        warning_interp = 'missing raw data have been interpolated'
-                        if verbose: print('Warning:',warning_interp)
-                        if log_path: prep_log_txt.append(warning_interp+'\n')
+            if fillgaps and data_rar_df.isnull().values.any():
+                data_rar_df = data_rar_df.interpolate(method='cubicspline',limit_direction='both')
+                if log_path or verbose:
+                    warning_interp = 'missing raw data have been interpolated'
+                    if verbose: print('Warning:',warning_interp)
+                    if log_path: prep_log_txt.append(warning_interp+'\n')
+
+            # Check length:
+            if n_frames_in != data_rar_df.shape[0]:
+                raise Exception('Number of input frames is not equal to number of output frames')
 
             # save log:
             if log_path:
@@ -874,5 +874,4 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
 
         else:
             if verbose: print('skipped')
-
     return drlim_file
