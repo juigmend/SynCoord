@@ -703,7 +703,7 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                                     linestyles='dashed', colors='tab:gray', linewidths=0.8 )
 
                 if drdim and (i_kpdim==(n_kpdim-1)) and warning_n_clusters:
-                    print('This might be solved by increasing the value for argument "confac"')
+                    print('This might be solved by increasing the value for argument "confac".')
 
                 if vis['show'] == 'dim':
                     plt.ylabel(kp_labels[i_kpdim])
