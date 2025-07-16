@@ -737,6 +737,7 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
 
             # Apply disjoint ranges:
             if drdim:
+                if warning_n_clusters: return drlim_file
                 data_red_df.idx = 0
                 drlim_ok = False
                 i_l = 0
@@ -754,10 +755,6 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                             if i_p == 0: data_red_new_df = data_sel_df
                             else: data_red_new_df = pd.concat([data_red_new_df,data_sel_df])
                             drlim_ok = True
-                    else:
-                        raise Exception(''.join([f"Disjoint ranges for dimension {i_drdim} not ",
-                                                  "applied as number of ranges doesn't mach ",
-                                                  "number of individuals"]))
                     i_l += 1
                 data_red_df = data_red_new_df
 
