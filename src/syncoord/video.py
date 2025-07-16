@@ -757,7 +757,7 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                     else:
                         raise Exception(''.join([f"Disjoint ranges for dimension {i_drdim} not ",
                                                   "applied as number of ranges doesn't mach ",
-                                                  "number of individuals"])
+                                                  "number of individuals"]))
                     i_l += 1
                 data_red_df = data_red_new_df
 
