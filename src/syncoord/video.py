@@ -500,7 +500,7 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
             suffix (str): Label to be added to the names of the resulting files.
             trange (list): Time-range selection in frames [start,end]. Default = None
             confac (float): Confidence score factor to discard raw data. 0 >= confac <= 1
-                              Default = 0.5
+                            Higher means more selective. Default = 0.5
             drdim (str,int,list[int]): Dimensions to apply classification of individuals. Clustering
                                        is used if drlim_set is not specified. 'all' to try all
                                        dimensions. Works only if keypoint trajectories in selected
@@ -702,14 +702,14 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                         plt.hlines( drlim_dim[1:-1], 0, data_red_df.index.max(),
                                     linestyles='dashed', colors='tab:gray', linewidths=0.8 )
 
-                if drdim and (i_kpdim==(n_kpdim-1)) and warning_n_clusters:
-                    print('This might be solved by increasing the value for argument "confac".')
-
                 if vis['show'] == 'dim':
                     plt.ylabel(kp_labels[i_kpdim])
                     if i_kpdim == 0:
                         plt.legend( list(persons_range)+['all'],loc='upper right',
                                     bbox_to_anchor=(1.2, 1.02) )
+
+                if drdim and (i_kpdim==(n_kpdim-1)) and warning_n_clusters:
+                    print('This might be solved by increasing the value for argument "confac".')
 
                 if log_path:
                     mean_persons = sum(n_frames_p)/n_persons
@@ -738,6 +738,7 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
             # Apply disjoint ranges:
             if drdim:
                 data_red_df.idx = 0
+                drlim_ok = False
                 i_l = 0
                 for i_drdim in drdim:
                     if (len(drlim_file[i_drdim]) -1) == n_persons:
@@ -752,11 +753,11 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                             data_sel_df = data_sel_df[~data_sel_df.index.duplicated(keep='first')]
                             if i_p == 0: data_red_new_df = data_sel_df
                             else: data_red_new_df = pd.concat([data_red_new_df,data_sel_df])
+                            drlim_ok = True
                     else:
-                        if verbose: print( ''.join [ "Warning: disjoint ranges for dimension ",
-                                                    f"{i_drdim} not applied as number of ranges ",
-                                                     "doesn't mach number of individuals ",
-                                                    f"({n_persons})" ])
+                        raise Exception(''.join([f"Disjoint ranges for dimension {i_drdim} not ",
+                                                  "applied as number of ranges doesn't mach ",
+                                                  "number of individuals"])
                     i_l += 1
                 data_red_df = data_red_new_df
 
