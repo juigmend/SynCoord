@@ -5,7 +5,7 @@
 
 #SBATCH --partition=gputest
 
-#SBATCH --time=00:15:00             # hh:mm:ss (optionally append days-)
+#SBATCH --time=00:15:00             # hh:mm:ss (optionally prepend days-)
 
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
