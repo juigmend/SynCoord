@@ -533,6 +533,7 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
 
     assert isinstance(vis,dict), 'Argument "vis" should be dict.'
     vis = {'show':'dim','markersize':0.8,'lwraw':4,'lwprep':2,**vis}
+    assert vis['show'] in ['dim','ind'], "Value for vis['show'] is incorrect."
     keypoints = kwargs.get('keypoints',0)
     assert isinstance(keypoints,int), 'Currently only one point is allowed, and it has to be int.'
     kp_labels = kwargs.get('kp_labels',['x','y'])
