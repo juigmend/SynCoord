@@ -354,7 +354,6 @@ def load_data( preproc_data, *props, annot_path=None, topdata_Name=None,
         * dimensions = axes of the N-D Numpy array, where the rightmost is the fastest changing.
     '''
     properties = None
-    ndim = 2
     if props[0] and isinstance(props[0][0],str):
         properties = pd.read_csv(props[0][0])
         if 'ID' not in properties.columns:
@@ -375,6 +374,8 @@ def load_data( preproc_data, *props, annot_path=None, topdata_Name=None,
             for k,v in params:
                 if k == 'ndim': ndim = int(v)
                 else: props[0][0][k] = v
+    elif isinstance(props[0][0],dict):
+        ndim = props[0][0].get('ndim',2)
 
     def make_topinfo_tdv(**kwargs):
         tdv = init_testdatavars(**kwargs)
