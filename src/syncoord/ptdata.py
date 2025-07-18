@@ -116,7 +116,7 @@ class PtData:
     def visualise(self,**kwargs):
         visualise(self,**kwargs)
 
-def load( preproc_data, *prop_path, annot_path=None, max_n_files=None,
+def load( preproc_data, *props, annot_path=None, max_n_files=None,
               print_info=True, **kwargs ):
     '''
     Load data.
@@ -127,9 +127,9 @@ def load( preproc_data, *prop_path, annot_path=None, max_n_files=None,
                               or "make" to produce synthetic data with default values.
                       If dict: As returned by syncoord.utils.testdata.
                       If numpy.ndarray: As returned by syncoord.utils.init_testdatavars
-        prop_path (str): Path for properties CSV file (e.g., r"~/properties.csv").
-                         See documentation for syncoord.utils.load_data
-                         Optional or ignored if preproc_data = "make"
+        props (str,dict): Path for properties CSV file (e.g., r"~/properties.csv"), or dict
+                          with properties. See documentation for syncoord.utils.load_data
+                          Optional or ignored if preproc_data = "make"
         Optional:
             annot_path (str): Path and filename for annotations CSV file
                               (e.g., r"~/String_Quartet_annot.csv").
@@ -141,7 +141,7 @@ def load( preproc_data, *prop_path, annot_path=None, max_n_files=None,
         PtData object with loaded data.
     '''
     # TO-DO: get main name and label from preprocessed data file
-    load_out = utils.load_data( preproc_data, prop_path, annot_path=annot_path,
+    load_out = utils.load_data( preproc_data, props, annot_path=annot_path,
                                 max_n_files=max_n_files, print_info=print_info, **kwargs )
 
     pos = PtData(load_out[0])
