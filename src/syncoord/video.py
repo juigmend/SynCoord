@@ -612,12 +612,13 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                 data_red_df[kplbl] = data_raw_df.keypoints.str[i_kpdc]
             data_red_df = data_red_df.set_index('image_id')
             data_red_df.index.name = None
-            index_max = data_red_df.index.max()
-            if trange: t_loc = trange
-            else: t_loc = [0,index_max]
-            idx_df_sel = (data_red_df.index >= t_loc[0]) & (data_red_df.index <=  t_loc[1])
-            data_red_df = data_red_df[idx_df_sel]
+            if trange:
+                t_loc = trange
+                idx_df_sel = (data_red_df.index >= t_loc[0]) & (data_red_df.index <  t_loc[1])
+                data_red_df = data_red_df[idx_df_sel]
             n_frames_in = data_red_df.index.unique().size
+            red_index_min = data_red_df.index.min()
+            red_index_max = data_red_df.index.max()
             conf_min = data_red_df.conf.min()
             conf_thresh = ((data_red_df.conf.max() - conf_min) * confac) + conf_min
             data_red_df = data_red_df[ data_red_df.conf >= conf_thresh ]
@@ -637,7 +638,7 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
             if vis['show'] == 'ind':
                 n_sp = n_kpdim*n_persons + n_kpdim*2 - 1
                 i_sp = 1
-            x_lims = [data_red_df.index.min(), index_max]
+            x_lims = [data_red_df.index.min(), data_red_df.index.max()]
             colours = []
             for i_kpdim in range(n_kpdim):
                 if vis['show'] == 'ind': new_kpdim = True
@@ -760,7 +761,7 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                 data_red_df = data_red_new_df
 
             # Rearrange such that each row is a frame:
-            data_rar_df = pd.DataFrame( index=range(n_frames_in) )
+            data_rar_df = pd.DataFrame( index=range(red_index_min,red_index_max+1) )
             for i_p in persons_range:
                 data_rar_df = data_rar_df.join( data_red_df[kp_labels][data_red_df.idx == i_p],
                                                 lsuffix=f'_{i_p-1}', rsuffix=f'_{i_p}' )
