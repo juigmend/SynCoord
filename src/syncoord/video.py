@@ -496,9 +496,10 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
             n_indiv (int,str): Expected number of individuals to be tracked. Default = 'auto'
             sel_indiv (int,list[int],str): Selection of individuals with index in json file starting
                                            at 1. Default = 'all'
-            merge_indiv (list[int],list[list[]]): Merge tracked individuals.
+            merge_indiv (list[int],list[list[int]]): Merge tracked individuals.
             trange (list): Time-range selection in frames [start,end]. Default = None
-            rem_fr (dict{key:int,list,range}): Remove frames. Key is number of tracked individual.
+            rem_fr (dict(key=int,range,list[int,list,range]])): Remove frames. Key is number of
+                                                                tracked individual.
             confac (float): Confidence score factor to discard raw data. 0 >= confac <= 1
                             Higher means more selective. Default = 0.5
             drdim (str,int,list[int]): Dimensions to apply classification of individuals. Clustering
@@ -753,9 +754,12 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                 for i_p,v in zip(rem_fr.keys(),rem_fr.values()):
                     if isinstance(v,int): v = [v]
                     elif isinstance(v,range): v = list(v)
-                    for i_r in v:
-                        idx_rem = (data_red_df.index==i_r) & (data_red_df.idx==i_p)
-                        data_red_df = data_red_df[~idx_rem]
+                    for l in v:
+                        if isinstance(l,range): l = list(l)
+                        if not isinstance(l,list): l = [l]
+                        for i_r in l:
+                            idx_rem = (data_red_df.index==i_r) & (data_red_df.idx==i_p)
+                            data_red_df = data_red_df[~idx_rem]
 
             # Merge individuals:
             if merge_indiv[0] and not drdim:
