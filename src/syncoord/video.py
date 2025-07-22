@@ -496,22 +496,25 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
             n_indiv (int,str): Expected number of individuals to be tracked. Default = 'auto'
             sel_indiv (int,list[int],str): Selection of individuals with index in json file starting
                                            at 1. Default = 'all'
-            skip_done (bool): Skip if corresponding preprocessed parquet file exists.
-            suffix (str): Label to be added to the names of the resulting files.
+            merge_indiv (list[int],list[list[]]): Merge tracked individuals.
             trange (list): Time-range selection in frames [start,end]. Default = None
+            rem_fr (dict{key:int,list,range}): Remove frames. Key is number of tracked individual.
             confac (float): Confidence score factor to discard raw data. 0 >= confac <= 1
                             Higher means more selective. Default = 0.5
             drdim (str,int,list[int]): Dimensions to apply classification of individuals. Clustering
                                        is used if drlim_set is not specified. 'all' to try all
                                        dimensions. Works only if keypoint trajectories in selected
-                                       dimensions don't overlap.
+                                       dimensions don't overlap. Ignores sel_indiv and merge_indiv.
             drlim_set (list[int]): Set manual limits of disjoint ranges to classify individuals,
                                    only if json_path is a file or a folder with only one file.
                                    Format is one list if one dimension or nested lists for more
                                    dimensions. The order should be consistent with drdim.
                                    Example: [[lim0_dim0,lim1_dim0], [lim0_dim1,lim1_dim1]]
-            fillgaps (bool): Fill missing data with cubic spline. Default = True
-            verbose (bool): Default = True
+            fillgaps (bool,str): Interpolate missing data. For available methods see documentation
+                                for pandas.DataFrame.interpolate. Default = 'cubicspline'
+            suffix (str): Label to be added to the names of the resulting files.
+            skip_done (bool): Skip if corresponding preprocessed parquet file exists.
+            verbose (bool): Print additional information. Default = True
     Returns:
         drlim_file (list): Limits of disjoint ranges. Only if json_path is a file
                            or folder has one file, and drdim is not None. Otherwise empty list-
@@ -540,13 +543,18 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
     kp_horizontal = kwargs.get('kp_horizontal',0)
     n_indiv = kwargs.get('n_indiv','auto')
     sel_indiv = kwargs.get('sel_indiv','all')
-    skip_done = kwargs.get('skip_done',True)
-    suffix = kwargs.get('suffix','')
+    merge_indiv = kwargs.get('merge_indiv',[[]])
+    assert isinstance(merge_indiv,list), 'Value for "merge_indiv" should be a list or nested list of int.'
+    if not isinstance(merge_indiv[0],list): merge_indiv = [merge_indiv]
     trange = kwargs.get('trange',None)
+    rem_fr = kwargs.get('rem_fr',None)
     confac = kwargs.get('confac',0.5)
     drdim = kwargs.get('drdim',None)
     drlim_set = kwargs.get('drlim_set',None)
-    fillgaps = kwargs.get('fillgaps',True)
+    fillgaps = kwargs.get('fillgaps','cubicspline')
+    if fillgaps is True: fillgaps = 'cubicspline'
+    suffix = kwargs.get('suffix','')
+    skip_done = kwargs.get('skip_done',True)
     verbose = kwargs.get('verbose',True)
 
     if rawfig_path or prepfig_path:
@@ -559,7 +567,10 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
 
     if isinstance(sel_indiv,int): sel_indiv = [sel_indiv]
 
-    if drdim is not None: from sklearn.cluster import HDBSCAN
+    if drdim is not None:
+        if verbose and (merge_indiv[0] or (sel_indiv!='all')):
+            print('Warning: "merge_indiv" and "sel_indiv" omitted when "drdim" is not None')
+        from sklearn.cluster import HDBSCAN
     if isinstance(drdim,int): drdim = [drdim]
     elif isinstance(drdim,str): drdim = list(range(len(kp_labels)))
 
@@ -737,6 +748,28 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                     if verbose: print('Warning:',warning_idx)
                     if log_path: prep_log_txt.append(warning_idx+'\n')
 
+            # Remove frames:
+            if rem_fr:
+                for i_p,v in zip(rem_fr.keys(),rem_fr.values()):
+                    if isinstance(v,int): v = [v]
+                    elif isinstance(v,range): v = list(v)
+                    for i_r in v:
+                        idx_rem = (data_red_df.index==i_r) & (data_red_df.idx==i_p)
+                        data_red_df = data_red_df[~idx_rem]
+
+            # Merge individuals:
+            if merge_indiv[0] and not drdim:
+                for m in merge_indiv:
+                    for i in m[1:]:
+                        data_red_df.loc[data_red_df.idx == i,'idx'] = m[0]
+                        persons_range.remove(i)
+                    data_sel_df = data_red_df.loc[data_red_df.idx == m[0]]
+                    data_sel_df = data_sel_df.sort_values('conf',ascending=False)
+                    data_sel_df = data_sel_df[~data_sel_df.index.duplicated(keep='first')]
+                    data_red_df = data_red_df.loc[data_red_df.idx != m[0]]
+                    data_red_df = pd.concat([data_red_df,data_sel_df])
+                n_persons = len(persons_range)
+
             # Apply disjoint ranges:
             if drdim:
                 if warning_n_clusters: return drlim_file
@@ -771,6 +804,12 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
             colnames[-n_kpdim:] = new_last_colnames
             data_rar_df.columns = colnames
 
+            # Check length:
+            if n_frames_in != data_rar_df.shape[0]:
+                chck_len_msg = ''.join([ f'Number of input frames ({n_frames_in}) is not equal to ',
+                                         f'number of output frames ({data_rar_df.shape[0]}).'])
+                raise Exception(chck_len_msg)
+
             # Re-order and re-label columns in order from left to right as they appear in the image,
             # assuming that the individuals don't relocate (e.g. they are sitting or standing in
             # one place). Indices are set to start at 0 to be consistent with Python indexing.
@@ -800,21 +839,16 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                     new_order_all.append(new_order_lists[i_kpdim][i_p])
                     new_order_lbl.append(f'{i_np}_{kp_labels[i_kpdim]}')
                 i_np += 1
-
             data_rar_df = data_rar_df.reindex(new_order_all, axis=1)
             data_rar_df.columns = new_order_lbl
 
             # Fill missing data:
             if fillgaps and data_rar_df.isnull().values.any():
-                data_rar_df = data_rar_df.interpolate(method='cubicspline',limit_direction='both')
+                data_rar_df = data_rar_df.interpolate(method=fillgaps,limit_direction='both')
                 if log_path or verbose:
                     warning_interp = 'missing raw data have been interpolated'
                     if verbose: print('Warning:',warning_interp)
                     if log_path: prep_log_txt.append(warning_interp+'\n')
-
-            # Check length:
-            if n_frames_in != data_rar_df.shape[0]:
-                raise Exception('Number of input frames is not equal to number of output frames')
 
             # save log:
             if log_path:
