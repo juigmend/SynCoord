@@ -1155,6 +1155,7 @@ def secstats( ptdata, **kwargs ):
             axis (int): Dimension upon which to run the process.
             statnames (str,list[str]): Statistics to compute. Default is all.
                      Available options: 'mean','median','min','max','std'.
+            **kwargs: see documentation for syncoord.ndarr.section_stats
     Returns:
         New PtData object.
     '''
