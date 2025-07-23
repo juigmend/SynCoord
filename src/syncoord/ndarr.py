@@ -302,7 +302,7 @@ def isochronal_sections( data_list, idx_sections, last=False, axis=-1 ):
     return isochr_data, idx_isochr_sections
 
 def section_stats( arr_nd, idx_sections, fps, last=False, margins=None, axis=-1,
-                   statnames=[ 'mean','median','min','max','std' ] ):
+                   omitnan=False, statnames=[ 'mean','median','min','max','std' ] ):
     '''
     Descriptive statistics for sections of an N-D array.
     Args:
@@ -315,6 +315,7 @@ def section_stats( arr_nd, idx_sections, fps, last=False, margins=None, axis=-1,
                      If float: Same trim bor beginning and ending.
                      If list: Trims for beginning and ending. Nested lists for sections.
             axis (int): Dimension to apply the process.
+            omitnan (bool): Omit NaN.
             statnames (str,list[str]): Statistics to compute. Default is all.
     Return:
         (numpy.ndarray): N-D array of same dimensions of the input arr_nd, except the two last
@@ -352,15 +353,20 @@ def section_stats( arr_nd, idx_sections, fps, last=False, margins=None, axis=-1,
                     i_trim_end = len(this_section)-margins_f[i_sec][1]
                     this_section = this_section[i_trim_start:i_trim_end]
                 if this_statname == 'mean':
-                    arr_1d_out[i_stat,i_sec] = np.mean(this_section)
+                    if omitnan: arr_1d_out[i_stat,i_sec] = np.nanmean(this_section)
+                    else: arr_1d_out[i_stat,i_sec] = np.mean(this_section)
                 elif this_statname == 'median':
-                    arr_1d_out[i_stat,i_sec] = np.median(this_section)
+                    if omitnan: arr_1d_out[i_stat,i_sec] = np.nanmedian(this_section)
+                    else: arr_1d_out[i_stat,i_sec] = np.median(this_section)
                 elif this_statname == 'min':
-                    arr_1d_out[i_stat,i_sec] = np.min(this_section)
+                    if omitnan: arr_1d_out[i_stat,i_sec] = np.nanmin(this_section)
+                    else: arr_1d_out[i_stat,i_sec] = np.min(this_section)
                 elif this_statname == 'max':
-                    arr_1d_out[i_stat,i_sec] = np.max(this_section)
+                    if omitnan: arr_1d_out[i_stat,i_sec] = np.nanmax(this_section)
+                    else: arr_1d_out[i_stat,i_sec] = np.max(this_section)
                 elif this_statname == 'std':
-                    arr_1d_out[i_stat,i_sec] = np.std(this_section)
+                    if omitnan: arr_1d_out[i_stat,i_sec] = np.nanstd(this_section)
+                    else: arr_1d_out[i_stat,i_sec] = np.std(this_section)
         return arr_1d_out
     result = np.apply_along_axis(sstats_, axis, arr_nd, n_sections, statnames, n_stats, margins_f)
     if 1 in result.shape: result = np.squeeze(result)
