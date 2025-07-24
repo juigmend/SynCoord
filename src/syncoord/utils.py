@@ -465,14 +465,14 @@ def matlab_eng( addpaths=None, verbose=True ):
     '''
     Connects to Matab and returns a matlab.engine object.
     Optional args:
-        addpaths (str,list[str]): Path(s) to add to Matlab, or None.
+        addpaths (str,list[str]): Path(s) to add to Matlab, or None. Default = '../src'
         verbose (bool)
     '''
     if verbose: print('Connecting to Matlab...')
     import matlab.engine
     matlabeng = matlab.engine.start_matlab()
     if verbose: print('...connected to Matlab version',matlabeng.version())
-    full_addpaths = ["../src" ]
+    full_addpaths = ['../src' ]
     if addpaths:
         if isinstance(addpaths,str): full_addpaths.append(addpaths)
         elif isinstance(addpaths,list): full_addpaths.extend(addpaths)
