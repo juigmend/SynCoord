@@ -217,8 +217,11 @@ def xwt_nd( arrlist, minmaxf, fps, **kwargs ):
         neweng = True
         addpaths = [gxwt_path,xwtnd_path]
         matlabeng = utils.matlab_eng(addpaths,verbose)
-
-    xwtnd_result = matlabeng.xwtnd( arrlist[0].T, arrlist[1].T, float(fps),
+    arrs_cont = []
+    for a in arrlist:
+        if a.flags['C_CONTIGUOUS']: arrs_cont.append(a)
+        else: arrs_cont.append( np.ascontiguousarray(a) )
+    xwtnd_result = matlabeng.xwtnd( arrs_cont[0].T, arrs_cont[1].T, float(fps),
                                     minmaxf[0], minmaxf[1], nargout=nout )
     result = np.array(xwtnd_result[0])
     if get_result == 'abs': result = np.abs(result)
