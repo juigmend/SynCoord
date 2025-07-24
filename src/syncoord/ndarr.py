@@ -187,7 +187,9 @@ def xwt_nd( arrlist, minmaxf, fps, **kwargs ):
             projout (bool): Include power projections in returns.
             matlabeng (matlab.engine): object (useful when running multiple times).
                 Otherwise the following arguments are valid:
-            gxwt_path (str): path to folder containing functions cwtensor.m and genxwt.m
+            gxwt_path (str): Path to folder containing functions cwtensor.m and genxwt.m
+            xwtnd_path (str): Path to folder containing function xwtnd.m
+                              Default value in documentation for syncoord.utils.matlab_eng
     Returns:
         result (numpy.ndarray): Array with dimensions [channels,frames], depending on argument 'get'.
         freqs (numpy.ndarray): frequencies (Hz).
