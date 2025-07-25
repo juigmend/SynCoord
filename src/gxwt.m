@@ -1,4 +1,4 @@
-function [xs, f, p1, p2] = xwtnd(a1,a2,fps,minf,maxf,varargin)
+function [xs, f, p1, p2] = gxwt(a1,a2,fps,minf,maxf,varargin)
 % Wrapper for cwt.m, cwtensor.m, and genxwt.m
 %
 % Args:
@@ -15,8 +15,9 @@ function [xs, f, p1, p2] = xwtnd(a1,a2,fps,minf,maxf,varargin)
 %   xs: cross-wavelet spectrum, dim = [frequency, time]
 %   p1, p2: projection tensors, dim = [frequency, time, channel]
 %
-% Dependency:
+% Dependencies:
 %   Wavelet Toolbox for Matlab
+%   cwtensor.m, genxwt.m 
 %
 % Reference:
 %   https://doi.org/10.1016/j.humov.2021.102894

@@ -733,19 +733,19 @@ def winplv( ptdata, window_duration, window_hop=None, pairs_axis=0,
     wplv.other = ptdata.other.copy()
     return wplv
 
-def xwt( ptdata, minmaxf, pairs_axis, fixed_axes, **kwargs ):
+def gxwt( ptdata, minmaxf, pairs_axis, fixed_axes, **kwargs ):
     '''
-    Wrapper for syncoord.ndarr.xwt_nd
+    Wrapper for syncoord.ndarr.gxwt
     Pairwise multi-dimensional cross-wavelet spectrum.
     Args:
         ptdata (PtData): Data object. See documentation for syncoord.ptdata.PtData
                 N-D arrays should have at least 2 dimensions.
         minmaxf (list[float]): Minimum and maximum frequency (Hz).
         pairs_axis (list): Dimensions to form the pairs.
-        fixed_axes (int,list[int]): Dimension(s) passed to the xwt_nd function.
+        fixed_axes (int,list[int]): Dimension(s) passed to the gxwt function.
         Optional kwargs:
-            Keyword arguments to syncoord.ndarr.xwt_nd
-            verbose (bool): It will apply to syncoord.ndarr.apply_to_pairs and syncoord.ndarr.xwt_nd
+            Keyword arguments to syncoord.ndarr.gxwt
+            verbose (bool): It will apply to syncoord.ndarr.apply_to_pairs and syncoord.ndarr.gxwt
     Returns:
         New PtData object.
     '''
@@ -753,9 +753,9 @@ def xwt( ptdata, minmaxf, pairs_axis, fixed_axes, **kwargs ):
     if 'matlabeng' in kwargs: neweng = False
     else:
         neweng = True
-        genxwt_path = kwargs.pop('gxwt_path',None)
-        xwtnd_path = kwargs.pop('xwtnd_path',None)
-        addpaths = [genxwt_path,xwtnd_path]
+        extfunc_path = kwargs.pop('extfunc_path',None)
+        gxwt_path = kwargs.pop('gxwt_path',None)
+        addpaths = [extfunc_path,gxwt_path]
         kwargs['matlabeng'] = utils.matlab_eng(addpaths,verbose)
 
     dd_in = ptdata.data
@@ -767,7 +767,7 @@ def xwt( ptdata, minmaxf, pairs_axis, fixed_axes, **kwargs ):
         if arr_nd.ndim < 2: raise Exception(f'Data dimensions should be at least 2,\
                                               but currently are {arr_nd.ndim}')
         fps = ptdata.topinfo.loc[k,'fps']
-        pairs_results = ndarr.apply_to_pairs( arr_nd, ndarr.xwt_nd, pairs_axis,
+        pairs_results = ndarr.apply_to_pairs( arr_nd, ndarr.gxwt, pairs_axis,
                                               fixed_axes=fixed_axes,
                                               minmaxf=minmaxf, fps=fps, **kwargs )
         dd_out[k] = pairs_results[0]

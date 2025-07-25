@@ -170,10 +170,10 @@ def windowed_plv( arrs, window_length=None, window_step=1, mode='same', axis=-1 
     '''
     return slwin( arrs, plv, window_length, window_step, mode=mode, axis=axis )
 
-def xwt_nd( arrlist, minmaxf, fps, **kwargs ):
+def gxwt( arrlist, minmaxf, fps, **kwargs ):
     '''
-    Wrapper for Matlab functions cwt.m, cwtensor.m, genxwt.m, xwtnd.m
-    Multi-Dimensional Cross-Wavelet Transform.
+    Wrapper for Matlab functions cwt.m, cwtensor.m, genxwt.m, gxwt.m
+    Generalised Cross-Wavelet Transform.
     Args:
         arrlist (list): Two N-D or 1-D arrays having dimensions [channels,frames]
                         or [frames], respectively.
@@ -187,8 +187,8 @@ def xwt_nd( arrlist, minmaxf, fps, **kwargs ):
             projout (bool): Include power projections in returns.
             matlabeng (matlab.engine): object (useful when running multiple times).
                 Otherwise the following arguments are valid:
-            gxwt_path (str): Path to folder containing functions cwtensor.m and genxwt.m
-            xwtnd_path (str): Path to folder containing function xwtnd.m
+            extfunc_path (str): Path to folder containing functions cwtensor.m and genxwt.m
+            gxwt_path (str): Path to folder containing function gxwt.m
                               Default value in documentation for syncoord.utils.matlab_eng
     Returns:
         result (numpy.ndarray): Array with dimensions [channels,frames], depending on argument 'get'.
@@ -207,8 +207,8 @@ def xwt_nd( arrlist, minmaxf, fps, **kwargs ):
     get_result = kwargs.get('get_result','abs')
     projout = kwargs.get('projout',False)
     matlabeng = kwargs.get('matlabeng',None)
+    extfunc_path = kwargs.get('extfunc_path',None)
     gxwt_path = kwargs.get('gxwt_path',None)
-    xwtnd_path = kwargs.get('xwtnd_path',None)
     verbose = kwargs.get('verbose',True)
 
     if projout: nout = 4
@@ -217,15 +217,15 @@ def xwt_nd( arrlist, minmaxf, fps, **kwargs ):
     if matlabeng: neweng = False
     else:
         neweng = True
-        addpaths = [gxwt_path,xwtnd_path]
+        addpaths = [extfunc_path,gxwt_path]
         matlabeng = utils.matlab_eng(addpaths,verbose)
     arrs_cont = []
     for a in arrlist:
         if a.flags['C_CONTIGUOUS']: arrs_cont.append(a)
         else: arrs_cont.append( np.ascontiguousarray(a) )
-    xwtnd_result = matlabeng.xwtnd( arrs_cont[0].T, arrs_cont[1].T, float(fps),
+    gxwt_result = matlabeng.gxwt( arrs_cont[0].T, arrs_cont[1].T, float(fps),
                                     minmaxf[0], minmaxf[1], nargout=nout )
-    result = np.array(xwtnd_result[0])
+    result = np.array(gxwt_result[0])
     if get_result == 'abs': result = np.abs(result)
     elif get_result == 'angle': result = np.angle(result)
     elif get_result == 'complex': pass
@@ -233,12 +233,12 @@ def xwt_nd( arrlist, minmaxf, fps, **kwargs ):
     elif get_result == 'imag': result = np.imag(result)
     else: raise Exception('value for argument "get_result" is invalid')
     result = np.flip(result, axis=0 )
-    freqs = np.flip( np.squeeze( np.array(xwtnd_result[1]) ))
+    freqs = np.flip( np.squeeze( np.array(gxwt_result[1]) ))
     output = [result,freqs]
     if projout:
         powproj = []
         for i in range(2,4):
-            np_arr = np.array(xwtnd_result[i])
+            np_arr = np.array(gxwt_result[i])
             if np_arr.ndim == 3:
                 np_arr = np.moveaxis( np_arr, [0,1,2], [1,2,0] )
             powproj.append( np.flip( np.abs(np_arr)**2,axis=0 ) )
