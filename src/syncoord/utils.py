@@ -354,28 +354,29 @@ def load_data( preproc_data, *props, annot_path=None, topdata_Name=None,
         * dimensions = axes of the N-D Numpy array, where the rightmost is the fastest changing.
     '''
     properties = None
-    if props[0] and isinstance(props[0][0],str):
-        properties = pd.read_csv(props[0][0])
-        if 'ID' not in properties.columns:
-            params = [properties.columns.values.tolist()]
-            if 'ID' in properties.iloc[:,0].values:
-                i_start = np.where(properties.iloc[:,0] == 'ID')[0].item()
-                properties.columns = properties.iloc[i_start]
-                params.extend(properties[0:i_start].values.tolist())
-                properties = properties.drop(properties.index[0:i_start])
-                properties = properties.reset_index()
-                properties = properties.drop('index',axis=1)
-                properties.columns.name = ''
-            else:
-                params.extend(properties.values.tolist())
-                properties = None
-            del props
-            props = (({},),)
-            for k,v in params:
-                if k == 'ndim': ndim = int(v)
-                else: props[0][0][k] = v
-    elif isinstance(props[0][0],dict):
-        ndim = props[0][0].get('ndim',2)
+    if props[0]:
+        if isinstance(props[0][0],str):
+            properties = pd.read_csv(props[0][0])
+            if 'ID' not in properties.columns:
+                params = [properties.columns.values.tolist()]
+                if 'ID' in properties.iloc[:,0].values:
+                    i_start = np.where(properties.iloc[:,0] == 'ID')[0].item()
+                    properties.columns = properties.iloc[i_start]
+                    params.extend(properties[0:i_start].values.tolist())
+                    properties = properties.drop(properties.index[0:i_start])
+                    properties = properties.reset_index()
+                    properties = properties.drop('index',axis=1)
+                    properties.columns.name = ''
+                else:
+                    params.extend(properties.values.tolist())
+                    properties = None
+                del props
+                props = (({},),)
+                for k,v in params:
+                    if k == 'ndim': ndim = int(v)
+                    else: props[0][0][k] = v
+        elif isinstance(props[0][0],dict):
+            ndim = props[0][0].get('ndim',2)
 
     def make_topinfo_tdv(**kwargs):
         tdv = init_testdatavars(**kwargs)
