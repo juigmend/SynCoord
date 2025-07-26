@@ -1236,7 +1236,7 @@ def secstats( ptdata, **kwargs ):
 # .............................................................................
 # APPLICATION:
 
-def apply( ptdata, func,*args, **kwargs ):
+def apply( ptdata, func,*args, verbose=False, **kwargs ):
     '''
     Apply a function to every N-D array of the data dictionary in a PtData object.
     Note: ptdata.dim is copied from the input and may not correspond to the output, except
@@ -1247,6 +1247,7 @@ def apply( ptdata, func,*args, **kwargs ):
         Optional:
             axis: Dimension to apply process. Default is -1
             *args, **kwargs: input arguments and keyword-arguments to the function, respectively.
+            verbose (bool)
     Returns:
         New PtData object.
     '''
@@ -1296,7 +1297,7 @@ def apply( ptdata, func,*args, **kwargs ):
         main_name = rf'{ptdata.names.main[:].capitalize()} $^{args_list[0]}$'
         main_label = rf'{ptdata.labels.main[:]}$^{args_list[0]}$'
     else:
-        print('apply - warning: output "dim" field copied from input.')
+        if verbose: print('apply - warning: output "dim" field copied from input.')
         main_name = f'{fn}({ptdata.names.main})'
         main_label = fn
 
