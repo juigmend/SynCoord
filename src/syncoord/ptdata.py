@@ -549,7 +549,18 @@ def speed( ptdata, **kwargs ):
 def peaks_to_phase( ptdata, **kwargs ):
     '''
     Wrapper for syncoord.ndarr.peaks_to_phase
+    Arguments "fps" and "min_dist" will replace agument "distance" of syncoord.ndarr.peaks_to_phase
+    Args:
+        fps (int): Samplng rate.
+        min_dist (float): Minimum distance in seconds.
+        **kwargs passed to syncoord.ndarr.peaks_to_phase
     '''
+    if ('fps' in kwargs) or ('min_dist' in kwargs):
+        msg = 'Arguments "fps" and "min_dist" should have values.'
+        assert ('fps' in kwargs) and ('min_dist' in kwargs), msg
+        min_dist = kwargs.pop('min_dist')
+        fps = kwargs.pop('fps')
+        kwargs['distance'] = min_dist * fps
     return apply( ptdata, ndarr.peaks_to_phase, **kwargs )
 
 def kuramoto_r( ptdata ):
