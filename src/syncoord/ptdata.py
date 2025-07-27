@@ -813,6 +813,18 @@ def gxwt( ptdata, minmaxf, pairs_axis, fixed_axes, **kwargs ):
         main_name = 'Generalised Cross-Wavelet Spectrum'
         y_ticks = freq_bins_round
 
+    if not isinstance(fixed_axes,list): fixed_axes = [fixed_axes]
+    oldnew_faxes_pos = [[],[]]
+    for i_fal,fa in enumerate([fixed_axes,new_fixed_axes]):
+        for i_fap,a in enumerate(fa):
+            if a < 0: oldnew_faxes_pos[i_fal].append( dd_out[0].ndim + a)
+    if oldnew_faxes_pos[0] != oldnew_faxes_pos[1]:
+        idx_remdim = [v for v in oldnew_faxes_pos[0] if v not in oldnew_faxes_pos[1]]
+        for i_rem in idx_remdim:
+            del dim_names[i_rem]
+            del dim_labels[i_rem]
+            del dimel_labels[i_rem]
+
     dim_names[pairs_axis] = 'pair'
     dim_labels[pairs_axis] = 'pairs'
     k = list(dd_in.keys())[0]
