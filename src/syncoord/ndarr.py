@@ -589,10 +589,12 @@ def apply_to_pairs( arr_nd, func, pairs_axis, fixed_axes=-1, imout=0, verbose=Fa
                             shape_out_new[i_fap] = result_arr.shape[i_n]
                             idx_shape_o[i_fap] = ':'
                     elif len(fixed_axes_pos) > result_arr.ndim:
+                        new_fixed_axes = fixed_axes.copy()
                         for i_n, i_fap in enumerate(fixed_axes_pos):
                             try:
                                 shape_out_new[i_fap] = result_arr.shape[i_n]
                                 idx_shape_o[i_fap] = ':'
+                                del new_fixed_axes[i_n]
                             except:
                                 del shape_out_new[i_fap]
                                 del idx_shape_o[i_fap]
