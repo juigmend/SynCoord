@@ -588,7 +588,15 @@ def apply_to_pairs( arr_nd, func, pairs_axis, fixed_axes=-1, imout=0, verbose=Fa
                         for i_n, i_fap in enumerate(fixed_axes_pos):
                             shape_out_new[i_fap] = result_arr.shape[i_n]
                             idx_shape_o[i_fap] = ':'
-                    else: raise Exception('values in argument "fixed_axes" should be less')
+                    elif len(fixed_axes_pos) > result_arr.ndim:
+                        for i_n, i_fap in enumerate(fixed_axes_pos):
+                            try:
+                                shape_out_new[i_fap] = result_arr.shape[i_n]
+                                idx_shape_o[i_fap] = ':'
+                            except:
+                                del shape_out_new[i_fap]
+                                del idx_shape_o[i_fap]
+                    else: raise Exception('Cannot resolve fixed axes.')
                     idx_shape_o_str = str(idx_shape_o).replace("'","")
                     arr_nd_out = np.empty(tuple(shape_out_new))
                     shape_fixed_axes = result_arr.shape
