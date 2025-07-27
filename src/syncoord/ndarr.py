@@ -191,7 +191,8 @@ def gxwt( arrlist, minmaxf, fps, **kwargs ):
             gxwt_path (str): Path to folder containing function gxwt.m
                               Default value in documentation for syncoord.utils.matlab_eng
     Returns:
-        result (numpy.ndarray): Array with dimensions [channels,frames], depending on argument 'get'.
+        result (numpy.ndarray): Array with dimensions [frequency,frames] or only frames if there is
+                                only one frequency.
         freqs (numpy.ndarray): frequencies (Hz).
         powproj (tuple(numpy.ndarray)): If projout = True, one array per with power projections.
                                         The arrays have dimensions [channels,frequencies,frames]
@@ -233,6 +234,7 @@ def gxwt( arrlist, minmaxf, fps, **kwargs ):
     elif get_result == 'imag': result = np.imag(result)
     else: raise Exception('value for argument "get_result" is invalid')
     result = np.flip(result, axis=0 )
+    if (result.ndim == 2) and (result.shape[0] == 1): result = np.squeeze(result)
     freqs = np.flip( np.squeeze( np.array(gxwt_result[1]) ))
     output = [result,freqs]
     if projout:

@@ -772,7 +772,6 @@ def gxwt( ptdata, minmaxf, pairs_axis, fixed_axes, **kwargs ):
     dd_in = ptdata.data
     dd_out = {}
     c = 1
-    i_freqrem = None
     for k in dd_in:
         arr_nd = dd_in[k]
         if arr_nd.ndim < 2: raise Exception(f'Data dimensions should be at least 2,\
@@ -782,42 +781,38 @@ def gxwt( ptdata, minmaxf, pairs_axis, fixed_axes, **kwargs ):
                                               fixed_axes=fixed_axes,
                                               minmaxf=minmaxf, fps=fps, **kwargs )
         dd_out[k] = pairs_results[0]
-        new_fixed_axes = pairs_results[2]
-        len_nfa = len(new_fixed_axes)
-        assert len_nfa==2, f'length of new fixed axes is {len_nfa} but should be 2 (freq.,frames)'
-        if dd_out[k].shape[new_fixed_axes[0]] == 1:
-            dd_out[k] = np.squeeze(dd_out[k], axis=new_fixed_axes[0])
-            i_freqrem = new_fixed_axes[0]
 
     if neweng:
         kwargs['matlabeng'].quit()
         if verbose: print('Disconnected from Matlab.')
 
     pairs_idx = pairs_results[1]
+    new_fixed_axes = pairs_results[2]
     freq_bins = pairs_results[3][0][0].tolist()
+    if not isinstance(freq_bins,list): one_freq = True
+    else: one_freq = False
     freq_bins_round = np.round(freq_bins,1).tolist()
+
     dim_names = ptdata.names.dim.copy()
     dim_labels = ptdata.labels.dim.copy()
     dimel_labels = ptdata.labels.dimel.copy()
-    if i_freqrem:
-        groupby = new_fixed_axes[1]
-        i_freq_lbl = i_freqrem
+
+    if isinstance(new_fixed_axes,list): groupby = new_fixed_axes[0]
+    else: groupby = new_fixed_axes
+
+    if one_freq:
+        main_name = f'Generalised Cross-Wavelet Transform at {round(freq_bins,2)} Hz'
         y_ticks = None
     else:
-        if isinstance(new_fixed_axes,list): groupby = new_fixed_axes[0]
-        else: groupby = new_fixed_axes
         i_freq_lbl = groupby
-        y_ticks = freq_bins_round
-    if i_freq_lbl < 0: i_freq_lbl = len(dim_names) + i_freq_lbl
-    if (i_freq_lbl != pairs_axis) and (i_freq_lbl >= 0):
-        if i_freqrem:
-            del dim_names[i_freq_lbl]
-            del dim_labels[i_freq_lbl]
-            del dimel_labels[i_freq_lbl]
-        else:
+        if i_freq_lbl < 0: i_freq_lbl = len(dim_names) + i_freq_lbl
+        if (i_freq_lbl != pairs_axis) and (i_freq_lbl >= 0):
             dim_names[i_freq_lbl] = 'frequency'
             dim_labels[i_freq_lbl] = 'freq.'
             dimel_labels[i_freq_lbl] = freq_bins_round
+        main_name = 'Generalised Cross-Wavelet Spectrum'
+        y_ticks = freq_bins_round
+
     dim_names[pairs_axis] = 'pair'
     dim_labels[pairs_axis] = 'pairs'
     k = list(dd_in.keys())[0]
@@ -828,8 +823,7 @@ def gxwt( ptdata, minmaxf, pairs_axis, fixed_axes, **kwargs ):
     else: vistype = 'imshow'
 
     xwtdata = PtData( deepcopy(ptdata.topinfo) )
-    if i_freqrem: xwtdata.names.main = f'Cross-Wavelet Transform at {round(freq_bins,2)} Hz'
-    else: xwtdata.names.main = 'Cross-Wavelet Spectrum'
+    xwtdata.names.main = main_name
     xwtdata.names.dim = dim_names
     xwtdata.labels.main = 'XWT'
     xwtdata.labels.dim = dim_labels
