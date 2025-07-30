@@ -582,8 +582,7 @@ def apply_to_pairs( arr_nd, func, pairs_axis, fixed_axes=-1, imout=0, verbose=Fa
                             shape_out_new[fixed_axes_pos[0]:fixed_axes_pos[0]+1] = result_arr.shape
                             idx_shape_o[fixed_axes_pos[0]:fixed_axes_pos[0]+1] = \
                                 [':' for _ in range(result_arr.ndim)]
-                            new_fixed_axes = fixed_axes_pos \
-                                + [fixed_axes_pos[0]+i+1 for i in range(result_arr.ndim)]
+                            new_fixed_axes = [i for i,v in enumerate(idx_shape_o) if v==':']
                     elif len(fixed_axes_pos) == result_arr.ndim:
                         for i_n, i_fap in enumerate(fixed_axes_pos):
                             shape_out_new[i_fap] = result_arr.shape[i_n]
