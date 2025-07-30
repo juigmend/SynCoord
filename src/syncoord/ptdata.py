@@ -791,12 +791,13 @@ def gxwt( ptdata, minmaxf, pairs_axis, fixed_axes, **kwargs ):
     freq_bins = pairs_results[3][0][0].tolist()
     if not isinstance(freq_bins,list): one_freq = True
     else: one_freq = False
-    freq_bins_round = np.round(freq_bins,1).tolist()
+    freq_bins_round = np.round(freq_bins,2).tolist()
 
     dim_names = ptdata.names.dim.copy()
     dim_labels = ptdata.labels.dim.copy()
     dimel_labels = ptdata.labels.dimel.copy()
 
+    if not isinstance(fixed_axes,list): fixed_axes = [fixed_axes]
     if isinstance(new_fixed_axes,list): groupby = new_fixed_axes[0]
     else: groupby = new_fixed_axes
 
@@ -805,20 +806,26 @@ def gxwt( ptdata, minmaxf, pairs_axis, fixed_axes, **kwargs ):
         y_ticks = None
     else:
         i_freq_lbl = groupby
-        if i_freq_lbl < 0: i_freq_lbl = len(dim_names) + i_freq_lbl
-        if (i_freq_lbl != pairs_axis) and (i_freq_lbl >= 0):
-            dim_names[i_freq_lbl] = 'frequency'
-            dim_labels[i_freq_lbl] = 'freq.'
-            dimel_labels[i_freq_lbl] = freq_bins_round
+        if len(fixed_axes) < len(new_fixed_axes):
+            dim_names.insert(i_freq_lbl,'frequency')
+            dim_labels.insert(i_freq_lbl,'freq')
+            dimel_labels.insert(i_freq_lbl,freq_bins_round)
+        else:
+            if i_freq_lbl < 0: i_freq_lbl = len(dim_names) + i_freq_lbl
+            if (i_freq_lbl != pairs_axis) and (i_freq_lbl >= 0):
+                dim_names[i_freq_lbl] = 'frequency'
+                dim_labels[i_freq_lbl] = 'freq.'
+                dimel_labels[i_freq_lbl] = freq_bins_round
         main_name = 'Generalised Cross-Wavelet Spectrum'
         y_ticks = freq_bins_round
 
-    if not isinstance(fixed_axes,list): fixed_axes = [fixed_axes]
     oldnew_faxes_pos = [[],[]]
     for i_fal,fa in enumerate([fixed_axes,new_fixed_axes]):
         for i_fap,a in enumerate(fa):
             if a < 0: oldnew_faxes_pos[i_fal].append( dd_out[0].ndim + a)
-    if oldnew_faxes_pos[0] != oldnew_faxes_pos[1]:
+            else: oldnew_faxes_pos[i_fal].append( a )
+    if not (len(fixed_axes) < len(new_fixed_axes)) \
+       and (oldnew_faxes_pos[0] != oldnew_faxes_pos[1]):
         idx_remdim = [v for v in oldnew_faxes_pos[0] if v not in oldnew_faxes_pos[1]]
         for i_rem in idx_remdim:
             del dim_names[i_rem]
