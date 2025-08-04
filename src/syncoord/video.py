@@ -506,11 +506,11 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                                        is used if drlim_set is not specified. 'all' to try all
                                        dimensions. Works only if keypoint trajectories in selected
                                        dimensions don't overlap. Ignores sel_indiv and merge_indiv.
-            drlim_set (list[int]): Set manual limits of disjoint ranges to classify individuals,
-                                   only if json_path is a file or a folder with only one file.
-                                   Format is one list if one dimension or nested lists for more
-                                   dimensions. The order should be consistent with drdim.
-                                   Example: [[lim0_dim0,lim1_dim0], [lim0_dim1,lim1_dim1]]
+            drlim_set (list[int,list]): Set manual limits of disjoint ranges to classify individuals,
+                                        only if json_path is a file or a folder with only one file.
+                                        Format is one list if one dimension or nested lists for more
+                                        dimensions. The order should be consistent with drdim.
+                                        Example: [[lim0_dim0,lim1_dim0], [lim0_dim1,lim1_dim1]]
             fillgaps (bool,str): Interpolate missing data. For available methods see documentation
                                 for pandas.DataFrame.interpolate. Default = 'cubicspline'
             suffix (str): Label to be added to the names of the resulting files.
@@ -583,7 +583,10 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
 
     if drlim_set:
         assert drdim, 'argument "drdim" should have a value'
+        assert isinstance(drlim_set,list), '"drlim_set" should be a list'
         if not any(isinstance(v, list) for v in drlim_set): drlim_set = [drlim_set]
+        msg_lni = 'number of int in "drlim_set" or in its lists, should be the same as "n_indiv"'
+        for l in drlim_set: assert len(l) == n_indiv, msg_lni
         assert len(drdim) == len(drlim_set), '"drdim" and "drlim_set" should be the same length'
         assert (len(json_fnames)==1) or json_path_is_file, 'argument "drlim_set" works only for one file'
 
@@ -620,7 +623,8 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
             # Reduce data:
             data_red_df = data_raw_df.drop(['category_id','keypoints','score','box'],axis=1)
             data_red_df.image_id = data_red_df.image_id.str.split('.').str[0].astype(int)
-            for kplbl,i_kpdc in zip(kp_labels+['conf'],idx_kpdim_conf): # reconstruct with dimensions of selected keypoints
+            # reconstruct with dimensions of selected keypoints:
+            for kplbl,i_kpdc in zip(kp_labels+['conf'],idx_kpdim_conf):
                 data_red_df[kplbl] = data_raw_df.keypoints.str[i_kpdc]
             data_red_df = data_red_df.set_index('image_id')
             data_red_df.index.name = None
