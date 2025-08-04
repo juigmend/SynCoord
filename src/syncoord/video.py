@@ -585,8 +585,8 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
         assert drdim, 'argument "drdim" should have a value'
         assert isinstance(drlim_set,list), '"drlim_set" should be a list'
         if not any(isinstance(v, list) for v in drlim_set): drlim_set = [drlim_set]
-        msg_lni = 'number of int in "drlim_set" or in its lists, should be the same as "n_indiv"'
-        for l in drlim_set: assert len(l) == n_indiv, msg_lni
+        msg_lni = 'number of int in "drlim_set" or in its lists, should be n_indiv + 1'
+        for l in drlim_set: assert len(l) == (n_indiv+1), msg_lni
         assert len(drdim) == len(drlim_set), '"drdim" and "drlim_set" should be the same length'
         assert (len(json_fnames)==1) or json_path_is_file, 'argument "drlim_set" works only for one file'
 
