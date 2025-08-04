@@ -727,7 +727,8 @@ def poseprep( json_path, savepaths, vis={}, **kwargs ):
                                     bbox_to_anchor=(1.2, 1.02) )
 
                 if drdim and (i_kpdim==(n_kpdim-1)) and warning_n_clusters:
-                    print('This might be solved by increasing the value for argument "confac".')
+                    print('This may be solved by increasing the value for argument "confac".')
+                    print('Otherwise, limits may be set manually with argument "drlim_set".')
 
                 if log_path:
                     mean_persons = sum(n_frames_p)/n_persons
