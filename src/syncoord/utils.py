@@ -141,7 +141,7 @@ def supersine(argdict):
 
     rangen = np.random.default_rng(seed=seed)
     t = np.arange(0, l)/fps
-    y = np.sin(2*np.pi*f*t + ps/2)
+    y = np.sin(2*np.pi*f*t + ps)
     if irregularity:
         if irregularity >= 1:
             y = np.zeros(l)
@@ -223,9 +223,9 @@ def init_testdatavars(**kwargs):
     point_vars[2,3,1] = 1, 1.5, 12, 500, 0.8,  0.5
     # section 3:
     point_vars[3,0,1] = 1, 0,       45, 100, 0, 0.5
-    point_vars[3,1,1] = 1, np.pi/2, 40, 200, 0, 0.5
+    point_vars[3,1,1] = 1, np.pi/4, 40, 200, 0, 0.5
     point_vars[3,2,1] = 1, 0,       18, 400, 0, 0.5
-    point_vars[3,3,1] = 1, 2*np.pi, 12, 500, 0, 0.5
+    point_vars[3,3,1] = 1, np.pi,   12, 500, 0, 0.5
     # axis 0 ..........................................
     point_vars[:,:,0,:] = point_vars[:,:,1,:]
     point_vars[:,:,0,2] = point_vars[:,:,0,2] * 0.6
