@@ -20,6 +20,6 @@ module load pytorch/2.0
 
 source /projappl/project_141/venv_141/bin/activate
 
-srun python3 /scratch/project_141/python/run_posetrack.py
+srun python3 /scratch/project_141/python/run_posest.py
 
 

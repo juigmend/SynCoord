@@ -191,7 +191,7 @@ def setaudio( ffn_video_in, ffn_audio_in, ffn_video_out=None ):
     subprocess.run([ 'ffmpeg', '-y', '-loglevel', 'error', '-i', ffn_video_in,
                      '-i', ffn_audio_in, '-c', 'copy', ffn_video_out ])
 
-def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
+def posest( video_in_path, json_path, AlphaPose_path, **kwargs ):
     '''
     Detect and track human pose in video files.
     Note:
@@ -386,7 +386,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
 
     else: raise Exception('value for argument "program" is invalid')
 
-    def _one_posetrack( idim_, nms_, conf_ ):
+    def _one_posest( idim_, nms_, conf_ ):
 
         for fn in fnames:
             ffn = os.path.join(video_in_folder,fn)
@@ -453,7 +453,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
                 # save log:
                 if log_path:
                     tracking_log_txt.append(toc_str)
-                    txtlog_ffn = f'{log_path}/posetrack_log.txt'
+                    txtlog_ffn = f'{log_path}/posest_log.txt'
                     tracking_log_txt.append('\n')
                     with open(txtlog_ffn, 'a') as output:
                         for t in tracking_log_txt:
@@ -468,7 +468,7 @@ def posetrack( video_in_path, json_path, AlphaPose_path, **kwargs ):
     for idim_ in idim:
         for nms_ in nms:
             for conf_ in conf:
-                _one_posetrack( idim_, nms_, conf_ )
+                _one_posest( idim_, nms_, conf_ )
     os.chdir(cwd)
 
 def poseprep( json_path, savepaths, vis={}, **kwargs ):
