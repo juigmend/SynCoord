@@ -851,7 +851,7 @@ def wct( ptdata, minmaxf, n_tscales, pairs_axis, fixed_axes, **kwargs ):
     wctdata.labels.dim = dim_labels
     wctdata.labels.dimel = dimel_labels
     wctdata.data = dd_out
-    wctdata.vis = { 'groupby':groupby, 'vistype':vistype, 'rescale':True,
+    wctdata.vis = { 'groupby':groupby, 'vistype':vistype, 'rescale':False,
                     'dlattr':'1.2', 'vlattr':'r:3f' }
     if y_ticks: wctdata.vis['y_ticks'] = y_ticks
     wctdata.other['freq_bins'] = freq_bins
