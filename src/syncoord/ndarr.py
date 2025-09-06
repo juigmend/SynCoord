@@ -208,8 +208,8 @@ def wct( sigs, **kwargs):
         freq = np.flip(freq)
 
         if postprocess in ['coinan','coistretch']:
-            coi[ coi > 1/freq_out[-1] ] = np.nan
-            coi = (coi_rs/max(coi)) * J
+            coi[ coi > 1/freq[-1] ] = np.nan
+            coi = (coi/max(coi)) * J
             for i,t in enumerate(coi):
                 if not np.isnan(t):
                     WCT[ int(np.ceil(t)) :, i ] = np.nan
@@ -221,6 +221,7 @@ def wct( sigs, **kwargs):
                     interpol = CubicSpline(t_raw, row_raw)
                     t_stretched =  np.linspace(0, len(row_raw)-1, WCT.shape[1])
                     WCT[i] = interpol(t_stretched)
+        WCT = np.flipud(WCT)
         return WCT, freq
 
 def gxwt( arrlist, minmaxf, fps, **kwargs ):

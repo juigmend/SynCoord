@@ -744,7 +744,7 @@ def winplv( ptdata, window_duration, window_hop=None, pairs_axis=0,
     wplv.other = ptdata.other.copy()
     return wplv
 
-def ptdata_wct( ptdata, minmaxf, n_tscales, pairs_axis, fixed_axes, **kwargs ):
+def wct( ptdata, minmaxf, n_tscales, pairs_axis, fixed_axes, **kwargs ):
     '''
     Pairwise Wavelet Coherence Transform with Morlet wavelet.
     Wrapper for pycwt.wct
@@ -784,7 +784,7 @@ def ptdata_wct( ptdata, minmaxf, n_tscales, pairs_axis, fixed_axes, **kwargs ):
         if arr_nd.ndim < 2: raise Exception(f'Data dimensions should be at least 2,\
                                               but currently are {arr_nd.ndim}')
         wct_pairs_kwargs['fps'] = ptdata.topinfo.loc[k,'fps']
-        pairs_results = sc.ndarr.apply_to_pairs( arr_nd, sc.ndarr.wct, pairs_axis,
+        pairs_results = ndarr.apply_to_pairs( arr_nd, ndarr.wct, pairs_axis,
                                                  **wct_pairs_kwargs )
 
         dd_out[k] = pairs_results[0]
