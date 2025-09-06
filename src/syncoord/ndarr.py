@@ -1,5 +1,6 @@
 '''Functions that take numpy.ndarray as main input.'''
 
+import pycwt
 import numpy as np
 from scipy import signal
 from scipy.interpolate import CubicSpline
@@ -169,6 +170,58 @@ def windowed_plv( arrs, window_length=None, window_step=1, mode='same', axis=-1 
         Array whose dimensions depend on func.
     '''
     return slwin( arrs, plv, window_length, window_step, mode=mode, axis=axis )
+
+def wct( sigs, **kwargs):
+        '''
+        Wavelet Coeherence Transform with Morlet wavelet.
+        Wrapper for pycwt.wct
+        Args:
+            sigs (list): The two input signals [array1, array2].
+            Keyword args:
+                minmaxf (list[float]): Minimum and maximum frequency (Hz).
+                n_tscales (int): Number of time scales.
+                fps (int): Sampling rate.
+                Optional:
+                    flambda (float): Wavelength, from pycwt.Morlet().flambda()
+                    normalize (bool): Normalise CWT by the standard deviation of the signals. Default = True
+                    postprocess (str):
+                                None = raw WCT
+                                'coinan' = the cone of influence (COI) is filled with NaN
+                                'coistretch' = stretch with cubic interpolation replacing the COI
+        '''
+        minmaxf = kwargs.get('minmaxf',None)
+        assert minmaxf, 'Argument "minmaxf" missing.'
+        n_tscales = kwargs.get('n_tscales',None)
+        assert n_tscales, 'Argument "n_tscales" missing.'
+        fps = kwargs.get('fps',None)
+        assert fps, 'Argument "fps" missing.'
+        flambda = kwargs.get('flambda',pycwt.Morlet().flambda())
+        normalize = kwargs.get('normalize',True)
+        postprocess = kwargs.get('postprocess',None)
+
+        dt = 1/fps
+        s0 = 1/(flambda*minmaxf[1])
+        J = n_tscales - 1
+        dj = -np.log2( 1/flambda * minmaxf[0] * s0)/J
+        WCT, _, coi, freq, _ = pycwt.wct( sigs[0], sigs[1], dt, dj=dj, s0=s0, J=J, wavelet='morlet',
+                                          normalize=normalize, sig=False )
+        freq = np.flip(freq)
+
+        if postprocess in ['coinan','coistretch']:
+            coi[ coi > 1/freq_out[-1] ] = np.nan
+            coi = (coi_rs/max(coi)) * J
+            for i,t in enumerate(coi):
+                if not np.isnan(t):
+                    WCT[ int(np.ceil(t)) :, i ] = np.nan
+
+            if postprocess == 'coistretch':
+                for i,row in enumerate(WCT):
+                    row_raw = row[~np.isnan(row)]
+                    t_raw = np.linspace(0, len(row_raw)-1, len(row_raw))
+                    interpol = CubicSpline(t_raw, row_raw)
+                    t_stretched =  np.linspace(0, len(row_raw)-1, WCT.shape[1])
+                    WCT[i] = interpol(t_stretched)
+        return WCT, freq
 
 def gxwt( arrlist, minmaxf, fps, **kwargs ):
     '''
