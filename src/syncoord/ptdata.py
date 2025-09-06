@@ -744,6 +744,119 @@ def winplv( ptdata, window_duration, window_hop=None, pairs_axis=0,
     wplv.other = ptdata.other.copy()
     return wplv
 
+def ptdata_wct( ptdata, minmaxf, n_tscales, pairs_axis, fixed_axes, **kwargs ):
+    '''
+    Pairwise Wavelet Coherence Transform with Morlet wavelet.
+    Wrapper for pycwt.wct
+    Args:
+        ptdata (PtData): Data object. See documentation for syncoord.ptdata.PtData
+                N-D arrays should have at least 2 dimensions.
+        minmaxf (list[float]): Minimum and maximum frequency (Hz).
+        n_tscales (int): Number of time scales.
+        pairs_axis (list): Dimensions to form the pairs.
+        fixed_axes (int,list[int]): Dimension(s) passed to the wct function.
+        Optional kwargs:
+            normalize (bool): Normalise CWT by the standard deviation of the signals. Default = True
+            postprocess (str):
+                              None = raw WCT (default)
+                              'coinan' = the cone of influence (COI) is filled with NaN
+                              'coistretch' = stretch with cubic interpolation replacing the COI
+            verbose (bool): It will apply to syncoord.ndarr.apply_to_pairs
+    Returns:
+        New PtData object.
+    '''
+    import pycwt
+
+    wct_pairs_kwargs = {}
+    wct_pairs_kwargs['fixed_axes'] = fixed_axes
+    wct_pairs_kwargs['minmaxf'] = minmaxf
+    wct_pairs_kwargs['n_tscales'] = n_tscales
+    wct_pairs_kwargs['flambda'] = pycwt.Morlet().flambda()
+    wct_pairs_kwargs['normalize'] = kwargs.get('normalize',True)
+    wct_pairs_kwargs['postprocess'] = kwargs.get('postprocess',None)
+    wct_pairs_kwargs['verbose'] = kwargs.get('verbose',False)
+
+    dd_in = ptdata.data
+    dd_out = {}
+    c = 1
+    for k in dd_in:
+        arr_nd = dd_in[k]
+        if arr_nd.ndim < 2: raise Exception(f'Data dimensions should be at least 2,\
+                                              but currently are {arr_nd.ndim}')
+        wct_pairs_kwargs['fps'] = ptdata.topinfo.loc[k,'fps']
+        pairs_results = sc.ndarr.apply_to_pairs( arr_nd, sc.ndarr.wct, pairs_axis,
+                                                 **wct_pairs_kwargs )
+
+        dd_out[k] = pairs_results[0]
+
+    pairs_idx = pairs_results[1]
+    new_fixed_axes = pairs_results[2]
+    freq_bins = pairs_results[3][0][0].tolist()
+    if not isinstance(freq_bins,list): one_freq = True
+    else: one_freq = False
+    freq_bins_round = np.round(freq_bins,2).tolist()
+
+    dim_names = ptdata.names.dim.copy()
+    dim_labels = ptdata.labels.dim.copy()
+    dimel_labels = ptdata.labels.dimel.copy()
+
+    if not isinstance(fixed_axes,list): fixed_axes = [fixed_axes]
+    if isinstance(new_fixed_axes,list): groupby = new_fixed_axes[0]
+    else: groupby = new_fixed_axes
+
+    if one_freq:
+        main_name = f'Wavelet Coherence Transform {round(freq_bins,2)} Hz'
+        y_ticks = None
+    else:
+        i_freq_lbl = groupby
+        if len(fixed_axes) < len(new_fixed_axes):
+            dim_names.insert(i_freq_lbl,'frequency')
+            dim_labels.insert(i_freq_lbl,'freq')
+            dimel_labels.insert(i_freq_lbl,freq_bins_round)
+        else:
+            if i_freq_lbl < 0: i_freq_lbl = len(dim_names) + i_freq_lbl
+            if (i_freq_lbl != pairs_axis) and (i_freq_lbl >= 0):
+                dim_names[i_freq_lbl] = 'frequency'
+                dim_labels[i_freq_lbl] = 'freq.'
+                dimel_labels[i_freq_lbl] = freq_bins_round
+        main_name = 'Wavelet Coherence Transform'
+        y_ticks = freq_bins_round
+
+    oldnew_faxes_pos = [[],[]]
+    for i_fal,fa in enumerate([fixed_axes,new_fixed_axes]):
+        for i_fap,a in enumerate(fa):
+            if a < 0: oldnew_faxes_pos[i_fal].append( dd_out[0].ndim + a)
+            else: oldnew_faxes_pos[i_fal].append( a )
+    if not (len(fixed_axes) < len(new_fixed_axes)) \
+       and (oldnew_faxes_pos[0] != oldnew_faxes_pos[1]):
+        idx_remdim = [v for v in oldnew_faxes_pos[0] if v not in oldnew_faxes_pos[1]]
+        for i_rem in idx_remdim:
+            del dim_names[i_rem]
+            del dim_labels[i_rem]
+            del dimel_labels[i_rem]
+
+    dim_names[pairs_axis] = 'pair'
+    dim_labels[pairs_axis] = 'pairs'
+    k = list(dd_in.keys())[0]
+    n_pair_el = dd_in[k].shape[pairs_axis]
+    n_pairs = (n_pair_el**2 - n_pair_el)//2
+    dimel_labels[pairs_axis] = ['pair '+str(p) for p in pairs_idx]
+    if groupby == -1: vistype = 'line'
+    else: vistype = 'imshow'
+
+    wctdata = PtData( deepcopy(ptdata.topinfo) )
+    wctdata.names.main = main_name
+    wctdata.names.dim = dim_names
+    wctdata.labels.main = 'WCT'
+    wctdata.labels.dim = dim_labels
+    wctdata.labels.dimel = dimel_labels
+    wctdata.data = dd_out
+    wctdata.vis = { 'groupby':groupby, 'vistype':vistype, 'rescale':True,
+                    'dlattr':'1.2', 'vlattr':'r:3f' }
+    if y_ticks: wctdata.vis['y_ticks'] = y_ticks
+    wctdata.other['freq_bins'] = freq_bins
+    return wctdata
+
 def gxwt( ptdata, minmaxf, pairs_axis, fixed_axes, **kwargs ):
     '''
     Wrapper for syncoord.ndarr.gxwt
