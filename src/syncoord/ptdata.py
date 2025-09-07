@@ -744,18 +744,18 @@ def winplv( ptdata, window_duration, window_hop=None, pairs_axis=0,
     wplv.other = ptdata.other.copy()
     return wplv
 
-def wct( ptdata, minmaxf, n_tscales, pairs_axis, fixed_axes, **kwargs ):
+def wct( ptdata, wct_freq, pairs_axis, fixed_axes, **kwargs ):
     '''
     Pairwise Wavelet Coherence Transform with Morlet wavelet.
     Wrapper for pycwt.wct
     Args:
         ptdata (PtData): Data object. See documentation for syncoord.ptdata.PtData
                 N-D arrays should have at least 2 dimensions.
-        minmaxf (list[float]): Minimum and maximum frequency (Hz).
-        n_tscales (int): Number of time scales.
+        wct_freq (float,list[float]): Frequency (Hz). Float or [minimum, maximum].
         pairs_axis (list): Dimensions to form the pairs.
         fixed_axes (int,list[int]): Dimension(s) passed to the wct function.
         Optional kwargs:
+            n_tscales (int): Number of time scales. Only if wct_freq is a list.
             normalize (bool): Normalise CWT by the standard deviation of the signals. Default = True
             postprocess (str):
                               None = raw WCT (default)
@@ -768,8 +768,8 @@ def wct( ptdata, minmaxf, n_tscales, pairs_axis, fixed_axes, **kwargs ):
 
     wct_pairs_kwargs = {}
     wct_pairs_kwargs['fixed_axes'] = fixed_axes
-    wct_pairs_kwargs['minmaxf'] = minmaxf
-    wct_pairs_kwargs['n_tscales'] = n_tscales
+    wct_pairs_kwargs['wct_freq'] = wct_freq
+    wct_pairs_kwargs['n_tscales'] = kwargs.get('n_tscales',None)
     wct_pairs_kwargs['flambda'] = pycwt.Morlet().flambda()
     wct_pairs_kwargs['normalize'] = kwargs.get('normalize',True)
     wct_pairs_kwargs['postprocess'] = kwargs.get('postprocess',None)

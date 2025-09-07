@@ -178,38 +178,46 @@ def wct( sigs, **kwargs):
         Args:
             sigs (list): The two input signals [array1, array2].
             Keyword args:
-                minmaxf (list[float]): Minimum and maximum frequency (Hz).
-                n_tscales (int): Number of time scales.
+                wct_freq (float,list[float]): Frequency (Hz). Float or [minimum, maximum].
                 fps (int): Sampling rate.
                 Optional:
+                    n_tscales (int): Number of time scales. Only if wct_freq is a list.
                     flambda (float): Wavelength, from pycwt.Morlet().flambda()
                     normalize (bool): Normalise CWT by the standard deviation of the signals. Default = True
                     postprocess (str):
                                 None = raw WCT
                                 'coinan' = the cone of influence (COI) is filled with NaN
         '''
-        minmaxf = kwargs.get('minmaxf',None)
-        assert minmaxf, 'Argument "minmaxf" missing.'
+        wct_freq = kwargs.get('wct_freq',None)
+        assert wct_freq, 'Argument "wct_freq" missing.'
         n_tscales = kwargs.get('n_tscales',None)
-        assert n_tscales, 'Argument "n_tscales" missing.'
         fps = kwargs.get('fps',None)
         assert fps, 'Argument "fps" missing.'
         flambda = kwargs.get('flambda',pycwt.Morlet().flambda())
-        normalize = kwargs.get('normalize',True)
+        normalize = kwargs.get('normalize',False)
         postprocess = kwargs.get('postprocess',None)
 
         dt = 1/fps
-        s0 = 1/(flambda*minmaxf[1])
-        J = n_tscales - 1
-        dj = -np.log2( 1/flambda * minmaxf[0] * s0)/J
+        if isinstance(wct_freq,list):
+            s0 = 1/(flambda*wct_freq[1])
+            if (n_tscales is None) or (n_tscales <= 2): J = 2
+            J = n_tscales - 1
+            dj = -np.log2(flambda * wct_freq[0] * s0)/J
+        else:
+            s0 = 1/(flambda*wct_freq)
+            J = 0
+            dj = 1
         WCT, _, coi, freq, _ = pycwt.wct( sigs[0], sigs[1], dt, dj=dj, s0=s0, J=J, wavelet='morlet',
                                           normalize=normalize, sig=False )
+        if (n_tscales is None) or (n_tscales <= 2):
+            WCT = np.delete(WCT, (1), axis=0)
+            freq_out = np.delete(freq, (1), axis=0)
         if postprocess == 'coinan':
+            period = 1/freq
             coi[ coi > 1/freq[-1] ] = np.nan
-            coi = (coi/max(coi)) * J
             for i,t in enumerate(coi):
                 if np.isnan(t): break
-                row = int(np.ceil(t))
+                row = np.argmin(abs(t-period))
                 WCT[row:, (i,-i)] = np.nan
         elif postprocess is not None:
             raise Exception('Invalid value for argument "postprocess"')
