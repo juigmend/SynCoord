@@ -204,18 +204,17 @@ def wct( sigs, **kwargs):
         dj = -np.log2( 1/flambda * minmaxf[0] * s0)/J
         WCT, _, coi, freq, _ = pycwt.wct( sigs[0], sigs[1], dt, dj=dj, s0=s0, J=J, wavelet='morlet',
                                           normalize=normalize, sig=False )
-        freq = np.flip(freq)
-
         if postprocess == 'coinan':
             coi[ coi > 1/freq[-1] ] = np.nan
             coi = (coi/max(coi)) * J
             for i,t in enumerate(coi):
-                if not np.isnan(t):
-                    WCT[ int(np.ceil(t)) :, i ] = np.nan
+                if np.isnan(t): break
+                row = int(np.ceil(t))
+                WCT[row:, (i,-i)] = np.nan
         elif postprocess is not None:
             raise Exception('Invalid value for argument "postprocess"')
-
         WCT = np.flipud(WCT)
+        freq = np.flip(freq)
         return WCT, freq
 
 def gxwt( arrlist, minmaxf, fps, **kwargs ):
