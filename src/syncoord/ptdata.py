@@ -760,7 +760,6 @@ def wct( ptdata, minmaxf, n_tscales, pairs_axis, fixed_axes, **kwargs ):
             postprocess (str):
                               None = raw WCT (default)
                               'coinan' = the cone of influence (COI) is filled with NaN
-                              'coistretch' = stretch with cubic interpolation replacing the COI
             verbose (bool): It will apply to syncoord.ndarr.apply_to_pairs
     Returns:
         New PtData object.

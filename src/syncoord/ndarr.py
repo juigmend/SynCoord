@@ -187,7 +187,6 @@ def wct( sigs, **kwargs):
                     postprocess (str):
                                 None = raw WCT
                                 'coinan' = the cone of influence (COI) is filled with NaN
-                                'coistretch' = stretch with cubic interpolation replacing the COI
         '''
         minmaxf = kwargs.get('minmaxf',None)
         assert minmaxf, 'Argument "minmaxf" missing.'
@@ -207,20 +206,15 @@ def wct( sigs, **kwargs):
                                           normalize=normalize, sig=False )
         freq = np.flip(freq)
 
-        if postprocess in ['coinan','coistretch']:
+        if postprocess == 'coinan':
             coi[ coi > 1/freq[-1] ] = np.nan
             coi = (coi/max(coi)) * J
             for i,t in enumerate(coi):
                 if not np.isnan(t):
                     WCT[ int(np.ceil(t)) :, i ] = np.nan
+        elif postprocess is not None:
+            raise Exception('Invalid value for argument "postprocess"')
 
-            if postprocess == 'coistretch':
-                for i,row in enumerate(WCT):
-                    row_raw = row[~np.isnan(row)]
-                    t_raw = np.linspace(0, len(row_raw)-1, len(row_raw))
-                    interpol = CubicSpline(t_raw, row_raw)
-                    t_stretched =  np.linspace(0, len(row_raw)-1, WCT.shape[1])
-                    WCT[i] = interpol(t_stretched)
         WCT = np.flipud(WCT)
         return WCT, freq
 
