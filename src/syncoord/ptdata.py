@@ -768,6 +768,7 @@ def wct( ptdata, wct_freq, pairs_axis, fixed_axes, **kwargs ):
 
     wct_pairs_kwargs = {}
     wct_pairs_kwargs['fixed_axes'] = fixed_axes
+    if not isinstance(wct_freq,list): wct_freq = float(wct_freq)
     wct_pairs_kwargs['wct_freq'] = wct_freq
     wct_pairs_kwargs['n_tscales'] = kwargs.get('n_tscales',None)
     wct_pairs_kwargs['flambda'] = pycwt.Morlet().flambda()
@@ -852,6 +853,7 @@ def wct( ptdata, wct_freq, pairs_axis, fixed_axes, **kwargs ):
     wctdata.data = dd_out
     wctdata.vis = { 'groupby':groupby, 'vistype':vistype, 'rescale':False,
                     'dlattr':'1.2', 'vlattr':'r:3f' }
+    if isinstance(wct_freq,float): wctdata.vis['vistype'] = 'line'
     if y_ticks: wctdata.vis['y_ticks'] = y_ticks
     wctdata.other['freq_bins'] = freq_bins
     return wctdata
