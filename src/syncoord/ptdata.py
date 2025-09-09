@@ -772,7 +772,7 @@ def wct( ptdata, wct_freq, pairs_axis, fixed_axes, **kwargs ):
     wct_pairs_kwargs['wct_freq'] = wct_freq
     wct_pairs_kwargs['n_tscales'] = kwargs.get('n_tscales',None)
     wct_pairs_kwargs['flambda'] = pycwt.Morlet().flambda()
-    wct_pairs_kwargs['normalize'] = kwargs.get('normalize',True)
+    wct_pairs_kwargs['normalize'] = kwargs.get('normalize',False)
     wct_pairs_kwargs['postprocess'] = kwargs.get('postprocess',None)
     wct_pairs_kwargs['verbose'] = kwargs.get('verbose',False)
 

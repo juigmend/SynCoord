@@ -198,9 +198,12 @@ def wct( sigs, **kwargs):
         postprocess = kwargs.get('postprocess',None)
 
         dt = 1/fps
+        del_middle_row = False
         if isinstance(wct_freq,list):
             s0 = 1/(flambda*wct_freq[1])
-            if (n_tscales is None) or (n_tscales <= 2): J = 2
+            if (n_tscales is None) or (n_tscales <= 2):
+                del_middle_row = True
+                J = 2
             J = n_tscales - 1
             dj = -np.log2(flambda * wct_freq[0] * s0)/J
         else:
@@ -209,7 +212,7 @@ def wct( sigs, **kwargs):
             dj = 1
         WCT, _, coi, freq, _ = pycwt.wct( sigs[0], sigs[1], dt, dj=dj, s0=s0, J=J, wavelet='morlet',
                                           normalize=normalize, sig=False )
-        if (n_tscales is None) or (n_tscales <= 2):
+        if del_middle_row:
             WCT = np.delete(WCT, (1), axis=0)
             freq_out = np.delete(freq, (1), axis=0)
         if postprocess == 'coinan':
