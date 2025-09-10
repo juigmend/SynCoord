@@ -771,9 +771,7 @@ def wct( ptdata, minmaxf, pairs_axis, fixed_axes, **kwargs ):
 
     wct_pairs_kwargs = {}
     wct_pairs_kwargs['fixed_axes'] = fixed_axes
-    if not isinstance(wct_freq,list): wct_freq = float(wct_freq)
-    wct_pairs_kwargs['minmaxf'] = wct_freq
-    wct_pairs_kwargs['dj'] = kwargs.get('dj',None)
+    wct_pairs_kwargs['dj'] = kwargs.get('dj',1/12)
     wct_pairs_kwargs['flambda'] = pycwt.Morlet().flambda()
     wct_pairs_kwargs['normalize'] = kwargs.get('normalize',False)
     wct_pairs_kwargs['postprocess'] = kwargs.get('postprocess',None)
@@ -786,15 +784,16 @@ def wct( ptdata, minmaxf, pairs_axis, fixed_axes, **kwargs ):
         arr_nd = dd_in[k]
         if arr_nd.ndim < 2: raise Exception(f'Data dimensions should be at least 2,\
                                               but currently are {arr_nd.ndim}')
-        wct_pairs_kwargs['fps'] = ptdata.topinfo.loc[k,'fps']
-        pairs_results = ndarr.apply_to_pairs( arr_nd, ndarr.wct, pairs_axis, **wct_pairs_kwargs )
+        fps = ptdata.topinfo.loc[k,'fps']
+        pairs_results = ndarr.apply_to_pairs( arr_nd, ndarr.wct, pairs_axis, minmaxf=minmaxf,
+                                              fps=fps, **wct_pairs_kwargs )
 
         dd_out[k] = pairs_results[0]
 
     pairs_idx = pairs_results[1]
     new_fixed_axes = pairs_results[2]
     freq_bins = pairs_results[3][0][0].tolist()
-    if not isinstance(freq_bins,list): one_freq = True
+    if len(freq_bins) == 1: one_freq = True
     else: one_freq = False
     freq_bins_round = np.round(freq_bins,2).tolist()
 
@@ -803,11 +802,11 @@ def wct( ptdata, minmaxf, pairs_axis, fixed_axes, **kwargs ):
     dimel_labels = ptdata.labels.dimel.copy()
 
     if not isinstance(fixed_axes,list): fixed_axes = [fixed_axes]
-    if isinstance(new_fixed_axes,list): groupby = new_fixed_axes[0]
+    if isinstance(new_fixed_axes,list): groupby = nrhoew_fixed_axes[0]
     else: groupby = new_fixed_axes
 
     if one_freq:
-        main_name = f'Wavelet Coherence Transform {round(freq_bins,2)} Hz'
+        main_name = f'Wavelet Coherence Spectrum at {round(freq_bins[0],2)} Hz'
         y_ticks = None
     else:
         i_freq_lbl = groupby
@@ -821,7 +820,7 @@ def wct( ptdata, minmaxf, pairs_axis, fixed_axes, **kwargs ):
                 dim_names[i_freq_lbl] = 'frequency'
                 dim_labels[i_freq_lbl] = 'freq.'
                 dimel_labels[i_freq_lbl] = freq_bins_round
-        main_name = 'Wavelet Coherence Transform'
+        main_name = 'Wavelet Coherence Spectrum'
         y_ticks = freq_bins_round
 
     oldnew_faxes_pos = [[],[]]
@@ -855,7 +854,7 @@ def wct( ptdata, minmaxf, pairs_axis, fixed_axes, **kwargs ):
     wctdata.data = dd_out
     wctdata.vis = { 'groupby':groupby, 'vistype':vistype, 'rescale':False,
                     'dlattr':'1.2', 'vlattr':'r:3f' }
-    if isinstance(wct_freq,float): wctdata.vis['vistype'] = 'line'
+    if one_freq: wctdata.vis['vistype'] = 'line'
     if y_ticks: wctdata.vis['y_ticks'] = y_ticks
     wctdata.other['freq_bins'] = freq_bins
     return wctdata
@@ -972,7 +971,7 @@ def gxwt( ptdata, minmaxf, pairs_axis, fixed_axes, **kwargs ):
 
 def rho( ptdata, exaxes=None, mode='all' ):
     '''
-    Group synchrony.
+    Cluster Phase.
     Wrapper for multiSyncPy.synchrony_metrics.rho
     Args:
         ptdata (PtData): Data object with phase angles.
@@ -1025,7 +1024,7 @@ def rho( ptdata, exaxes=None, mode='all' ):
         vis['y_ticks'] = ptdata.other['freq_bins'].copy()
 
     ptd_rho = PtData(ptdata.topinfo)
-    ptd_rho.names.main = 'Rho'
+    ptd_rho.names.main = r'Cluster Phase $\rho$'
     ptd_rho.names.dim = dim_names
     ptd_rho.labels.main = r"$\rho$"
     ptd_rho.labels.dim = dim_labels
