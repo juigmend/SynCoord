@@ -193,8 +193,6 @@ def wct( arrlist, minmaxf, fps, **kwargs ):
         https://github.com/regeirk/pycwt
         https://pycwt.readthedocs.io
     '''
-    minmaxf = kwargs.get('minmaxf',None)
-    fps = kwargs.get('fps',None)
     flambda = kwargs.get('flambda',pycwt.Morlet().flambda())
     dj = kwargs.get('dj',1/12)
     normalize = kwargs.get('normalize',False)
@@ -204,8 +202,8 @@ def wct( arrlist, minmaxf, fps, **kwargs ):
     s0 = 1/(flambda*minmaxf[1])
     J = np.floor(np.log2( minmaxf[1]/minmaxf[0] ) / dj)
 
-    WCT, _, coi, freq, _ = pycwt.wct( sigs[0], sigs[1], dt, dj=dj, s0=s0, J=J, wavelet='morlet',
-                                      normalize=normalize, sig=False )
+    WCT, _, coi, freq, _ = pycwt.wct( arrlist[0], arrlist[1], dt, dj=dj, s0=s0, J=J,
+                                      wavelet='morlet', normalize=normalize, sig=False )
 
     if postprocess == 'coinan':
         period = 1/freq
