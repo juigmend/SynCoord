@@ -171,67 +171,59 @@ def windowed_plv( arrs, window_length=None, window_step=1, mode='same', axis=-1 
     '''
     return slwin( arrs, plv, window_length, window_step, mode=mode, axis=axis )
 
-def wct( sigs, **kwargs):
-        '''
-        Wavelet Coeherence Transform with Morlet wavelet.
-        Wrapper for pycwt.wct
-        Args:
-            sigs (list): The two input signals [array1, array2].
-            Keyword args:
-                wct_freq (float,list[float]): Frequency (Hz). Float or [minimum, maximum].
-                fps (int): Sampling rate.
-                Optional:
-                    n_tscales (int): Number of time scales. Only if wct_freq is a list.
-                    flambda (float): Wavelength, from pycwt.Morlet().flambda()
-                    normalize (bool): Normalise CWT by the standard deviation of the signals. Default = True
-                    postprocess (str):
-                                None = raw WCT
-                                'coinan' = the cone of influence (COI) is filled with NaN
-        '''
-        wct_freq = kwargs.get('wct_freq',None)
-        assert wct_freq, 'Argument "wct_freq" missing.'
-        n_tscales = kwargs.get('n_tscales',None)
-        fps = kwargs.get('fps',None)
-        assert fps, 'Argument "fps" missing.'
-        flambda = kwargs.get('flambda',pycwt.Morlet().flambda())
-        normalize = kwargs.get('normalize',False)
-        postprocess = kwargs.get('postprocess',None)
+def wct( arrlist, minmaxf, fps, **kwargs ):
+    '''
+    Wavelet Coeherence Transform with Morlet wavelet.
+    Wrapper for pycwt.wct
+    Args:
+        arrlist (list[numpy.ndarray]): Two 1-D arrays.
+        minmaxf (list[float]): Minimum and maximum frequency (Hz). Can be the same value.
+        fps (int): Sampling rate.
+        Optional:
+            flambda (float): Wavelength, from pycwt.Morlet().flambda()
+            dj (float): Spacing between scales. Default = 1/12
+            normalize (bool): Normalise input. Default = True
+            postprocess (str):
+                        None = raw WCT
+                        'coinan' = the cone of influence (COI) is filled with NaN
+    Returns:
+        WCT (numpy.ndarray): WCT power spectrum.
+        freq (numpy.ndarray): Frequencies of time scales.
+    References:
+        https://github.com/regeirk/pycwt
+        https://pycwt.readthedocs.io
+    '''
+    minmaxf = kwargs.get('minmaxf',None)
+    fps = kwargs.get('fps',None)
+    flambda = kwargs.get('flambda',pycwt.Morlet().flambda())
+    dj = kwargs.get('dj',1/12)
+    normalize = kwargs.get('normalize',False)
+    postprocess = kwargs.get('postprocess',None)
 
-        dt = 1/fps
-        del_middle_row = False
-        if isinstance(wct_freq,list):
-            s0 = 1/(flambda*wct_freq[1])
-            if (n_tscales is None) or (n_tscales <= 2):
-                del_middle_row = True
-                J = 2
-            J = n_tscales - 1
-            dj = -np.log2(flambda * wct_freq[0] * s0)/J
-        else:
-            s0 = 1/(flambda*wct_freq)
-            J = 0
-            dj = 1
-        WCT, _, coi, freq, _ = pycwt.wct( sigs[0], sigs[1], dt, dj=dj, s0=s0, J=J, wavelet='morlet',
-                                          normalize=normalize, sig=False )
-        if del_middle_row:
-            WCT = np.delete(WCT, (1), axis=0)
-            freq_out = np.delete(freq, (1), axis=0)
-        if postprocess == 'coinan':
-            period = 1/freq
-            coi[ coi > 1/freq[-1] ] = np.nan
-            for i,t in enumerate(coi):
-                if np.isnan(t): break
-                row = np.argmin(abs(t-period))
-                WCT[row:, (i,-i)] = np.nan
-        elif postprocess is not None:
-            raise Exception('Invalid value for argument "postprocess"')
-        WCT = np.flipud(WCT)
-        freq = np.flip(freq)
-        return WCT, freq
+    dt = 1/fps
+    s0 = 1/(flambda*minmaxf[1])
+    J = np.floor(np.log2( minmaxf[1]/minmaxf[0] ) / dj)
+
+    WCT, _, coi, freq, _ = pycwt.wct( sigs[0], sigs[1], dt, dj=dj, s0=s0, J=J, wavelet='morlet',
+                                      normalize=normalize, sig=False )
+
+    if postprocess == 'coinan':
+        period = 1/freq
+        coi[ coi > 1/freq[-1] ] = np.nan
+        for i,t in enumerate(coi):
+            if np.isnan(t): break
+            row = np.argmin(abs(t-period))
+            WCT[row:, (i,-i)] = np.nan
+    elif postprocess is not None:
+        raise Exception('Invalid value for argument "postprocess"')
+    WCT = np.squeeze(np.flipud(WCT))
+    freq = np.flip(freq)
+    return WCT, freq
 
 def gxwt( arrlist, minmaxf, fps, **kwargs ):
     '''
-    Wrapper for Matlab functions cwt.m, cwtensor.m, genxwt.m, gxwt.m
     Generalised Cross-Wavelet Transform.
+    Wrapper for Matlab functions cwt.m, cwtensor.m, genxwt.m, gxwt.m
     Args:
         arrlist (list): Two N-D or 1-D arrays having dimensions [channels,frames]
                         or [frames], respectively.
@@ -239,7 +231,7 @@ def gxwt( arrlist, minmaxf, fps, **kwargs ):
                        For example, in the context of motion, each channel is a spatial
                        dimension (e.g., x, y).
         minmaxf (list[float]): Minimum and maximum frequency (Hz).
-        fps (int): frames per second
+        fps (int): Sampling rate.
         Optional:
             get_result (str): 'abs', 'angle', 'complex', 'real', 'imag'. Default = 'abs'
             projout (bool): Include power projections in returns.
@@ -251,7 +243,7 @@ def gxwt( arrlist, minmaxf, fps, **kwargs ):
     Returns:
         result (numpy.ndarray): Array with dimensions [frequency,frames] or only frames if there is
                                 only one frequency.
-        freqs (numpy.ndarray): frequencies (Hz).
+        freq (numpy.ndarray): frequencies (Hz).
         powproj (tuple(numpy.ndarray)): If projout = True, one array per with power projections.
                                         The arrays have dimensions [channels,frequencies,frames]
     Non-Python dependencies:
@@ -293,8 +285,8 @@ def gxwt( arrlist, minmaxf, fps, **kwargs ):
     else: raise Exception('value for argument "get_result" is invalid')
     result = np.flip(result, axis=0 )
     if (result.ndim == 2) and (result.shape[0] == 1): result = np.squeeze(result)
-    freqs = np.flip( np.squeeze( np.array(gxwt_result[1]) ))
-    output = [result,freqs]
+    freq = np.flip( np.squeeze( np.array(gxwt_result[1]) ))
+    output = [result,freq]
     if projout:
         powproj = []
         for i in range(2,4):

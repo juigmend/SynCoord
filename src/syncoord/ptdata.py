@@ -744,18 +744,18 @@ def winplv( ptdata, window_duration, window_hop=None, pairs_axis=0,
     wplv.other = ptdata.other.copy()
     return wplv
 
-def wct( ptdata, wct_freq, pairs_axis, fixed_axes, **kwargs ):
+def wct( ptdata, minmaxf, pairs_axis, fixed_axes, **kwargs ):
     '''
     Pairwise Wavelet Coherence Transform with Morlet wavelet.
     Wrapper for pycwt.wct
     Args:
         ptdata (PtData): Data object. See documentation for syncoord.ptdata.PtData
-                N-D arrays should have at least 2 dimensions.
-        wct_freq (float,list[float]): Frequency (Hz). Float or [minimum, maximum].
+                         N-D arrays should have at least 2 dimensions.
+        minmaxf (list[float]): Minimum and maximum frequency (Hz). Can be the same value.
         pairs_axis (list): Dimensions to form the pairs.
         fixed_axes (int,list[int]): Dimension(s) passed to the wct function.
         Optional kwargs:
-            n_tscales (int): Number of time scales. Only if wct_freq is a list.
+            dj (float): Spacing between scales. Default = 1/12
             normalize (bool): Normalise CWT by the standard deviation of the signals. Default = True
             postprocess (str):
                               None = raw WCT (default)
@@ -763,14 +763,17 @@ def wct( ptdata, wct_freq, pairs_axis, fixed_axes, **kwargs ):
             verbose (bool): It will apply to syncoord.ndarr.apply_to_pairs
     Returns:
         New PtData object.
+    References:
+        https://github.com/regeirk/pycwt
+        https://pycwt.readthedocs.io
     '''
     import pycwt
 
     wct_pairs_kwargs = {}
     wct_pairs_kwargs['fixed_axes'] = fixed_axes
     if not isinstance(wct_freq,list): wct_freq = float(wct_freq)
-    wct_pairs_kwargs['wct_freq'] = wct_freq
-    wct_pairs_kwargs['n_tscales'] = kwargs.get('n_tscales',None)
+    wct_pairs_kwargs['minmaxf'] = wct_freq
+    wct_pairs_kwargs['dj'] = kwargs.get('dj',None)
     wct_pairs_kwargs['flambda'] = pycwt.Morlet().flambda()
     wct_pairs_kwargs['normalize'] = kwargs.get('normalize',False)
     wct_pairs_kwargs['postprocess'] = kwargs.get('postprocess',None)
@@ -784,8 +787,7 @@ def wct( ptdata, wct_freq, pairs_axis, fixed_axes, **kwargs ):
         if arr_nd.ndim < 2: raise Exception(f'Data dimensions should be at least 2,\
                                               but currently are {arr_nd.ndim}')
         wct_pairs_kwargs['fps'] = ptdata.topinfo.loc[k,'fps']
-        pairs_results = ndarr.apply_to_pairs( arr_nd, ndarr.wct, pairs_axis,
-                                                 **wct_pairs_kwargs )
+        pairs_results = ndarr.apply_to_pairs( arr_nd, ndarr.wct, pairs_axis, **wct_pairs_kwargs )
 
         dd_out[k] = pairs_results[0]
 
