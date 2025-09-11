@@ -802,7 +802,7 @@ def wct( ptdata, minmaxf, pairs_axis, fixed_axes, **kwargs ):
     dimel_labels = ptdata.labels.dimel.copy()
 
     if not isinstance(fixed_axes,list): fixed_axes = [fixed_axes]
-    if isinstance(new_fixed_axes,list): groupby = nrhoew_fixed_axes[0]
+    if isinstance(new_fixed_axes,list): groupby = new_fixed_axes[0]
     else: groupby = new_fixed_axes
 
     if one_freq:
