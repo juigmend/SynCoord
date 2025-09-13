@@ -185,7 +185,7 @@ def init_testdatavars(**kwargs):
     durations_sections = kwargs.get('durations_sections',[4,4,4,4])
     n_points = kwargs.get('n_points',4)
     n_axes = kwargs.get('n_axes',2)
-    seed = kwargs.get('seed',0)
+    seed = kwargs.get('seed',None)
     verbose = kwargs.get('verbose',False)
 
     n_sections = len(durations_sections)
@@ -256,7 +256,7 @@ def testdata(*args,**kwargs):
         total_length = kwargs.get('total_duration')*fps
         n_points = kwargs.get('n_points')
         n_axes = kwargs.get('n_axes')
-        seed = kwargs.get('seed')
+        seed = kwargs.get('seed',None)
         point_vars = kwargs.get('point_vars') # dim = [sections,points,axes,vars]
         # vars = frequency, phase_shift, amplitude, vertical_offset, irregularity, noise_strength
 
@@ -277,7 +277,7 @@ def testdata(*args,**kwargs):
                 wavargs['vertical_offset'] = ax[3]
                 wavargs['irregularity']  = ax[4]
                 wavargs['noise_strength'] = ax[5]
-                wavargs['seed'] += 1
+                if wavargs['seed'] is not None: wavargs['seed'] += 1
                 test_data[i_p,i_ax,i_start_section:i_end_section] = supersine(wavargs)
         i_start_section = i_end_section
     return test_data
