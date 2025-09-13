@@ -378,8 +378,8 @@ def load_data( preproc_data, *props, annot_path=None, topdata_Name=None,
         elif isinstance(props[0][0],dict):
             ndim = props[0][0].get('ndim',2)
 
-    def make_topinfo_tdv(**kwargs):
-        tdv = init_testdatavars(**kwargs)
+    def make_topinfo_tdv(tdv=None, **kwargs):
+        if tdv is None: tdv = init_testdatavars(**kwargs)
         tsf = []
         csum = 0
         for d in tdv['durations_sections'][:-1]:
@@ -416,7 +416,7 @@ def load_data( preproc_data, *props, annot_path=None, topdata_Name=None,
     axes_labels = None
     if isinstance(preproc_data,str):
         if preproc_data == 'make':
-            if not annot_path: topinfo, tdv = make_topinfo_tdv(**kwargs)
+            if not annot_path: topinfo, tdv = make_topinfo_tdv(tdv=None,**kwargs)
             prep_data[0] = testdata(tdv)
         else:
             for i in range(topinfo.shape[0]):
@@ -431,7 +431,8 @@ def load_data( preproc_data, *props, annot_path=None, topdata_Name=None,
             axes_labels = [f'${s}$' for s in axlbl]
     elif isinstance(preproc_data,dict):
         prep_data[0] = testdata(preproc_data)
-        if not annot_path: topinfo, _ = make_topinfo_tdv(**kwargs)
+        if not annot_path: 
+            topinfo, _ = make_topinfo_tdv(tdv=preproc_data,**kwargs)
     elif isinstance(preproc_data,np.ndarray):
         prep_data[0] = preproc_data
         if not annot_path: topinfo, _ = make_topinfo_tdv(**kwargs)
