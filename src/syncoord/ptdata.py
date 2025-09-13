@@ -125,8 +125,8 @@ def load( preproc_data, *props, annot_path=None, max_n_files=None,
                       If str: Folder with parquet files for preprocesed data
                               (e.g., r"~/preprocessed"),
                               or "make" to produce synthetic data with default values.
-                      If dict: As returned by syncoord.utils.testdata.
-                      If numpy.ndarray: As returned by syncoord.utils.init_testdatavars
+                      If dict: As returned by syncoord.utils.testdatavars
+                      If numpy.ndarray: As returned by syncoord.utils.init_testdata
         props (str,dict): Path for properties CSV file (e.g., r"~/properties.csv"), or dict
                           with properties. See documentation for syncoord.utils.load_data
                           Optional or ignored if preproc_data = "make"

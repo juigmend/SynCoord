@@ -185,7 +185,7 @@ def init_testdatavars(**kwargs):
     durations_sections = kwargs.get('durations_sections',[4,4,4,4])
     n_points = kwargs.get('n_points',4)
     n_axes = kwargs.get('n_axes',2)
-    seed = kwargs.get('seed',None)
+    seed = kwargs.get('seed',0)
     verbose = kwargs.get('verbose',False)
 
     n_sections = len(durations_sections)
