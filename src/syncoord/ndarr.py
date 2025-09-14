@@ -182,7 +182,6 @@ def wct( arrlist, minmaxf, fps, **kwargs ):
         Optional:
             flambda (float): Wavelength, from pycwt.Morlet().flambda()
             dj (float): Spacing between scales. Default = 1/12
-            normalize (bool): Normalise input. Default = True
             postprocess (str):
                         None = raw WCT
                         'coinan' = the cone of influence (COI) is filled with NaN
@@ -195,16 +194,16 @@ def wct( arrlist, minmaxf, fps, **kwargs ):
     '''
     flambda = kwargs.get('flambda',pycwt.Morlet().flambda())
     dj = kwargs.get('dj',1/12)
-    normalize = kwargs.get('normalize',False)
     postprocess = kwargs.get('postprocess',None)
 
     dt = 1/fps
-    s0 = 1/(flambda*minmaxf[1])
+    s0 = 1/minmaxf[1]
     J = np.floor(np.log2( minmaxf[1]/minmaxf[0] ) / dj)
 
     WCT, _, coi, freq, _ = pycwt.wct( arrlist[0], arrlist[1], dt, dj=dj, s0=s0, J=J,
-                                      wavelet='morlet', normalize=normalize, sig=False )
+                                      wavelet='morlet', normalize=True, sig=False )
 
+    freq = freq * flambda
     if postprocess == 'coinan':
         period = 1/freq
         coi[ coi > 1/freq[-1] ] = np.nan

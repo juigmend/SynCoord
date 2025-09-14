@@ -756,7 +756,6 @@ def wct( ptdata, minmaxf, pairs_axis, fixed_axes, **kwargs ):
         fixed_axes (int,list[int]): Dimension(s) passed to the wct function.
         Optional kwargs:
             dj (float): Spacing between scales. Default = 1/12
-            normalize (bool): Normalise CWT by the standard deviation of the signals. Default = True
             postprocess (str):
                               None = raw WCT (default)
                               'coinan' = the cone of influence (COI) is filled with NaN
@@ -773,7 +772,6 @@ def wct( ptdata, minmaxf, pairs_axis, fixed_axes, **kwargs ):
     wct_pairs_kwargs['fixed_axes'] = fixed_axes
     wct_pairs_kwargs['dj'] = kwargs.get('dj',1/12)
     wct_pairs_kwargs['flambda'] = pycwt.Morlet().flambda()
-    wct_pairs_kwargs['normalize'] = kwargs.get('normalize',False)
     wct_pairs_kwargs['postprocess'] = kwargs.get('postprocess',None)
     wct_pairs_kwargs['verbose'] = kwargs.get('verbose',False)
 
