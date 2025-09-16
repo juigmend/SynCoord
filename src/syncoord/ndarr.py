@@ -178,10 +178,11 @@ def wct( arrlist, minmaxf, fps, **kwargs ):
     Args:
         arrlist (list[numpy.ndarray]): Two 1-D arrays.
         minmaxf (list[float]): Minimum and maximum frequency (Hz). Can be the same value.
+                               The minimum frequency mimics that of Matlab's function "wcoherence".
         fps (int): Sampling rate.
         Optional:
             flambda (float): Wavelength, from pycwt.Morlet().flambda()
-            dj (float): Spacing between scales. Default = 1/12
+            nspo (float): Number of scales per octave. Default = 12.
             postprocess (str):
                         None = raw WCT
                         'coinan' = the cone of influence (COI) is filled with NaN
@@ -193,17 +194,25 @@ def wct( arrlist, minmaxf, fps, **kwargs ):
         https://pycwt.readthedocs.io
     '''
     flambda = kwargs.get('flambda',pycwt.Morlet().flambda())
-    dj = kwargs.get('dj',1/12)
+    nspo = kwargs.get('nspo',12)
     postprocess = kwargs.get('postprocess',None)
 
-    dt = 1/fps
+    dt = 1/testdata_vars['fps']
     s0 = 1/minmaxf[1]
-    J = np.floor(np.log2( minmaxf[1]/minmaxf[0] ) / dj)
+    dj = 1/n_spo
+    n_oct = np.log2( minmaxf[1]/minmaxf[0] ) # number of octaves
+    J = int(np.floor( n_oct / dj))
 
     WCT, _, coi, freq, _ = pycwt.wct( arrlist[0], arrlist[1], dt, dj=dj, s0=s0, J=J,
                                       wavelet='morlet', normalize=True, sig=False )
 
     freq = freq * flambda
+    sd_const = 40.9 # obtained by brute force :P
+    minf = 2*sd_const/len(arrlist[0])
+    if minf > freq[-1]:
+        i_minf = np.argmin( np.abs(minf - freq) )
+        freq = freq[:i_minf]
+        WCT = WCT[:i_minf,:]
     if postprocess == 'coinan':
         period = 1/freq
         coi[ coi > 1/freq[-1] ] = np.nan

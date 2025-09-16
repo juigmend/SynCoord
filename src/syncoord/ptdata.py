@@ -752,10 +752,11 @@ def wct( ptdata, minmaxf, pairs_axis, fixed_axes, **kwargs ):
         ptdata (PtData): Data object. See documentation for syncoord.ptdata.PtData
                          N-D arrays should have at least 2 dimensions.
         minmaxf (list[float]): Minimum and maximum frequency (Hz). Can be the same value.
+                               The minimum frequency mimics that of Matlab's function "wcoherence".
         pairs_axis (list): Dimensions to form the pairs.
         fixed_axes (int,list[int]): Dimension(s) passed to the wct function.
         Optional kwargs:
-            dj (float): Spacing between scales. Default = 1/12
+            nspo (float): Number of scales per octave. Default = 12.
             postprocess (str):
                               None = raw WCT (default)
                               'coinan' = the cone of influence (COI) is filled with NaN
