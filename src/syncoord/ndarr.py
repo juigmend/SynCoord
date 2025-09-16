@@ -197,7 +197,7 @@ def wct( arrlist, minmaxf, fps, **kwargs ):
     nspo = kwargs.get('nspo',12)
     postprocess = kwargs.get('postprocess',None)
 
-    dt = 1/testdata_vars['fps']
+    dt = 1/fps
     s0 = 1/minmaxf[1]
     dj = 1/n_spo
     n_oct = np.log2( minmaxf[1]/minmaxf[0] ) # number of octaves
