@@ -199,7 +199,7 @@ def wct( arrlist, minmaxf, fps, **kwargs ):
 
     dt = 1/fps
     s0 = 1/minmaxf[1]
-    dj = 1/n_spo
+    dj = 1/nspo
     n_oct = np.log2( minmaxf[1]/minmaxf[0] ) # number of octaves
     J = int(np.floor( n_oct / dj))
 
