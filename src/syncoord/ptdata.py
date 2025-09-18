@@ -958,7 +958,7 @@ def gxwt( ptdata, minmaxf, pairs_axis, fixed_axes, **kwargs ):
     xwtdata = PtData( deepcopy(ptdata.topinfo) )
     xwtdata.names.main = main_name
     xwtdata.names.dim = dim_names
-    xwtdata.labels.main = 'XWT'
+    xwtdata.labels.main = 'GXWT'
     xwtdata.labels.dim = dim_labels
     xwtdata.labels.dimel = dimel_labels
     xwtdata.data = dd_out
