@@ -139,7 +139,7 @@ def phasediff( phi_1, phi_2 ):
     return np.arctan2( np.cos(phi_1) * np.sin(phi_2) - np.sin(phi_1) * np.cos(phi_2),
                        np.cos(phi_1) * np.cos(phi_2) + np.sin(phi_1) * np.sin(phi_2) )
 
-def plv( a1, a2, axis=0 ):
+def phaselock( a1, a2, axis=-1 ):
     '''
     Phase-Locking Value for two vectors of phase angles.
     Args:
@@ -154,22 +154,28 @@ def plv( a1, a2, axis=0 ):
     plv_result = np.abs(np.sum(diff_complex,axis=axis))/diff_complex.shape[axis]
     return plv_result
 
-def windowed_plv( arrs, window_length=None, window_step=1, mode='same', axis=-1 ):
+def plv( arrs, window_length=None, window_step=1, mode='same', sections=None, axis=-1, ):
     '''
-    Sliding-window phase-locking values.
+    Pairwise Phase-Locking Values upon a moving window or sections.
     Args:
-        arrs (numpy.ndarray,list[numpy.ndarray]): 1-D array or a list with two 1-D arrays
-                                                  with the same length.
-        window_length (int): Length of the window vector (frames).
-        window_setp (int): Window step (frames).
+        arrs (list): Two 1-D arrays with the same length.
         Optional:
+            window_length (int): Length of the window vector (frames).
+            window_step (int): Window step (frames).
             mode (str): 'same' (post-process zero-padded) or 'valid'.
+            sections (list): Sections (frames). Invalid if window_length has a value. If this
+                             argument has a value, all optional arguments above are invalid.
             axis (int): Dimension to apply the process.
-                Note: axis is a dimension of the N-D array. The rightmost axis (-1) is the fastest changing.
+                Note: Axis is a dimension of the N-D array.
+                      The rightmost axis (-1) changes most frequently.
     Returns:
-        Array whose dimensions depend on func.
+        Array whose dimensions depend on the input dimensions.
     '''
-    return slwin( arrs, plv, window_length, window_step, mode=mode, axis=axis )
+    assert isinstance(arrs,list) and len(arrs)==2, 'The first argument should be a list of two arrays.'
+
+    if window_length: return slwin(arrs, phaselock, window_length, window_step, mode=mode, axis=axis)
+    elif sections: return apply_to_sections( arrs, phaselock, sections, axis=axis )
+    else: raise Exception( 'Either "window_length" or "sections" can should have a value' )
 
 def wct( arrlist, minmaxf, fps, **kwargs ):
     '''
@@ -633,7 +639,7 @@ def apply_to_pairs( arr_nd, func, pairs_axis, fixed_axes=-1, imout=0, verbose=Fa
                     shape_out_new = shape_out.copy()
                     if len(fixed_axes_pos)==1:
                         if result_arr.ndim==1:
-                            shape_out_new[fixed_axes_pos[0]] = result_arr.shape
+                            shape_out_new[fixed_axes_pos[0]] = result_arr.shape[0]
                         else:
                             shape_out_new[fixed_axes_pos[0]:fixed_axes_pos[0]+1] = result_arr.shape
                             idx_shape_o[fixed_axes_pos[0]:fixed_axes_pos[0]+1] = \
@@ -716,3 +722,29 @@ def apply_dimgroup( arr_in, func, exaxes=None, i_out=0, n_out='all' ):
             if isinstance(funcret,tuple) or (i_out != 'tuple'): output = funcret[i_out]
             else: output = funcret
     return output
+
+def apply_to_sections( arrs, func, sections, axis=-1, **kwargs ):
+    '''
+    Apply a function to each section.
+    Args:
+        arrs (list[numpy.ndarray]): Two arrays with the same dimensions (shape).
+        func (callable): A function.
+        sections (list): Index of sections' boundaries (without 0 and the length of the arrays).
+        Optional:
+            kwargs: Keyword arguments or dict to be passed to func.
+    Returns:
+        Array whose dimensions depend on func.
+    '''
+    assert arrs[0].shape == arrs[1].shape, "Input arrays don't have the same shape."
+    n_frames = arrs[0].shape[axis]
+    kwargs['axis'] = axis
+    idx_secs = sections + [n_frames]
+    i_start_sec = 0
+    result = []
+    for i_end_sec in idx_secs:
+        a = np.take(arrs[0], range(i_start_sec,i_end_sec), axis=axis)
+        b = np.take(arrs[1], range(i_start_sec,i_end_sec), axis=axis)
+        plv_result = func(a,b,**kwargs)
+        result.append(plv_result)
+        i_start_sec = i_end_sec
+    return np.array(result).T
