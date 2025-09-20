@@ -1370,7 +1370,8 @@ def secstats( ptdata, **kwargs ):
     sextats.labels.dim = dim_labels
     sextats.labels.dimel = dimel_labels
     sextats.data = dd_out
-    sextats.vis = {'groupby':None,'vistype':'cline','dlattr':ptdata.vis['dlattr'],'sections':False}
+    sextats.vis = {'groupby':None,'vistype':'cline','dlattr':ptdata.vis['dlattr'],'sections':False,
+                   'x_ticklabelling':'index'}
     sextats.other = ptdata.other.copy()
     return sextats
 
