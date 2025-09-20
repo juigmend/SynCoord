@@ -1730,6 +1730,7 @@ def visualise( ptdata, **kwargs ):
             arr_min = arr.min()
             if arr_min < minmax[0]: minmax[0] = arr_min
             if arr_max > minmax[1]: minmax[1] = arr_max
+        minmax = [None if abs(v)==float('inf') else v for v in minmax]
     else: minmax = [None,None]
     if not isinstance(axes,list): axes = [axes]
     try: appaxis_lbl = ptdata.names.dim[axes[-1]]
