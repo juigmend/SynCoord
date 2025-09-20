@@ -223,8 +223,8 @@ def wct( arrlist, minmaxf, fps, **kwargs ):
         coi[ coi > period[-1] ] = np.nan
         for i,t in enumerate(coi):
             if np.isnan(t): break
-            row = np.argmin(abs(t-period))
-            WCT[row:, (i,-i)] = np.nan
+            i_row = np.argmin(abs(t-period))
+            WCT[i_row:, (i,-i)] = np.nan
     elif postprocess is not None:
         raise Exception('Invalid value for argument "postprocess"')
     WCT = np.squeeze(np.flipud(WCT))
@@ -298,8 +298,8 @@ def gxwt( arrlist, minmaxf, fps, **kwargs ):
         coi[ coi <= freq[0] ] = np.nan
         for i,f in enumerate(coi):
             if np.isnan(f): break
-            row = np.argmin(abs(f-freq))
-            result[:row, (i,-i)] = np.nan
+            i_row = result.shape[0] - np.argmin(abs(f-freq))
+            result[i_row:, (i,-i)] = np.nan
     if get_result == 'abs': result = np.abs(result)
     elif get_result == 'angle': result = np.angle(result)
     elif get_result == 'complex': pass
