@@ -1,4 +1,4 @@
-function [xs, f, p1, p2] = gxwt(a1,a2,fps,minf,maxf,varargin)
+function [xs, f, coi, p1, p2] = gxwt(a1,a2,fps,minf,maxf,varargin)
 % Wrapper for cwt.m, cwtensor.m, and genxwt.m
 %
 % Args:
@@ -9,15 +9,17 @@ function [xs, f, p1, p2] = gxwt(a1,a2,fps,minf,maxf,varargin)
 %   OPTIONAL (varargin):
 %       type: 'all' (default): pseudo-variace for all channel pairs, or
 %             'pairwise': pseudo-variance for corresponding channel pairs
-%       Arguments passed to cwt.m (default = 'morse').
+%       Arguments passed to cwt.m:
+%              Defaults: wname="morse", VoicesPerOctave=10
 %
 % Returns:
-%   xs: cross-wavelet spectrum, dim = [frequency, time]
-%   p1, p2: projection tensors, dim = [frequency, time, channel]
+%   xs: cross-wavelet spectrum, dim = [frequency (Hz), time]
+%   coi: cone of influence (Hz)
+%   p1, p2: projection tensors, dim = [frequency (Hz), time, channel]
 %
 % Dependencies:
 %   Wavelet Toolbox for Matlab
-%   cwtensor.m, genxwt.m 
+%   cwtensor.m, genxwt.m
 %
 % Reference:
 %   https://doi.org/10.1016/j.humov.2021.102894
@@ -36,9 +38,8 @@ for i = 1:2 % loop economy :)
         varargin(ii) = [];
     end
 end
-if isempty(varargin)
-    varargin = {"morse"}
-end
 [w1, f] = cwtensor(inarr{1},fps,minf,maxf,varargin{:})
 [w2, f] = cwtensor(inarr{2},fps,minf,maxf,varargin{:})
 [xs, p1, p2] = genxwt(w1,w2,type)
+x = inarr{1}(:,1)
+[~, ~, coi] = wt(cwtfilterbank(SignalLength=length(x),SamplingFrequency=fps),x)

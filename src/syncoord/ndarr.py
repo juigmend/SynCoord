@@ -189,12 +189,11 @@ def wct( arrlist, minmaxf, fps, **kwargs ):
         Optional:
             flambda (float): Wavelength, from pycwt.Morlet().flambda()
             nspo (float): Number of scales per octave. Default = 12.
-            postprocess (str):
-                        None = raw WCT
-                        'coinan' = the cone of influence (COI) is filled with NaN
+            postprocess (str): None = raw WCT
+                               'coinan' = the cone of influence (COI) is filled with NaN
     Returns:
         WCT (numpy.ndarray): WCT power spectrum.
-        freq (numpy.ndarray): Frequencies of time scales.
+        freq (numpy.ndarray): Frequencies of time scales (Hz).
     References:
         https://github.com/regeirk/pycwt
         https://pycwt.readthedocs.io
@@ -221,7 +220,7 @@ def wct( arrlist, minmaxf, fps, **kwargs ):
         WCT = WCT[:i_minf,:]
     if postprocess == 'coinan':
         period = 1/freq
-        coi[ coi > 1/freq[-1] ] = np.nan
+        coi[ coi > period[-1] ] = np.nan
         for i,t in enumerate(coi):
             if np.isnan(t): break
             row = np.argmin(abs(t-period))
@@ -247,6 +246,8 @@ def gxwt( arrlist, minmaxf, fps, **kwargs ):
         Optional:
             get_result (str): 'abs', 'angle', 'complex', 'real', 'imag'. Default = 'abs'
             projout (bool): Include power projections in returns.
+            postprocess (str): None = raw GXWT (default)
+                               'coinan' = the cone of influence (COI) is filled with NaN
             matlabeng (matlab.engine): object (useful when running multiple times).
                 Otherwise the following arguments are valid:
             extfunc_path (str): Path to folder containing functions cwtensor.m and genxwt.m
@@ -255,9 +256,10 @@ def gxwt( arrlist, minmaxf, fps, **kwargs ):
     Returns:
         result (numpy.ndarray): Array with dimensions [frequency,frames] or only frames if there is
                                 only one frequency.
-        freq (numpy.ndarray): frequencies (Hz).
+        freq (numpy.ndarray): Frequencies of time scales (Hz).
         powproj (tuple(numpy.ndarray)): If projout = True, one array per with power projections.
                                         The arrays have dimensions [channels,frequencies,frames]
+
     Non-Python dependencies:
         Matlab, Wavelet Toolbox for Matlab, cwtensor.m, and genxwt.m
     Reference:
@@ -269,13 +271,14 @@ def gxwt( arrlist, minmaxf, fps, **kwargs ):
 
     get_result = kwargs.get('get_result','abs')
     projout = kwargs.get('projout',False)
+    postprocess = kwargs.get('postprocess',None)
     matlabeng = kwargs.get('matlabeng',None)
     extfunc_path = kwargs.get('extfunc_path',None)
     gxwt_path = kwargs.get('gxwt_path',None)
     verbose = kwargs.get('verbose',True)
 
-    if projout: nout = 4
-    else: nout = 2
+    if projout: nout = 5
+    else: nout = 3
 
     if matlabeng: neweng = False
     else:
@@ -289,6 +292,14 @@ def gxwt( arrlist, minmaxf, fps, **kwargs ):
     gxwt_result = matlabeng.gxwt( arrs_cont[0].T, arrs_cont[1].T, float(fps),
                                     minmaxf[0], minmaxf[1], nargout=nout )
     result = np.array(gxwt_result[0])
+    freq = np.flip( np.squeeze( np.array(gxwt_result[1]) ))
+    coi = np.array(gxwt_result[2]).T[0]
+    if postprocess == 'coinan':
+        coi[ coi <= freq[0] ] = np.nan
+        for i,f in enumerate(coi):
+            if np.isnan(f): break
+            row = np.argmin(abs(f-freq))
+            result[:row, (i,-i)] = np.nan
     if get_result == 'abs': result = np.abs(result)
     elif get_result == 'angle': result = np.angle(result)
     elif get_result == 'complex': pass
@@ -297,11 +308,10 @@ def gxwt( arrlist, minmaxf, fps, **kwargs ):
     else: raise Exception('value for argument "get_result" is invalid')
     result = np.flip(result, axis=0 )
     if (result.ndim == 2) and (result.shape[0] == 1): result = np.squeeze(result)
-    freq = np.flip( np.squeeze( np.array(gxwt_result[1]) ))
-    output = [result,freq]
+    output = [result, freq]
     if projout:
         powproj = []
-        for i in range(2,4):
+        for i in range(3,5):
             np_arr = np.array(gxwt_result[i])
             if np_arr.ndim == 3:
                 np_arr = np.moveaxis( np_arr, [0,1,2], [1,2,0] )

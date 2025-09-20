@@ -769,9 +769,8 @@ def wct( ptdata, minmaxf, pairs_axis, fixed_axes, **kwargs ):
         fixed_axes (int,list[int]): Dimension(s) passed to the wct function.
         Optional kwargs:
             nspo (float): Number of scales per octave. Default = 12.
-            postprocess (str):
-                              None = raw WCT (default)
-                              'coinan' = the cone of influence (COI) is filled with NaN
+            postprocess (str): None = raw WCT (default)
+                               'coinan' = the cone of influence (COI) is filled with NaN
             verbose (bool): It will apply to syncoord.ndarr.apply_to_pairs
     Returns:
         New PtData object.
