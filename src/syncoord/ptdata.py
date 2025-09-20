@@ -638,43 +638,49 @@ def fourier( ptdata, window_duration, **kwargs ):
     fft_result.other = other
     return fft_result
 
-def winplv( ptdata, window_duration, window_hop=None, pairs_axis=0,
+def plv( ptdata, windows, window_hop=None, pairs_axis=0,
             fixed_axes=None, plv_axis=-1, mode='same', verbose=False ):
     '''
-    Pairwise sliding-window Phase-Locking Values.
+    Pairwise Phase-Locking Values upon moving window or sections.
     Args:
         ptdata (PtData): Data object. See documentation for syncoord.ptdata.PtData
                 N-D arrays should have at least 2 dimensions.
-        window_duration (float): Window length in seconds.
+        windows (float,str): Window length in seconds for sliding window or 'sections'.
         Optional:
-            window_hop (float): Window step in seconds. None for a step of 1 frame.
+            window_hop (float): Sliding window's step in seconds. None for a step of 1 frame.
             pairs_axis (int): Dimension to form the pairs.
             fixed_axes (int,list[int]): Dimension or dimensions passed to the windowed PLV function.
                        Default is [-2,-1] if N-D array dimensions are 3 or more; -1 if 2 dimensions.
-            plv_axis (int): Dimension to perform the windowed PLV function.
+            plv_axis (int): Dimension to perform the PLV function.
                       For example:
                           data.shape = (4,1,15,9000)
                           pairs_axis = 0:
                               6 pairs to be formed: ([0,1],[0,2],[0,3],[1,2],[1,3],[2,3])
                           fixed_axes = [-2,-1]:
-                              Passed to the windowed PLV function: data.shape = (15,9000)
+                              Passed to the PLV function: data.shape = (15,9000)
                           plv_axis = -1:
                               The PLV function will be applied across the 9000 points of
                               each of the 15 vectors.
                 Note: axis is a dimension of the N-D array.
                       The rightmost axis (-1) is the fastest changing.
-            mode (str): 'same' (post-process zero-padded, same size as input)
-                        or 'valid' (result of windowed process).
+            mode (str): 'same' (post-process zero-padded, same size as input) or 'valid'.
                         Note: If mode='valid', the sections (ptdata.topinfo['Sections'] and
                         ptdata.topinfo['trimmed_sections_frames']) will be shifted accordingly.
             verbose (bool): Display progress.
     Returns:
         New PtData object.
     '''
-    if not window_hop: window_step = 1
+    assert isinstance(windows,(float,int)) or (isinstance(windows,str) and windows=='sections'),\
+    'Wrong value for argument "windows".'
+    if isinstance(windows,(float,int)):
+        slidingw = True
+        plv_lbl = ' (sliding window)'
     else:
-        window_step = None
-        new_fps = []
+        slidingw = False
+        plv_lbl = ' (sections)'
+    if not window_hop: window_step = 1
+    else: window_step = None
+    new_fps = []
     dd_in = ptdata.data
     dd_out = {}
     c = 1
@@ -682,11 +688,6 @@ def winplv( ptdata, window_duration, window_hop=None, pairs_axis=0,
         if verbose:
             print(f'processing array {k} ({c} of {len(ptdata.data.keys())})')
             c+=1
-        fps = ptdata.topinfo.loc[k,'fps']
-        window_length = round(window_duration * fps)
-        if window_hop:
-            window_step = round(window_hop * fps)
-            new_fps.append(fps/window_step)
         if fixed_axes is None:
             if dd_in[k].ndim > 2:
                 fixed_axes = [-2,-1]
@@ -694,17 +695,26 @@ def winplv( ptdata, window_duration, window_hop=None, pairs_axis=0,
                 fixed_axes = -1
             if dd_in[k].ndim < 2:
                 raise Exception('number of dimensions in data arrays should be at least 2')
-        dd_out[k], pairs_idx, _ = ndarr.apply_to_pairs( dd_in[k], ndarr.windowed_plv,
-                                                     pairs_axis, fixed_axes=fixed_axes,
-                                                     window_length=window_length, mode=mode,
-                                                     window_step=window_step,
-                                                     axis=plv_axis, verbose=verbose  )
-
-    if mode == 'valid':
-        topinfo = utils.trim_topinfo_start(ptdata,window_duration/2)
-    else:
-        topinfo = ptdata.topinfo
-    if window_hop:
+        plvkwargs = {}
+        fps = ptdata.topinfo.loc[k,'fps']
+        if slidingw:
+            plvkwargs['window_length'] = round(windows * fps)
+            if window_hop:
+                plvkwargs['window_step'] = round(window_hop * fps)
+                new_fps.append(fps/plvkwargs['window_step'])
+            plvkwargs['mode'] = mode
+        else:
+            sections = ptdata.topinfo.trimmed_sections_frames[k]
+            n_frames = dd_in[k].shape[plv_axis]
+            new_fps.append( fps * (len(sections)+1) / n_frames )
+            plvkwargs['sections'] = sections
+        plvkwargs['axis'] = plv_axis
+        dd_out[k], pairs_idx, _ = ndarr.apply_to_pairs( dd_in[k], ndarr.plv,
+                                                        pairs_axis, fixed_axes=fixed_axes,
+                                                        verbose=verbose, **plvkwargs )
+    topinfo = ptdata.topinfo
+    if slidingw and (mode == 'valid'): topinfo = utils.trim_topinfo_start(ptdata,windows/2)
+    if (not slidingw) or (slidingw and window_hop):
         topinfo = deepcopy(topinfo)
         if 'trimmed_sections_frames' in topinfo:
             new_sec = []
@@ -731,18 +741,20 @@ def winplv( ptdata, window_duration, window_hop=None, pairs_axis=0,
     if groupby == -1: vistype = 'line'
     else: vistype = 'imshow'
 
-    wplv = PtData(topinfo)
-    wplv.names.main = 'Pairwise Windowed Phase-Locking Value'
-    wplv.names.dim = dim_names
-    wplv.labels.main = 'PLV'
-    wplv.labels.dim = dim_labels
-    wplv.labels.dimel = dimel_labels
-    wplv.data = dd_out
-    wplv.vis = {'dlattr':'1.2','groupby':groupby, 'vistype':vistype, 'vlattr':'r:3f'}
+    plvdata = PtData(topinfo)
+    plvdata.names.main = 'Pairwise Phase-Locking Value' + plv_lbl
+    plvdata.names.dim = dim_names
+    plvdata.labels.main = 'PLV'
+    plvdata.labels.dim = dim_labels
+    plvdata.labels.dimel = dimel_labels
+    plvdata.data = dd_out
+    plvdata.vis = {'dlattr':'1.2','groupby':groupby, 'vistype':vistype, 'vlattr':'r:3f'}
     if 'freq_bins' in ptdata.other:
-        wplv.vis['y_ticks'] = ptdata.other['freq_bins'].copy()
-    wplv.other = ptdata.other.copy()
-    return wplv
+        plvdata.vis['y_ticks'] = ptdata.other['freq_bins'].copy()
+    if (not slidingw) and (vistype == 'line'):
+        plvdata.vis = {**plvdata.vis, 'vistype':'cline', 'sections':False, 'x_ticklabelling':'index'}
+    plvdata.other = ptdata.other.copy()
+    return plvdata
 
 def wct( ptdata, minmaxf, pairs_axis, fixed_axes, **kwargs ):
     '''
@@ -860,8 +872,8 @@ def wct( ptdata, minmaxf, pairs_axis, fixed_axes, **kwargs ):
 
 def gxwt( ptdata, minmaxf, pairs_axis, fixed_axes, **kwargs ):
     '''
-    Wrapper for syncoord.ndarr.gxwt
     Pairwise multi-dimensional cross-wavelet spectrum.
+    Wrapper for syncoord.ndarr.gxwt
     Args:
         ptdata (PtData): Data object. See documentation for syncoord.ptdata.PtData
                 N-D arrays should have at least 2 dimensions.
@@ -1198,18 +1210,20 @@ def aggrax( ptdata, axis=0, function='mean' ):
     del dim_names[axis]
     dim_labels = deepcopy(ptdata.labels.dim)
     del dim_labels[axis]
-    vis = {**ptdata.vis, 'sections':True}
+    dimel_labels = deepcopy(ptdata.labels.dimel)
+    del dimel_labels[axis]
+    vis = {**ptdata.vis}
     ndim_in = dd_in[next(iter(dd_in))].ndim
     if (axis==-2) or ((ndim_in - axis)==2):
         vis['groupby'] = None
-        vis['vistype'] = 'line'
+        if vis['vistype'] not in ['line','cline']: vis['vistype'] = 'line'
+        if 'sections' in main_name:
+            vis = {**vis, 'vistype':'cline','x_ticklabelling':'index','sections':False}
     else: vis['groupby'] = axis
     if len(dim_names) == 1:
-        vis['vistype'] = 'line'
+        if vis['vistype'] not in ['line','cline']: vis['vistype'] = 'line'
         vis['dlattr'] = '-1'
         vis['groupby'] = 0
-    dimel_labels = deepcopy(ptdata.labels.dimel)
-    del dimel_labels[axis]
     other =  deepcopy(ptdata.other)
     if 'frequency' not in dim_names:
         if 'y_ticks' in vis: del vis['y_ticks']
@@ -1537,7 +1551,7 @@ def visualise( ptdata, **kwargs ):
                                    '25%' = xticks as specified percentage,
                                    '%' = xticks as automatic percentage,
                                    'dim x' = use ptdata.labels.dim[x],
-                                   'default', or None.
+                                   'index','default', or None.
             figtitle (str): Figure's title. If None, ptdata.name.main will be used.
             axes (int): Dimensions to visualise. 1 for 'line' and'spectrogram', 2 for 'imshow'.
             sel_list (list): Selection to display. Also can be input as keywords.
@@ -1625,6 +1639,8 @@ def visualise( ptdata, **kwargs ):
             xticks_minsec_( fps, hax_len, vistype )
         elif x_ticklabelling == 'blank':
             plt.xticks([],[])
+        elif x_ticklabelling == 'index':
+            plt.xticks((range(hax_len)),([str(v) for v in range(hax_len)]))
         elif xlabel == '%':
             xticks_percent_( xpercent, hax_len, vistype, idx_isochrsec=idx_isochrsec )
 
@@ -1824,7 +1840,7 @@ def visualise( ptdata, **kwargs ):
                     sp_title = 'Group: "'+ptdata.topinfo['Group'].iloc[i_top]+'"'
             plt.subplot(n_sp,1,i_sp)
             if sing_dims: vis_arr = np.squeeze(vis_arr)
-            hax_len = vis_arr.shape[axes[-1]]-1
+            hax_len = vis_arr.shape[axes[-1]]
             x_ticklabelling_dictargs['hax_len'] = hax_len
             if vistype in ('line','cline','imshow'):
                 if vistype in ('line','cline'):
@@ -1834,6 +1850,7 @@ def visualise( ptdata, **kwargs ):
                         dictargs_plot['markersize'] = dlattr_[2]*5
                     plt.plot( vis_arr.T, color=dlattr_[0], linestyle=dlattr_[1],
                               linewidth=dlattr_[2], **dictargs_plot )
+                    if x_ticklabelling != 'index': plt.xlim((0,hax_len))
                 elif vistype == 'imshow':
                     if vis_arr.ndim != 2:
                         check_gb = abs(2-vis_arr.ndim)
@@ -1841,9 +1858,9 @@ def visualise( ptdata, **kwargs ):
                                           'but should be 2. Check that argument "groupby" has ',
                                          f'length = {check_gb}, or use another "vistype" value'])
                         raise Exception(exmsg)
-                    plt.imshow(vis_arr,aspect='auto',vmin=minmax[0],vmax=minmax[1])
-                    plt.gca().invert_yaxis()
-                plt.xlim((0,hax_len))
+                    isextent = [0, hax_len, 0, vis_arr.shape[0]]
+                    plt.imshow( vis_arr, origin='lower', aspect='auto', extent=isextent,
+                                vmin=minmax[0], vmax=minmax[1] )
             elif 'spectrogram' in vistype:
                 plt.specgram(vis_arr,Fs=fps,detrend='linear',scale='linear')
             if y_lim: plt.ylim(y_lim)
