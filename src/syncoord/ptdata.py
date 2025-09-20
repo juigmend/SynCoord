@@ -1358,7 +1358,7 @@ def secstats( ptdata, **kwargs ):
     if one_stat:
         main_name = ptdata.names.main + '\n' + "sections' " + kwargs['statnames']
     else:
-        main_name = ptdata.names.main + '\nsections statistics'
+        main_name = ptdata.names.main + "\nsections' statistics"
         dim_names.insert(axis,'statistics')
         dim_labels.insert(axis,'stats')
         dimel_labels.insert(axis,kwargs['statnames'])
