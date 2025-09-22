@@ -218,7 +218,7 @@ def init_testdatavars(**kwargs):
     point_vars[1,3,1] = 1, 0,   12, 500, 0.1,  0.5
     # section 2:
     point_vars[2,0,1] = 1, 0.2, 45, 100, 0.9,  0.5
-    point_vars[2,1,1] = 1, 0.7, 40, 200, 0.7, 0.5
+    point_vars[2,1,1] = 1, 0.7, 40, 200, 0.7,  0.5
     point_vars[2,2,1] = 1, 0,   18, 400, 0.9,  0.5
     point_vars[2,3,1] = 1, 1.5, 12, 500, 0.8,  0.5
     # section 3:
