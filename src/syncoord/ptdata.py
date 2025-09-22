@@ -457,7 +457,7 @@ def smooth( ptdata,**kwargs ):
                 and (not isinstance(cutoff_freq[0],list)) \
                 and (not isinstance(cutoff_freq[1],list)): cutoff_freq = [cutoff_freq]
         multiband_param = cutoff_freq
-        main_name =  f'Filtered ({freq_response})'
+        main_name =  f'Filtered with Butterworth {freq_response}'
         if ptdata.names.main: main_name = f'{main_name}\n{ptdata.names.main}'
         other = dict(list(kwargs.items())[:4]+list(kwargs.items())[5:])
         def sosfiltfilt_(arr,sos):
