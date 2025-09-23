@@ -1444,6 +1444,7 @@ def apply( ptdata, func,*args, verbose=False, **kwargs ):
 
     dd_out = {}
     for k in dd_in:
+        kwargs['fps'] = ptdata.topinfo['fps'].loc[k]
         if (fn in ['speed','tder']) or (fn != 'kuramoto_r'):
             dd_out[k] = func(dd_in[k],*args,**kwargs)
         elif dd_in[k].shape[axis-1] > 2:
