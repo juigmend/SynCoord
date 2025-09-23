@@ -8,6 +8,12 @@ import pandas as pd
 
 np.set_printoptions(suppress=True)
 
+class SubField:
+    '''
+    Empty class used to add sub-fields to an object's attribute.
+    '''
+    pass
+
 def evstr(a):
     if a == 'none': return None
     elif ':' in a: return [float(s) for s in a.split(':')]

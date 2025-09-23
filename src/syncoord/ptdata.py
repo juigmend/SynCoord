@@ -12,12 +12,6 @@ from . import ndarr, utils
 # .............................................................................
 # DATA HANDLING:
 
-class SubField:
-    '''
-    Empty class used to add sub-fields to an object's attribute.
-    '''
-    pass
-
 class PtData:
     '''
     Data-oriented class.
@@ -60,10 +54,10 @@ class PtData:
         topinfo (pandas.DataFrame): See documentation for syncoord.utils.load_data
     '''
     def __init__(self,topinfo=None):
-        self.names = SubField()
+        self.names = utils.SubField()
         self.names.main = ''
         self.names.dim = []
-        self.labels = SubField()
+        self.labels = utils.SubField()
         self.labels.main = ''
         self.labels.dim = []
         self.labels.dimel = []
