@@ -8,6 +8,11 @@ import pandas as pd
 
 np.set_printoptions(suppress=True)
 
+def evstr(a):
+    if a == 'none': return None
+    elif ':' in a: return [float(s) for s in a.split(':')]
+    else: return eval(a)
+
 def nanbordz(a,margin):
     '''Converts zeros to nan within a margin at the beginning and ending of a vector'''
     for am in [a[:margin],a[-margin:]]: am[am == 0] = np.nan
