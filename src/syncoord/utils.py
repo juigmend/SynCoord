@@ -19,8 +19,16 @@ def evstr(a):
     elif ':' in a: return [float(s) for s in a.split(':')]
     else: return eval(a)
 
-def nanbordz(a,margin):
-    '''Converts zeros to nan within a margin at the beginning and ending of a vector'''
+def nanbordz(a, margin, fps=None):
+    '''
+    Converts zeros to nan within a margin at the beginning and ending of a vector.
+    Args:
+        a (numpy.ndarray)
+        margin (int)
+        fps (int): Sampling or frame rate, indicating that margin is in secons.
+                   If it is None (default), the margin will be in frames.
+    '''
+    if fps is not None: margin = round(margin*fps)
     for am in [a[:margin],a[-margin:]]: am[am == 0] = np.nan
     return a
 
