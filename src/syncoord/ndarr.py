@@ -11,7 +11,7 @@ from . import utils
 # .............................................................................
 # ANALYSIS-ORIENTED OPERATIONS:
 
-def tder( arr_nd_in, dim=None, order=1 ):
+def tder( arr_nd_in, dim=None, order=1, mode='same' ):
     '''
     Differentiation of 1 dimension (axis -1) or more dimensions (axes -2 and -1).
     If more than one dimension, the first order difference is Euclidean distance among
@@ -21,6 +21,7 @@ def tder( arr_nd_in, dim=None, order=1 ):
         dim (int): number of dimensions to apply the time.derivative
         Optional:
             order (int): 1 (default) or 2
+            mode (str): 'same' (default) or 'valid' (original length minus order)
     Returns:
         numpy.ndarray
     '''
@@ -31,6 +32,7 @@ def tder( arr_nd_in, dim=None, order=1 ):
     arr_nd_out = np.diff(arr_nd_in,axis=-1)
     if dim > 1: arr_nd_out = np.linalg.norm(arr_nd_out,axis=-2)
     if order == 2: arr_nd_out = np.diff(arr_nd_out)
+    if mode == 'same': arr_nd_out = np.concatenate((arr_nd_out[...,:1],arr_nd_out),axis=-1)
     return arr_nd_out
 
 def peaks_to_phase( arr_nd, endstart=False, axis=-1, **kwargs ):
