@@ -1437,8 +1437,6 @@ def apply( ptdata, func,*args, verbose=False, **kwargs ):
     elif fn == 'power':
         main_name = rf'{ptdata.names.main[:].capitalize()} $^{args_list[0]}$'
         main_label = rf'{ptdata.labels.main[:]}$^{args_list[0]}$'
-    elif fn == 'nanbordz':
-        kwargs['fps'] = ptdata.topinfo['fps'].loc[k]
     else:
         if verbose: print('apply - warning: output "dim" field copied from input.')
         main_name = f'{fn}({ptdata.names.main})'
@@ -1446,6 +1444,8 @@ def apply( ptdata, func,*args, verbose=False, **kwargs ):
 
     dd_out = {}
     for k in dd_in:
+        if fn == 'nanbordz':
+            kwargs['fps'] = ptdata.topinfo['fps'].loc[k]
         if (fn in ['speed','tder']) or (fn != 'kuramoto_r'):
             dd_out[k] = func(dd_in[k],*args,**kwargs)
         elif dd_in[k].shape[axis-1] > 2:
