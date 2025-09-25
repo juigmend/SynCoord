@@ -1,3 +1,4 @@
-__all__ = ["ptdata","ndarr","video","utils","multi"]
+__all__ = ["ptdata","ndarr","video","utils","compo"]
 
-from . import ptdata, ndarr, video, utils#, multi
+from . import ptdata, ndarr, video, utils
+from .compo import *
