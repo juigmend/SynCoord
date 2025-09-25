@@ -3,7 +3,6 @@
 from copy import deepcopy
 
 import numpy as np
-import scipy.stats as stats
 
 from . import ptdata, ndarr, utils
 
@@ -56,7 +55,7 @@ def phase( ptdin, par ):
         else: sel_freq_bin = 0
         return ptdata.select( phi, frequency=sel_freq_bin )
 
-def gsync( ptdin, par ):
+def sync( ptdin, par ):
     '''
     Whole-group synchronisation.
     Args:
@@ -101,74 +100,7 @@ def gsync( ptdin, par ):
     except: sync_2 = sync_1
     return sync_2
 
-# def corrcont( ptdin, par ):
-#     '''
-#     Correlation between two arrays excluptding a margin at beginning and end, given by the number of
-#     NaN in the first array.
-#     Args:
-#         ptdin (syncoord.ptdata.PtData): Data in. Should have only one top-level array, which is the first array
-#             that may or may not have NaN toe stablish the margin.
-#         par (dict):
-#             par['arr'] (list,numpy.ndarr): The second array.
-#             par['kind'] (str): Kind of correlation. Default = 'Kendall' (only currently available).
-#     Returns:
-#         coef (float): Correlation coefficient.
-#         p (float): P-value.
-#     '''
-#     assert len(ptdin.data) == 1, 'ptdata should have only one top-level array'
-#     k = list(ptdin.data.keys())[0]
-#     for nan_margin,v in enumerate(ptdin.data[k]):
-#         if not np.isnan(v): break
-#     d_margin = nan_margin * 2
-#     ptdata_d_valid = ptdata.data[0][slice(d_margin,len(ptdin.data[k])-d_margin-1)]
-#     arr_d_valid = par['arr'][slice(d_margin,len(par['arr'])-d_margin-1)]
-#     if len(ptdata_d_valid) < len(arr_d_valid): arr_d_valid = arr_d_valid[:-1]
-#     coef, p = stats.kendalltau(ptdata_d_valid, arr_d_valid)
-#     return coef, p
-
-# def corrsecs( ptdata, par ):
-#     '''
-#     Correlation between the sections' means of an array, and a second array.
-#     Args:
-#         ptdin (syncoord.ptdata.PtData): Data in. Should have only one top-level array, and a "topinfo"
-#             dataframe with sections.
-#         par (dict):
-#             par['arr'] (list,numpy.ndarr): The second array.
-#             par['kind'] (str): Kind of correlation. Default = 'Kendall' (only currently available).
-#     Returns:
-#         coef (float): Correlation coefficient.
-#         p (float): P-value.
-#     '''
-#     assert kind=='Kendall', "Only Kendall's rank correlation is available"
-#     k = list(ptdin.data.keys())[0]
-#     sync_secmeans = ptdata.secstats( ptdin, statnames='mean', last=True, omitnan=True )
-#     coef, p = stats.kendalltau(sync_secmeans, par['arr'], nan_policy='omit')
-#     return coef, p
-
-def corr( ptdin, par ):
-    '''
-    Correlation, excluding NaN, between:
-        1) Two 1-D arrays excluptding a margin at beginning and end, given by the number of
-            NaN in the first array.
-        2) The sections' means of a 1-D array, and a second 1-D array.
-    Args:
-        ptdata (syncoord.ptdata.PtData): The top-level arrays are the first 1-D array.
-        par (dict):
-            par['arr'] (list,numpy.ndarr): The second 1-D array.
-            par['kind'] (str): Kind of correlation. Default = 'Kendall' (only currently available).
-            par['sections'] (bool): If False, compute simple correlation. If True, compute
-                                    correlation of sections' means
-    Returns:
-        coef (dict(key = float)): Correlation coefficients.
-        p (dict(key = float)): P-values.
-    '''
-    assert par['kind']=='Kendall', "Only Kendall's rank correlation is available"
-    if par['sections'] is True:
-        ptdin = ptdata.secstats( ptdin, statnames='mean', last=True, omitnan=True )
-    dout = {}
-    for k in ptdin:
-        coef[k], p[k] = stats.kendalltau(ptdin[k], par['arr'], nan_policy='omit')
-    return coef, p
+def stats( ptdin, par ): pass # ---------------------------------------------- DO THIS
 
 # .............................................................................
 
@@ -196,7 +128,7 @@ class PipeLine:
             stepar (dict): Ordered steps and their parameters for the pipeline. Keys are steps and
                            parameters are a dict of keyword args or None.
                            Available steps are functions in syncoord.multi:
-                               "filt", "red1D", "phase", "sync", "corrcont", "corrsecs".
+                               "filt", "red1D", "phase", "sync", "stats".
         '''
         steps = ["filt", "red1D", "phase", "sync","corr"]
         d = self.data.input

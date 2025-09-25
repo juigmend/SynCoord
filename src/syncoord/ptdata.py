@@ -3,7 +3,8 @@
 from copy import deepcopy
 
 import numpy as np
-from scipy import signal
+import pandas as pd
+from scipy import signal, stats
 from scipy.fft import fftfreq
 import matplotlib.pyplot as plt
 
@@ -1377,6 +1378,51 @@ def secstats( ptdata, **kwargs ):
                    'x_ticklabelling':'index'}
     sextats.other = ptdata.other.copy()
     return sextats
+
+def corr( ptdata, arr, kind='Kendall', sections=False ):
+    '''
+    Correlation between each of several 1-D arrays and one 1-D array.
+    Args:
+        ptdata (syncoord.ptdata.PtData): The top-level arrays are the first 1-D arrays.
+        arr (list,numpy.ndarr): The second 1-D array.
+        kind (str): Kind of correlation. Default = 'Kendall' (only currently available).
+        sections (bool): True for correlation with sections' means. Default = False
+    Returns:
+        New PtData object. The last dimension of the arrays has two values: correlation coefficient
+            and p-value.
+    '''
+    assert par['kind']=='Kendall', "Only Kendall's rank correlation is currently available."
+    corr_lbl = 'Rank'
+    dd_in = ptdata.data
+    main_name = ptdata.names.main + '\n' + f'{corr_lbl} correlation'
+    if sections is True:
+        dd_in = secstats( dd_in, statnames='mean', last=True, omitnan=True )
+        main_name = main_name + ' with sections'
+    dd_out = {}
+    for k in dd_in:
+        assert dd_in[k]
+        dd_out[k] = stats.kendalltau(dd_in[k], arr, nan_policy='omit')
+
+     if one_stat:
+        main_name = ptdata.names.main + '\n' + "sections' " + kwargs['statnames']
+    else:
+        main_name = ptdata.names.main + "\nsections' statistics"
+
+    main_label = deepcopy(ptdata.labels.main)
+    dim_labels = deepcopy(ptdata.labels.dim)
+    dimel_labels = deepcopy(ptdata.labels.dimel)
+
+    corr = PtData(ptdata.topinfo)
+    corr.names.main = main_name
+    corr.names.dim = ['coef,p']
+    corr.labels.main = ['coef,p']
+    corr.labels.dim = ['coef,p']
+    corr.labels.dimel = ['coef,p']
+    corr.data = dd_out
+    corr.vis = {'groupby':None,'vistype':'print','dlattr':ptdata.vis['dlattr'],'sections':False,
+                   'x_ticklabelling':'index'}
+    corr.other = ptdata.other.copy()
+    return corr
 
 # .............................................................................
 # APPLICATION:
