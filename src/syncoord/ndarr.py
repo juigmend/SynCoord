@@ -11,18 +11,27 @@ from . import utils
 # .............................................................................
 # UTILITARIAN OPERATIONS:
 
-def nanbordz(a, margin, fps=None):
+def rescale( arr, minmax=[0,1] ):
+    arr -= np.nanmin(arr)
+    arr /= np.nanmax(arr)
+    arr *= np.diff(minmax)
+    arr += minmax[0]
+    return arr
+
+def nanbordz( arr, margin, fps=None):
     '''
     Converts zeros to nan within a margin at the beginning and ending of a vector.
     Args:
-        a (numpy.ndarray)
+        arr (numpy.ndarray): Input array.
         margin (int)
         fps (int): Sampling or frame rate, indicating that margin is in secons.
                    If it is None (default), the margin will be in frames.
+    Returns:
+        arr (numpy.ndarray): Modified array.
     '''
     if fps is not None: margin = round(margin*fps)
-    for am in [a[:margin],a[-margin:]]: am[am == 0] = np.nan
-    return a
+    for am in [arr[:margin],arr[-margin:]]: am[am == 0] = np.nan
+    return arr
 
 # .............................................................................
 # ANALYSIS-ORIENTED OPERATIONS:
