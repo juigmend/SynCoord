@@ -12,6 +12,7 @@ from . import utils
 # UTILITARIAN OPERATIONS:
 
 def rescale( arr, minmax=[0,1] ):
+    arr = np.array(arr).astype(float)
     arr -= np.nanmin(arr)
     arr /= np.nanmax(arr)
     arr *= np.diff(minmax)
