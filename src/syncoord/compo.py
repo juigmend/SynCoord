@@ -71,7 +71,6 @@ def sync( ptdin, par ):
                     matlabeng (matlab,engine): object (useful when running multiple times).
                 **kwargs (see documentation for "wct" and "gxwt" in module syncoord.ptdata)
     '''
-
     mat_eng = par.get('mat_eng',None)
 
     if par['method']= 'r':
@@ -100,7 +99,24 @@ def sync( ptdin, par ):
     except: sync_2 = sync_1
     return sync_2
 
-def stats( ptdin, par ): pass # ---------------------------------------------- DO THIS
+def stats( ptdin, par ):
+    '''
+    Apply statistics functions from syncoord.ptdata
+    Available functions are: 'secstats', 'corr'.
+    Args:
+        ptdin (syncoord.ptdata.PtData): Data in.
+        par (dict):
+            par['func'] (str): Funcion (see available functions)
+            kwargs: Arguments for the functions.
+    '''
+    funcs ['secstats', 'corr']
+    assert par['func'] in funcs, f"par['func'] = {par['func']} is invalid."
+
+    if par['func'] == funcs[0]:
+        return ptdata.secstats( ptdin, **kwargs ):
+    elif par['func'] == funcs[1]:
+        par.pop('func')
+        return ptdata.corr( ptdin, **par )
 
 # .............................................................................
 
