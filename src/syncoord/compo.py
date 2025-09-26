@@ -12,7 +12,7 @@ from . import ptdata, ndarr, utils
 
 def filt( ptdin, par ):
     '''Wrapper for syncoord.ptdata.smooth'''
-    return ptdata.smooth(d, **par)
+    return ptdata.smooth(ptdin, **par)
 
 def red1D( ptdin, par ):
     '''
@@ -168,19 +168,21 @@ class PipeLine:
         Returns:
             (syncoord.ptdata.PtData): Data out.
         '''
-        d = self.data.input
+        d = self.data['input']
         for st in self.par:
             assert st in stepar, f'"{st}" is not an allowed key'
             if stepar[st] != self.par[st]:
                 if stepar[st] is not None:
-                    fstr = st + '(d, **stepar[k])'
+                    fstr = st + '(d, stepar[st])'
                     d = eval(fstr)
                 self.data[st] = d
-            if ('vis' in stepar[st]) and (stepar[st]['vis'] is not None):
-                if stepar[st]['vis'] is True: visarg = None
-                elif stepar[st]['vis'] is False: visarg = stepar[st]['vis']
+            if (stepar[st] is not None) and ('vis' in stepar[st]) \
+            and (stepar[st]['vis'] is not None):
+                if isinstance(stepar[st]['vis'],dict): visarg = stepar[st]['vis']
+                else: visarg = None
                 if st == 'stats':
                     print('Warning: visualisation not yet implemented for step "stats".')
-                else: d.visualise(**visarg)
+                elif visarg: d.visualise(**visarg)
+                else: d.visualise()
         self.data['output'] = d
         return d
