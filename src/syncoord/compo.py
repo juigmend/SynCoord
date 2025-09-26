@@ -1,4 +1,6 @@
-'''Functions that integrate multiple ptdata functions of a same kind, and a data pipeline class.'''
+'''
+Functions that integrate multiple syncoord.ptdata functions of a same kind, and a data pipeline class. The functions and the class can be called directly with syncoord. (no need for .compo), because all objects of this module (compo) are imported by __init__.py
+'''
 
 from copy import deepcopy
 
@@ -24,7 +26,7 @@ def red1D( ptdin, par ):
         (syncoord.ptdata.PtData): Data out.
     '''
     if par['method'] == 'speed':
-        return ptdata.apply( ptdin, sc.ndarr.tder, dim=par['dim' )
+        return ptdata.apply( ptdin, sc.ndarr.tder, dim=par['dim'] )
     elif par['method'] == 'norms':
         n1 = ptdata.norm( ptdin, order=1, axis=-par['dim'] )
         n2 = ptdata.norm( ptdin, order=2, axis=-par['dim'] )
@@ -79,19 +81,19 @@ def sync( ptdin, par ):
     '''
     mat_eng = par.get('mat_eng',None)
 
-    if par['method']= 'r':
+    if par['method'] == 'r':
         sync_1 = ptdata.kuramoto_r( ptdin)
-    elif par['method']= 'Rho':
+    elif par['method'] == 'Rho':
         sync_1 = ptdata.rho( ptdin)
-    elif par['method']= 'PLV':
+    elif par['method'] == 'PLV':
         plv_pairwise = ptdata.plv( ptdin, par['windows'], mode='valid' )
         sync_1 = ptdata.aggrax( plv_pairwise, function='mean' )
-    elif par['method']= 'WCT':
+    elif par['method'] == 'WCT':
         if isinstance(par['transfreq'],list): minmaxf = par.pop('transfreq')
         else: minmaxf = [par['transfreq'], par.pop('transfreq')]
         wct_pairwise = ptdata.wct( ptdin, minmaxf, 0, -1, **par )
         sync_1 = ptdata.aggrax( wct_pairwise, axis=0, function='mean' )
-    elif par['method']= 'GXWT':
+    elif par['method'] == 'GXWT':
         if isinstance(par['transfreq'],list): minmaxf = par.pop('transfreq')
         else: minmaxf = [par['transfreq']-0.01, par.pop('transfreq')+0.01]
         if ptdata.data[0].ndim == 3: fixed_axes = [-2,-1]
@@ -121,7 +123,7 @@ def stats( ptdin, par ):
     assert par['func'] in funcs, f"par['func'] = {par['func']} is invalid."
 
     if par['func'] == funcs[0]:
-        return ptdata.secstats( ptdin, **kwargs ):
+        return ptdata.secstats( ptdin, **kwargs )
     elif par['func'] == funcs[1]:
         par.pop('func')
         return ptdata.corr( ptdin, **par )
@@ -150,7 +152,7 @@ class PipeLine:
     def __init__(self,*args,**kwargs):
         self.data = {}
         if isinstance(args[0], ptdata.PtData): self.data['input'] = args[0]
-        else: self.data.['input'] = ptdata.load(*args,**kwargs)
+        else: self.data['input'] = ptdata.load(*args,**kwargs)
         self.par = dict.fromkeys(["filt", "red1D", "phase", "sync","stats"])
 
     def run(self, stepar):

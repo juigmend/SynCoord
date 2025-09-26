@@ -1403,7 +1403,7 @@ def corr( ptdata, arr, kind='Kendall', sections=False ):
         assert dd_in[k]
         dd_out[k] = stats.kendalltau(dd_in[k], arr, nan_policy='omit')
 
-     if one_stat:
+    if one_stat:
         main_name = ptdata.names.main + '\n' + "sections' " + kwargs['statnames']
     else:
         main_name = ptdata.names.main + "\nsections' statistics"
