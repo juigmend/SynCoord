@@ -20,6 +20,8 @@ def red1D( ptdin, par ):
         par (dict):
             par['method'] (str): 'speed', 'norms', 'x', 'y', 'z'
             'dim' (int): Number of dimensions, the last in the array. Only for 'speed' or 'norms'
+    Returns:
+        (syncoord.ptdata.PtData): Data out.
     '''
     if par['method'] == 'speed':
         return ptdata.apply( ptdin, sc.ndarr.tder, dim=par['dim' )
@@ -41,6 +43,8 @@ def phase( ptdin, par ):
             If par['method'] == 'FFT':
                 'fft_freq' (list, int): frequency or [min, max] frequencies (Hz).
             If par['method'] == 'peaks': Keyword arguments to syncoord.ptdata.peaks_to_phase
+    Returns:
+        (syncoord.ptdata.PtData): Data out.
     '''
     if method == 'peaks':
         return ptdata.peaks_to_phase( ptdin, **kwargs )
@@ -70,6 +74,8 @@ def sync( ptdin, par ):
                 If par['method'] == 'GXWT':
                     matlabeng (matlab,engine): object (useful when running multiple times).
                 **kwargs (see documentation for "wct" and "gxwt" in module syncoord.ptdata)
+    Returns:
+        (syncoord.ptdata.PtData): Data out.
     '''
     mat_eng = par.get('mat_eng',None)
 
@@ -108,6 +114,8 @@ def stats( ptdin, par ):
         par (dict):
             par['func'] (str): Funcion (see available functions)
             kwargs: Arguments for the functions.
+    Returns:
+        (syncoord.ptdata.PtData): Data out.
     '''
     funcs ['secstats', 'corr']
     assert par['func'] in funcs, f"par['func'] = {par['func']} is invalid."
@@ -124,42 +132,53 @@ class PipeLine:
     '''
     Pipeline to quantify synchronisation.
     Attributes:
+        data (dict): Should have at least item "input" created at initialisation with a PtData
+                     object as argument, or arguments for syncoord.ptdata.load
+                     When the "run" method is executed, more an item for the ouput of each step
+                     will be added, and item "output".
+        par (dict): Contains parameters for each step. Has the same keys as attribute "data",
+                    except "input" and "output".
     Methods:
-        run(**kwargs): Runs the data pipeline.
+        run: Runs the data pipeline.
     Args:
         (syncoord.ptdata.PtData): A PtData object with the input data.
         OR
         Arguments to syncoord.ptdata.load, to load data.
+    Returns:
+        (syncoord.ptdata.PtData): Data out.
     '''
     def __init__(self,*args,**kwargs):
         self.data = {}
         if isinstance(args[0], ptdata.PtData): self.data['input'] = args[0]
         else: self.data.['input'] = ptdata.load(*args,**kwargs)
-        self.par = {}
+        self.par = dict.fromkeys(["filt", "red1D", "phase", "sync","stats"])
 
     def run(self, stepar):
         '''
         Run a pipeline accorptding to specified steps and their parameters.
         Args:
             stepar (dict): Ordered steps and their parameters for the pipeline. Keys are steps and
-                           parameters are a dict of keyword args or None.
-                           Available steps are functions in syncoord.multi:
+                           parameters are a dict of keyword args or None. Steps are functions in
+                           syncoord.compo and are executed in this order:
                                "filt", "red1D", "phase", "sync", "stats".
+                           The parameters' dict may include a dict "vis" with visualisation options,
+                           or True for default settings.
+        Returns:
+            (syncoord.ptdata.PtData): Data out.
         '''
-        steps = ["filt", "red1D", "phase", "sync","corr"]
         d = self.data.input
-        for k in stepar:
-            assert k in steps, f'"{k}" is not an allowed key'
-            for st in steps:
-                if k == st:
-                    try:
-                        if stepar[k] != self.par[st]:
-                            if stepar[k] is None: self.data[st] = None
-                            else:
-                                fstr = st + '(d, **stepar[k])'
-                                self.data[st] = eval(fstr)
-                            d = self.data[st]
-                    except: d = self.data[st]
+        for st in self.par:
+            assert st in stepar, f'"{st}" is not an allowed key'
+            if stepar[st] != self.par[st]:
+                if stepar[st] is not None:
+                    fstr = st + '(d, **stepar[k])'
+                    d = eval(fstr)
+                self.data[st] = d
+            if ('vis' in stepar[st]) and (stepar[st]['vis'] is not None):
+                if stepar[st]['vis'] is True: visarg = None
+                elif stepar[st]['vis'] is False: visarg = stepar[st]['vis']
+                if st == 'stats':
+                    print('Warning: visualisation not yet implemented for step "stats".')
+                else: d.visualise(**visarg)
         self.data['output'] = d
-
-
+        return d
