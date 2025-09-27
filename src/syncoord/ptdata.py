@@ -43,6 +43,7 @@ class PtData:
                                 except last dimension.
                                 Returns -1 if empty, 0 if inconsistent, 1 if consistent.
         copy(*arg): Returns a deep copy of the object. Optional: 'nodata' to exclude data.
+        select(ptdata,*args,**kwargs): Return a selection. See help(syyncord.ptdata.select)
         visualise(**kwargs): Calls syncoord.ptdata.visualise
     Note:
         Use command "vars" to see the content of subfields.
@@ -71,6 +72,9 @@ class PtData:
         _self = deepcopy(self)
         if arg and arg[0] == 'nodata': _self.data = {}
         return _self
+
+    def select(self,*args,**kwargs):
+        return select(self,*args,**kwargs)
 
     def print_shape(self):
         print('data:')
