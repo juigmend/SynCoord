@@ -208,7 +208,8 @@ def phaselock( a1, a2, axis=-1 ):
         (numpy.ndarray): Phase-locking values.
     '''
     diff_complex = np.exp(complex(0,1)*(a1-a2))
-    plv_result = np.abs(np.sum(diff_complex,axis=axis))/diff_complex.shape[axis]
+    # plv_result = np.abs(np.sum(diff_complex,axis=axis))/diff_complex.shape[axis]
+    plv_result = np.abs(np.nansum(diff_complex,axis=axis))/diff_complex.shape[axis]
     return plv_result
 
 def plv( arrs, window_length=None, window_step=1, mode='same', sections=None, axis=-1, ):
@@ -579,7 +580,7 @@ def diter( arr_nd, lockdim=None ):
                 else: break
         else: dyn_idx[i_end] += 1
 
-def slwin( arrs, func, window_length, window_step=1, mode='same', **kwargs ):
+def slwin( arrs, func, window_length, window_step=1, mode='same', padding='nan', **kwargs ):
     '''
     Apply a function to a sliding window over the last dimension (-1) of one or two numpy arrays.
     Args:
@@ -588,7 +589,8 @@ def slwin( arrs, func, window_length, window_step=1, mode='same', **kwargs ):
         window_length (int): Length of the window vector.
         window_step (int): Step or "hop" of the moving window.
         Optional kwargs:
-            mode (str): 'same' (post-process zero-padded) or 'valid'.
+            mode (str): 'same' (post-process padding) or 'valid'.
+            padding (str): 'nan' (default) or 'zero'
             **kwargs = keyword arguments to be passed to func.
     Returns:
         Array whose dimensions depend on func.
@@ -614,7 +616,9 @@ def slwin( arrs, func, window_length, window_step=1, mode='same', **kwargs ):
         pad_width = [(margin, margin + int(dif%2))]
         if slwin_result.ndim > 1:
             for _ in range(slwin_result.ndim-1): pad_width.insert(0,(0,0))
-        slwin_result = np.pad(slwin_result,tuple(pad_width))
+        if padding == 'nan': padval = np.nan
+        elif padding == 'zero': padval = 0
+        slwin_result = np.pad(slwin_result,tuple(pad_width),constant_values=padval)
     return slwin_result
 
 def apply_to_pairs( arr_nd, func, pairs_axis, fixed_axes=-1, imout=0, verbose=False, **kwargs ):
