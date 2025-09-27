@@ -157,6 +157,35 @@ def kuramoto_r(arr_nd):
         r_list.append( abs( sum([(np.e ** (1j * angle)) for angle in phi]) / n_pts ) )
     return np.array(r_list)
 
+def cluster_phase_rho(arr_2d):
+    '''
+    Cluster phase.
+    Args:
+        arr_2d (numpy.ndarray): Phase angles. 2-D array with dimensions [signals, frames].
+    Returns:
+        rho_group_i (numpy.ndarray): The quantity rho, computed for each signal at each time step.
+        rho_group (numpy.ndarray): The quantity rho averaged over time.
+    References:
+        https://www.frontiersin.org/journals/physiology/articles/10.3389/fphys.2012.00405/full
+        https://github.com/cslab-hub/multiSyncPy/blob/main/multiSyncPy/synchrony_metrics.py
+    '''
+    phases = arr_2d
+    # Group level:
+    q_dash = np.nanmean( np.exp(phases * 1j), axis=0 )
+    q = np.arctan2(q_dash.imag, q_dash.real)
+
+    # Individual level:
+    phi = phases - q
+    phi_bar_dash = np.nanmean( np.exp(phi * 1j), axis=1 )
+    phi_bar = np.arctan2(phi_bar_dash.imag, phi_bar_dash.real)
+    # rho = np.abs(phi_bar_dash) # what is this?
+
+    # Group level:
+    rho_group_i = np.abs( np.nanmean( np.exp((phi - phi_bar[:, None]) * 1j), axis=0 ) )
+    rho_group = np.nanmean( rho_group_i )
+
+    return rho_group_i, rho_group
+
 def phasediff( phi_1, phi_2 ):
     '''
     Args:
@@ -409,7 +438,7 @@ def isochronal_sections( data_list, idx_sections, last=False, axis=-1 ):
     return isochr_data, idx_isochr_sections
 
 def section_stats( arr_nd, idx_sections, fps, last=True, margins=None, axis=-1,
-                   omitnan=False, statnames=[ 'mean','median','min','max','std' ] ):
+                   omitnan=True, statnames=[ 'mean','median','min','max','std' ] ):
     '''
     Descriptive statistics for sections of an N-D array.
     Args:
@@ -422,7 +451,7 @@ def section_stats( arr_nd, idx_sections, fps, last=True, margins=None, axis=-1,
                      If float: Same trim bor beginning and ending.
                      If list: Trims for beginning and ending. Nested lists for sections.
             axis (int): Dimension to apply the process.
-            omitnan (bool): Omit NaN.
+            omitnan (bool): Omit NaN. Default = True.
             statnames (str,list[str]): Statistics to compute. Default is all.
     Return:
         (numpy.ndarray): N-D array of same dimensions of the input arr_nd, except the two last
