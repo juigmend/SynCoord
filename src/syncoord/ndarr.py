@@ -94,7 +94,7 @@ def peaks_to_phase( arr_nd, endstart=False, axis=-1, **kwargs ):
     return np.apply_along_axis(pks2ph,axis,arr_nd,endstart,**kwargs)
 
 def fourier_transform( arr_nd, window_length, fps=None, output='spectrum', window_shape=None,
-                       mode='same', first_fbin=1, axis=-1 ):
+                       mode='same', padding='nan', first_fbin=1, axis=-1 ):
     '''
     Wrapper for scipy.fft.rfft
     Fast Fourier transform for a signal of real numbers.
@@ -106,7 +106,8 @@ def fourier_transform( arr_nd, window_length, fps=None, output='spectrum', windo
             output (str): 'phase'(radians), 'amplitude', 'spectrum' (complex)
             window_shape (str): name of the window shape (eg.'hann'). See help(scipy.signal.windows)
                                 or https://docs.scipy.org/doc/scipy/reference/signal.windows.html
-            mode (str): 'same' (post-process zero-padded) or 'valid'
+            mode (str): 'same' (post-process paddin) or 'valid'
+            padding (str): 'nan' (default) or 'zero'
             first_fbin (int): Remove frequency bins under this index. Default = 1 (DC offset).
             axis (int): Default = -1 (last dimension of the N-D array).
                 Note: Axis is a dimension of the N-D array. The rightmost axis (-1) is the fastest changing.
@@ -120,9 +121,9 @@ def fourier_transform( arr_nd, window_length, fps=None, output='spectrum', windo
         windows_module = import_module('scipy.signal.windows')
         window_func = eval('windows_module.'+window_shape)
         fft_window = window_func(window_length)
-    zpad = mode=='same'
+    do_pad = mode=='same'
 
-    def fourier_( sig, fft_window, window_length, zpad, first_fbin, output ):
+    def fourier_( sig, fft_window, window_length, do_pad, first_fbin, output ):
         fft_result = []
         for i_window in range(len(sig)-window_length):
             this_window = sig[ i_window : i_window+window_length] * fft_window
@@ -131,12 +132,15 @@ def fourier_transform( arr_nd, window_length, fps=None, output='spectrum', windo
             elif output == 'amplitude': fft_result.append(np.abs(this_spectrum))
             elif output == 'phase': fft_result.append( np.angle(this_spectrum) )
         fft_result = np.array(fft_result).T
-        if zpad:
+        if do_pad:
             dif = len(sig) - fft_result.shape[1]
             margin = np.floor(dif/2).astype(int)
-            fft_result = np.pad( fft_result, ( (0,0),(margin, margin + int(dif%2) )) )
+            if padding == 'nan': padval = np.nan
+            elif padding == 'zero': padval = 0
+            pad_width_tuple = ((0,0),(margin, margin + int(dif%2) ))
+            fft_result = np.pad( fft_result, pad_width_tuple, constant_values=padval )
         return fft_result
-    return np.apply_along_axis( fourier_, axis, arr_nd, fft_window, window_length, zpad,
+    return np.apply_along_axis( fourier_, axis, arr_nd, fft_window, window_length, do_pad,
                                 first_fbin, output )
 
 def kuramoto_r(arr_nd):
@@ -208,8 +212,7 @@ def phaselock( a1, a2, axis=-1 ):
         (numpy.ndarray): Phase-locking values.
     '''
     diff_complex = np.exp(complex(0,1)*(a1-a2))
-    # plv_result = np.abs(np.sum(diff_complex,axis=axis))/diff_complex.shape[axis]
-    plv_result = np.abs(np.nansum(diff_complex,axis=axis))/diff_complex.shape[axis]
+    plv_result = np.abs(np.sum(diff_complex,axis=axis))/diff_complex.shape[axis]
     return plv_result
 
 def plv( arrs, window_length=None, window_step=1, mode='same', sections=None, axis=-1, ):
