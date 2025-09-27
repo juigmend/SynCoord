@@ -451,9 +451,11 @@ def section_stats( arr_nd, idx_sections, fps, last=True, margins=None, axis=-1,
         fps (int): frames per second
         Optional:
             last (bool): If True, last section starts at the last index.
-            margins (float,list[float]). Trim at the beginning and ending, in seconds.
-                     If float: Same trim bor beginning and ending.
-                     If list: Trims for beginning and ending. Nested lists for sections.
+            margins (float,list[float],str). Trim at the beginning and ending.
+                     If float: Same trim bor beginning and ending (s).
+                     If list[float]: Trims for beginning and ending (s). Nested lists for sections.
+                     If str: 'secsfromnan' to automatically determine margins for sections from NaN
+                             at the beginning and end of data, which should be the same size.
             axis (int): Dimension to apply the process.
             omitnan (bool): Omit NaN. Default = True.
             statnames (str,list[str]): Statistics to compute. Default is all.
@@ -477,11 +479,22 @@ def section_stats( arr_nd, idx_sections, fps, last=True, margins=None, axis=-1,
         else:
             mmf = [ round(margins[0] * fps), round(margins[1] * fps) ]
             margins_f = [ mmf for i in range(n_sections) ]
-    else:
+    elif isinstance(margins,(float,int)):
         mf = round(margins * fps)
         margins_f = [ [mf,mf] for i in range(n_sections) ]
+    elif (isinstance(margins,str)) and (margins == 'secsfromnan'):
+        margins_f = margins
+    else: raise Exception('Invalid value for "margins".')
     def sstats_( arr_1d_in, n_sections, statnames, n_stats, margins_f ):
         arr_1d_out = np.empty((n_stats,n_sections))
+        if isinstance(margins_f,str):
+            mf = np.isnan(arr_1d_in).argmin()
+            mf_end = np.isnan(np.flip(arr_1d_in)).argmin()
+            if abs(np.diff([mf,mf_end])) > 1:
+                exmsg = ''.join([ 'The lengths of NaN margins at beginning and end have a ',
+                                  'difference of more than one frame.' ])
+                raise Exception(exmsg)
+            margins_f = [ [mf,mf] for i in range(n_sections) ]
         for i_stat in range(n_stats):
             this_statname = statnames[i_stat]
             for i_sec in range(n_sections):
