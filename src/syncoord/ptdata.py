@@ -1322,7 +1322,7 @@ def secstats( ptdata, **kwargs ):
     Args:
         ptdata (PtData): Data object. See documentation for syncoord.ptdata.PtData
         Optional:
-            last (bool): If True, the last section is from the last index of sections to the end.
+            last (bool): If True (default), last section is from last sections' index to end.
             margins (int,list[int],dict). Trim at the beginning and ending, in seconds.
                      If scalar: Same trim bor beginning and ending.
                      If list: Trims for beginning and ending. Nested lists for sections.

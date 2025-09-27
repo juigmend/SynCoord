@@ -408,7 +408,7 @@ def isochronal_sections( data_list, idx_sections, last=False, axis=-1 ):
     idx_isochr_sections = list(range(length_section,length_section*n_sections+1,length_section))
     return isochr_data, idx_isochr_sections
 
-def section_stats( arr_nd, idx_sections, fps, last=False, margins=None, axis=-1,
+def section_stats( arr_nd, idx_sections, fps, last=True, margins=None, axis=-1,
                    omitnan=False, statnames=[ 'mean','median','min','max','std' ] ):
     '''
     Descriptive statistics for sections of an N-D array.
