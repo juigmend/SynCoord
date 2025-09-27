@@ -988,10 +988,10 @@ def gxwt( ptdata, minmaxf, pairs_axis, fixed_axes, **kwargs ):
     xwtdata.other['freq_bins'] = freq_bins
     return xwtdata
 
-def rho( ptdata, exaxes=None, mode='all' ):
+def rho( ptdata, exaxes=None, mode='all', method='SynCoord' ):
     '''
     Cluster Phase.
-    Wrapper for multiSyncPy.synchrony_metrics.rho
+    Wrapper for ndarr.cluster_phase_rho or multiSyncPy.synchrony_metrics.rho
     Args:
         ptdata (PtData): Data object with phase angles.
                 See documentation for syncoord.ptdata.PtData
@@ -1001,6 +1001,7 @@ def rho( ptdata, exaxes=None, mode='all' ):
                 Set to -2 if that dimension's name is 'frequency'.
         Optional:
             mode (str): 'all' or 'mean'
+            method (str): 'SynCoord' (default), 'multiSyncPy'
     Returns:
         New PtData object.
     References:
@@ -1010,13 +1011,16 @@ def rho( ptdata, exaxes=None, mode='all' ):
     if len(ptdata.data)==1: cdv = False
     else: cdv = True
     assert ptdata.checkdim(verbose=cdv)==1
-    from multiSyncPy.synchrony_metrics import rho as sm_rho
 
     if mode == 'all':
         i_out = 0
         n_out = mode
     elif mode == 'mean': i_out = n_out = 1
     else: raise Exception('mode can only be "all" or "mean"')
+
+    if method == 'SynCoord': sm_rho = ndarr.cluster_phase_rho
+    elif method == 'multiSyncPy': from multiSyncPy.synchrony_metrics import rho as sm_rho
+    else: raise Exception('Invalid value for "method".')
 
     if ptdata.names.dim[-2] == 'frequency': exaxes = -2
 
