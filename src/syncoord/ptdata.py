@@ -1583,6 +1583,7 @@ def visualise( ptdata, **kwargs ):
         ptdata (PtData): Data object. See documentation for syncoord.ptdata.PtData
         Optional kwargs:
             vistype (str): 'line', 'cline' (circle and line),'spectrogram', or 'imshow'.
+            printd (bool): Print data. Not recommended for large data. Default = False
             groupby (int,str,list): N-D array's dimensions to group.
                                     'default' = use defaults: line = 0, spectrogram = -2
             rescale (bool): Rescale visualisation (not data) to min-max of all arrays.
@@ -1745,6 +1746,7 @@ def visualise( ptdata, **kwargs ):
 
     kwargs = {**ptdata.vis,**kwargs}
     vistype = kwargs.pop('vistype','line')
+    printd = kwargs.pop('printd',False)
     groupby = kwargs.pop('groupby','default')
     rescale = kwargs.pop('rescale',False)
     vscale = kwargs.pop('vscale',1)
@@ -1939,6 +1941,7 @@ def visualise( ptdata, **kwargs ):
                 else:
                     sp_lbl = ptdata.labels.dimel[i] # (singleton dim.) same labels for all top arrays
                 sp_title = ''.join([sp_title,'\n',sp_lbl])
+            if printd: print(np.round(vis_arr,3))
             if sp_title:
                 plt.title(sp_title,y=spt_y)
             if new_i_top: new_i_top = False
