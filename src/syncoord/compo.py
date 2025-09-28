@@ -136,7 +136,7 @@ def stats( ptdin, par ):
     elif par['func'] == funcs[1]:
         par.pop('func')
         ptdout = ptdata.corr( ptdin, **kwargs )
-    return ptdout #.select(sel)
+    return ptdout
 
 # .............................................................................
 
