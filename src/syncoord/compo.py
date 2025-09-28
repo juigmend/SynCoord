@@ -20,8 +20,8 @@ def red1D( ptdin, par ):
     Args:
         ptdin (syncoord.ptdata.PtData): Data in.
         par (dict):
-            par['method'] (str): 'speed', 'norms', 'x', 'y', 'z'
-            'dim' (int): Number of dimensions, the last in the array. Only for 'speed' or 'norms'
+            par['method'] (str): 'norms', 'speed', 'x', 'y', 'z'
+            'dim' (int): Number of dimensions, the last in the array. Only for 'norms' or 'speed'.
     Returns:
         (syncoord.ptdata.PtData): Data out.
     '''
@@ -48,18 +48,22 @@ def phase( ptdin, par ):
     Returns:
         (syncoord.ptdata.PtData): Data out.
     '''
-    if method == 'peaks':
-        return ptdata.peaks_to_phase( ptdin, **kwargs )
-    elif method == 'FFT':
+    if par['method'] == 'peaks':
+        pdout = ptdata.peaks_to_phase( ptdin, **kwargs )
+        margin = kwargs.get('min_dist',None)
+    elif par['method'] == 'FFT':
         if isinstance(par['fft_freq'],list): fft_win_s = 1/par['fft_freq'][0]
         else: fft_win_s = 1/par['fft_freq']
-        dout = ptdata.fourier( ptdin, fft_win_s, output='phase', mode='same' )
+        phi = ptdata.fourier( ptdin, fft_win_s, output='phase', mode='same' )
         if isinstance(par['fft_freq'],list):
             i_min_f = np.argmin(np.abs(par['fft_freq'][0] - phi.other['freq_bins'][0]))
             i_max_f = np.argmin(np.abs(par['fft_freq'][1] - phi.other['freq_bins'][0]))
             sel_freq_bin = slice(i_min_f, i_max_f+1)
         else: sel_freq_bin = 0
-        return ptdata.select( phi, frequency=sel_freq_bin )
+        pdout = ptdata.select( phi, frequency=sel_freq_bin )
+        margin = fft_win_s
+    pdout.other['phase'] = { 'margin' : margin }
+    return pdout
 
 def sync( ptdin, par ):
     '''
@@ -82,9 +86,9 @@ def sync( ptdin, par ):
     mat_eng = par.get('mat_eng',None)
 
     if par['method'] == 'r':
-        sync_1 = ptdata.kuramoto_r( ptdin)
+        sync_1 = ptdata.kuramoto_r( ptdin )
     elif par['method'] == 'Rho':
-        sync_1 = ptdata.rho( ptdin)
+        sync_1 = ptdata.rho( ptdin )
     elif par['method'] == 'PLV':
         plv_pairwise = ptdata.plv( ptdin, par['windows'], mode='valid' )
         sync_1 = ptdata.aggrax( plv_pairwise, function='mean' )
@@ -114,19 +118,25 @@ def stats( ptdin, par ):
     Args:
         ptdin (syncoord.ptdata.PtData): Data in.
         par (dict):
-            par['func'] (str): Funcion (see available functions)
-            kwargs: Arguments for the functions.
+            par['func'] (str): Funcion (see available functions above)
+            Optional:
+                kwargs: Arguments for the functions.
+                If func is 'secstats' the default for "statnames" is "mean".
     Returns:
         (syncoord.ptdata.PtData): Data out.
     '''
-    funcs ['secstats', 'corr']
+    funcs = ['secstats', 'corr']
     assert par['func'] in funcs, f"par['func'] = {par['func']} is invalid."
+    kwargs = par.copy()
+    [kwargs.pop(k) for k in ['func','vis']]
 
     if par['func'] == funcs[0]:
-        return ptdata.secstats( ptdin, **kwargs )
+        if 'statnames' not in kwargs: kwargs['statnames'] = 'mean'
+        ptdout = ptdata.secstats( ptdin, **kwargs )
     elif par['func'] == funcs[1]:
         par.pop('func')
-        return ptdata.corr( ptdin, **par )
+        ptdout = ptdata.corr( ptdin, **kwargs )
+    return ptdout #.select(sel)
 
 # .............................................................................
 
@@ -141,7 +151,7 @@ class PipeLine:
         par (dict): Contains parameters for each step. Has the same keys as attribute "data",
                     except "input" and "output".
     Methods:
-        run: Runs the data pipeline.
+        run(): Runs the data pipeline.
     Args:
         (syncoord.ptdata.PtData): A PtData object with the input data.
         OR
@@ -180,9 +190,7 @@ class PipeLine:
             and (stepar[st]['vis'] is not None):
                 if isinstance(stepar[st]['vis'],dict): visarg = stepar[st]['vis']
                 else: visarg = None
-                if st == 'stats':
-                    print('Warning: visualisation not yet implemented for step "stats".')
-                elif visarg: d.visualise(**visarg)
+                if visarg: d.visualise(**visarg)
                 else: d.visualise()
         self.data['output'] = d
         return d
