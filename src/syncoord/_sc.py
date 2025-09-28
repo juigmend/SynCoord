@@ -1,5 +1,9 @@
 '''
-Functions that integrate multiple syncoord.ptdata functions of a same kind, and a data pipeline class. The functions and the class can be called directly with syncoord. (no need for .compo), because all objects of this module (compo) are imported by __init__.py
+Functions that integrate multiple syncoord.ptdata functions of a same kind, and a data pipeline class.
+They are imported by __init__.py, therefore they can be called directly with syncoord.
+For example, to instantiate a PipeLine object: syncoord.PipeLine()
+No need to do this: syncoord._sc.PipeLine()
+
 '''
 
 from copy import deepcopy
@@ -96,7 +100,6 @@ def sync( ptdin, par ):
         if 'frequency' in ptdin.names.dim:
             raise Exception("Frequency-decomposed data is not suitable for CWT.")
     visint = par.pop('visint',False)
-    mat_eng = par.get('mat_eng',None)
 
     if par['method'] == 'r':
         sync_1 = ptdata.kuramoto_r( ptdin )
@@ -113,7 +116,7 @@ def sync( ptdin, par ):
         _check_CWT_par(ptdin)
         if isinstance(par['cwt_freq'],list): minmaxf = par.pop('cwt_freq')
         else: minmaxf = [par['cwt_freq'], par.pop('cwt_freq')]
-        if 'posprocess' not in par: par['postprocess'] = 'coinan'
+        if 'postprocess' not in par: par['postprocess'] = 'coinan'
         wct_pairwise = ptdata.wct( ptdin, minmaxf, 0, -1, **par )
         _vis_dictargs(wct_pairwise, visint, None)
         sync_1 = ptdata.aggrax( wct_pairwise, axis=0, function='mean' )
@@ -122,8 +125,9 @@ def sync( ptdin, par ):
         _check_CWT_par(ptdin)
         if isinstance(par['cwt_freq'],list): minmaxf = par.pop('cwt_freq')
         else: minmaxf = [par['cwt_freq']-0.01, par.pop('cwt_freq')+0.01]
-        if ptdata.data[0].ndim == 3: fixed_axes = [-2,-1]
-        elif ptdata.data[0].ndim == 2: fixed_axes = -1
+        if ptdin.data[0].ndim == 3: fixed_axes = [-2,-1]
+        elif ptdin.data[0].ndim == 2: fixed_axes = -1
+        if 'postprocess' not in par: par['postprocess'] = 'coinan'
         gxwt_pairwise = ptdata.gxwt( ptdin, minmaxf, 0, fixed_axes, **par  )
         _vis_dictargs(gxwt_pairwise, visint, None)
         sync_1 = ptdata.aggrax( gxwt_pairwise, axis=0, function='mean' )
@@ -191,21 +195,30 @@ class PipeLine:
                      will be added, and item "output".
         par (dict): Contains parameters for each step. Has the same keys as attribute "data",
                     except "input" and "output".
+        other (dict): Multi-purpose container.
     Methods:
         run(): Runs the data pipeline.
     Args:
         (syncoord.ptdata.PtData): A PtData object with the input data.
-        OR
-        Arguments to syncoord.ptdata.load, to load data.
+        **kwargs:
+            Arguments to syncoord.ptdata.load, to load data.
+            AND/OR:
+            matlab (matlab.engine,str,list): Either a matlab.engine object or path(s)
+                for matlab functions.
     Returns:
         (syncoord.ptdata.PtData): Data out.
     '''
     def __init__(self,*args,**kwargs):
+        if 'matlab' in kwargs: matlab = kwargs.pop('matlab')
+        else: matlab = None
         self.data = {}
-        if isinstance(args[0], ptdata.PtData): self.data['input'] = args[0]
-        else: self.data['input'] = ptdata.load(*args,**kwargs)
+        self.data['input'] = None
+        if args:
+            if isinstance(args[0], ptdata.PtData): self.data['input'] = args[0]
+            elif kwargs: self.data['input'] = ptdata.load(*args,**kwargs)
         self.par = dict.fromkeys(["filt", "red1D", "phase", "sync","stats"])
         self.other = {}
+        if matlab: self.other['matlab'] = matlab
 
     def run(self, stepar, sanitise=True):
         '''
@@ -233,10 +246,9 @@ class PipeLine:
                 elif sanitise == 'halt': halt('"phase" is an invalid step for WCT and GXWT')
 
         if stepar['sync']['method'] in ['GXWT']:
-            
-            pass
-            # if 'matlab' in self.other
-            
+            if isinstance(self.other['matlab'],str) or isinstance(self.other['matlab'],list):
+                self.other['matlab'] = utils.matlab_eng( addpaths=self.other['matlab'] )
+            stepar['sync']['matlabeng'] = self.other['matlab']
 
         d = self.data['input']
         for st in self.par:
