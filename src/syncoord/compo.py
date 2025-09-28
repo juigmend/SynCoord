@@ -10,6 +10,10 @@ from . import ptdata, ndarr, utils
 
 # .............................................................................
 
+def halt( msg='halt' ):
+    '''Useful for debugging.'''
+    raise Exception(msg)
+
 def filt( ptdin, par ):
     '''Wrapper for syncoord.ptdata.smooth'''
     return ptdata.smooth(ptdin, **par)
@@ -75,7 +79,7 @@ def sync( ptdin, par ):
             If par['method'] == 'PLV':
                 windows (float,str): Window length in seconds for sliptding window or 'sections'.
             If par['method'] is in ['WCT','GXWT']:
-                transfreq (list,float): Frequency or [min, max] frequencies (Hz).
+                cwt_freq (list,float): Frequency or [min, max] frequencies (Hz).
                 postprocess (str): 'coinan' or None.
                 If par['method'] == 'GXWT':
                     matlabeng (matlab,engine): object (useful when running multiple times).
@@ -83,6 +87,9 @@ def sync( ptdin, par ):
     Returns:
         (syncoord.ptdata.PtData): Data out.
     '''
+    def _check_CWT_par(ptd):
+        if 'frequency' in ptdin.names.dim:
+            raise Exception("Frequency-decomposed data is not suitable for CWT.")
     mat_eng = par.get('mat_eng',None)
 
     if par['method'] == 'r':
@@ -90,16 +97,18 @@ def sync( ptdin, par ):
     elif par['method'] == 'Rho':
         sync_1 = ptdata.rho( ptdin )
     elif par['method'] == 'PLV':
-        plv_pairwise = ptdata.plv( ptdin, par['windows'], mode='valid' )
+        plv_pairwise = ptdata.plv( ptdin, par['windows'] )
         sync_1 = ptdata.aggrax( plv_pairwise, function='mean' )
     elif par['method'] == 'WCT':
-        if isinstance(par['transfreq'],list): minmaxf = par.pop('transfreq')
-        else: minmaxf = [par['transfreq'], par.pop('transfreq')]
+        _check_CWT_par(ptdin)
+        if isinstance(par['cwt_freq'],list): minmaxf = par.pop('cwt_freq')
+        else: minmaxf = [par['cwt_freq'], par.pop('cwt_freq')]
         wct_pairwise = ptdata.wct( ptdin, minmaxf, 0, -1, **par )
         sync_1 = ptdata.aggrax( wct_pairwise, axis=0, function='mean' )
     elif par['method'] == 'GXWT':
-        if isinstance(par['transfreq'],list): minmaxf = par.pop('transfreq')
-        else: minmaxf = [par['transfreq']-0.01, par.pop('transfreq')+0.01]
+        _check_CWT_par(ptdin)
+        if isinstance(par['cwt_freq'],list): minmaxf = par.pop('cwt_freq')
+        else: minmaxf = [par['cwt_freq']-0.01, par.pop('cwt_freq')+0.01]
         if ptdata.data[0].ndim == 3: fixed_axes = [-2,-1]
         elif ptdata.data[0].ndim == 2: fixed_axes = -1
         gxwt_pairwise = ptdata.gxwt( ptdin, minmaxf, 0, fixed_axes, **par  )
@@ -121,7 +130,7 @@ def stats( ptdin, par ):
             par['func'] (str): Funcion (see available functions above)
             Optional:
                 kwargs: Arguments for the functions.
-                If func is 'secstats' the default for "statnames" is "mean".
+                If func is 'secstats' the default for 'statnames' is 'mean".
     Returns:
         (syncoord.ptdata.PtData): Data out.
     '''
