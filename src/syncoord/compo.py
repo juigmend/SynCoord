@@ -10,6 +10,13 @@ from . import ptdata, ndarr, utils
 
 # .............................................................................
 
+def _vis_dictargs(ptd, par, key):
+    if par:
+        if isinstance(par[key],dict): ptd.visualise(**par[key])
+        elif par[key]: ptd.visualise()
+
+# .............................................................................
+
 def halt( msg='halt' ):
     '''Useful for debugging.'''
     raise Exception(msg)
@@ -84,12 +91,17 @@ def sync( ptdin, par ):
                 If par['method'] == 'GXWT':
                     matlabeng (matlab,engine): object (useful when running multiple times).
                 **kwargs (see documentation for "wct" and "gxwt" in module syncoord.ptdata)
+            Optional:
+                par['visint'] (dict,bool): Visualise intermediate steps. Default = False
+                    True to use default parameters. Alternatively, a dict with keywords arguments
+                    can be used and it will be passed to syncoord.ptdata.PtData.visualise()
     Returns:
         (syncoord.ptdata.PtData): Data out.
     '''
     def _check_CWT_par(ptd):
         if 'frequency' in ptdin.names.dim:
             raise Exception("Frequency-decomposed data is not suitable for CWT.")
+    visint = par.get('visint',False)
     mat_eng = par.get('mat_eng',None)
 
     if par['method'] == 'r':
@@ -98,12 +110,19 @@ def sync( ptdin, par ):
         sync_1 = ptdata.rho( ptdin )
     elif par['method'] == 'PLV':
         plv_pairwise = ptdata.plv( ptdin, par['windows'] )
+        
+        
+        
         sync_1 = ptdata.aggrax( plv_pairwise, function='mean' )
     elif par['method'] == 'WCT':
         _check_CWT_par(ptdin)
         if isinstance(par['cwt_freq'],list): minmaxf = par.pop('cwt_freq')
         else: minmaxf = [par['cwt_freq'], par.pop('cwt_freq')]
+        if 'posprocess' not in par: par['postprocess'] = 'coinan'
         wct_pairwise = ptdata.wct( ptdin, minmaxf, 0, -1, **par )
+        
+        # _vis_dictargs(ptd, par, 'visint')
+        
         sync_1 = ptdata.aggrax( wct_pairwise, axis=0, function='mean' )
     elif par['method'] == 'GXWT':
         _check_CWT_par(ptdin)
@@ -112,6 +131,9 @@ def sync( ptdin, par ):
         if ptdata.data[0].ndim == 3: fixed_axes = [-2,-1]
         elif ptdata.data[0].ndim == 2: fixed_axes = -1
         gxwt_pairwise = ptdata.gxwt( ptdin, minmaxf, 0, fixed_axes, **par  )
+        
+        
+        
         sync_1 = ptdata.aggrax( gxwt_pairwise, axis=0, function='mean' )
     try:
         if sync_1.names.dim[-2] == 'frequency':
@@ -141,6 +163,12 @@ def stats( ptdin, par ):
 
     if par['func'] == funcs[0]:
         if 'statnames' not in kwargs: kwargs['statnames'] = 'mean'
+        yes_secmargins = ['$r$',r'$\rho$']
+        not_secmargins = ['PLV','WCT','GXWT']
+        if 'margins' not in kwargs:
+            if ptdin.labels.main in ['$r$',r'$\rho$']: kwargs['margins'] = 'secsfromnan'
+            elif ptdin.labels.main in ['PLV','WCT','GXWT']: kwargs['margins'] = None
+            else: raise Exception(f'Invalild PtData.labels.main : {ptdin.labels.main}')
         ptdout = ptdata.secstats( ptdin, **kwargs )
     elif par['func'] == funcs[1]:
         par.pop('func')
@@ -195,11 +223,6 @@ class PipeLine:
                     fstr = st + '(d, stepar[st])'
                     d = eval(fstr)
                 self.data[st] = d
-            if (stepar[st] is not None) and ('vis' in stepar[st]) \
-            and (stepar[st]['vis'] is not None):
-                if isinstance(stepar[st]['vis'],dict): visarg = stepar[st]['vis']
-                else: visarg = None
-                if visarg: d.visualise(**visarg)
-                else: d.visualise()
+            _vis_dictargs(d, stepar[st], 'vis')
         self.data['output'] = d
         return d
