@@ -7,6 +7,8 @@ import pandas as pd
 from scipy import signal, stats
 from scipy.fft import fftfreq
 import matplotlib.pyplot as plt
+import warnings
+warnings.filterwarnings(action='ignore', message='Mean of empty slice')
 
 from . import ndarr, utils
 
