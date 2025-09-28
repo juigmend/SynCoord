@@ -455,7 +455,8 @@ def section_stats( arr_nd, idx_sections, fps, last=True, margins=None, axis=-1,
                      If float: Same trim bor beginning and ending (s).
                      If list[float]: Trims for beginning and ending (s). Nested lists for sections.
                      If str: 'secsfromnan' to automatically determine margins for sections from NaN
-                             at the beginning and end of data, which should be the same size.
+                             at the beginning and end of data, which should be the same size or
+                             differ by at most one frame.
             axis (int): Dimension to apply the process.
             omitnan (bool): Omit NaN. Default = True.
             statnames (str,list[str]): Statistics to compute. Default is all.
