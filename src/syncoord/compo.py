@@ -205,19 +205,30 @@ class PipeLine:
         else: self.data['input'] = ptdata.load(*args,**kwargs)
         self.par = dict.fromkeys(["filt", "red1D", "phase", "sync","stats"])
 
-    def run(self, stepar):
+    def run(self, stepar, sanitise=True):
         '''
         Run a pipeline accorptding to specified steps and their parameters.
         Args:
-            stepar (dict): Ordered steps and their parameters for the pipeline. Keys are steps and
-                           parameters are a dict of keyword args or None. Steps are functions in
-                           syncoord.compo and are executed in this order:
-                               "filt", "red1D", "phase", "sync", "stats".
-                           The parameters' dict may include a dict "vis" with visualisation options,
-                           or True for default settings.
+            stepar (dict): Ordered steps and their parameters for the pipeline. Steps are the
+                dict's keys and parameters are a dict of keyword args or None. Steps are functions
+                in syncoord.compo and are executed in the following order:
+                    "filt", "red1D", "phase", "sync", "stats".
+                The parameters' dict may include a dict "vis" with visualisation options,
+                or True for default settings.
+            sanitise (bool,str): Check for invalid steps in arg. "stepar". For example, if
+                stepar['sync']['method'] is 'WCT' or 'GXWT', "phase" is an invalid step.
+                    If True: invalid steps will be discarded from stepar.
+                    If 'halt': An exception will be raised and thus, the program will be stopped.
         Returns:
             (syncoord.ptdata.PtData): Data out.
         '''
+        if sanitise:
+            if stepar['sync']['method'] in ['GXWT']:
+                if sanitise is True: stepar['red1D'] = None
+                elif sanitise == 'halt': halt('red1D is an invalid step for GXWT')
+            if stepar['sync']['method'] in ['WCT', 'GXWT']:
+                if sanitise is True: stepar['phase'] = None
+                elif sanitise == 'halt': halt('phase is an invalid step for WCT and GXWT')
         d = self.data['input']
         for st in self.par:
             assert st in stepar, f'"{st}" is not an allowed key'
