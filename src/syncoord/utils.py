@@ -480,14 +480,12 @@ def matlab_eng( addpaths=None, verbose=True ):
     import matlab.engine
     matlabeng = matlab.engine.start_matlab()
     if verbose: print('...connected to Matlab version',matlabeng.version())
-    full_addpaths = ['../src' ]
+    full_addpaths = ['../src']
     if addpaths:
         if isinstance(addpaths,str): full_addpaths.append(addpaths)
         elif isinstance(addpaths,list): full_addpaths.extend(addpaths)
     for p in full_addpaths:
-        if p:
-            pabs = os.path.abspath(p)
-            matlabeng.addpath( matlabeng.genpath(p), nargout=0 )
+        if p: matlabeng.addpath( matlabeng.genpath(p), nargout=0 )
     return matlabeng
 
 def invexaxes(exaxes, s, d=None ):
