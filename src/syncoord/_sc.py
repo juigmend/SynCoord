@@ -9,16 +9,7 @@ import numpy as np
 from . import ptdata, ndarr, utils
 
 # .............................................................................
-
-def _vis_dictargs(ptd, vpar, key, **kwargs):
-    if vpar:
-        if key is None: vpar_n = vpar
-        elif key in vpar: vpar_n = vpar[key]
-        else: return
-        if isinstance(vpar_n,dict): ptd.visualise(**vpar_n,**kwargs)
-        elif vpar_n: ptd.visualise(**kwargs)
-
-# .............................................................................
+# PUBLIC FUNCTIONS:
 
 def halt( msg='halt' ):
     '''Useful for debugging.'''
@@ -179,6 +170,16 @@ def stats( ptdin, par ):
     return ptdout
 
 # .............................................................................
+# PRIVATE FUNCTIONS:
+
+def _vis_dictargs(ptd, vpar, key, **kwargs):
+    if vpar:
+        if key is None: vpar_n = vpar
+        elif key in vpar: vpar_n = vpar[key]
+        else: return
+        if isinstance(vpar_n,dict): ptd.visualise(**vpar_n,**kwargs)
+        elif vpar_n: ptd.visualise(**kwargs)
+# .............................................................................
 
 class PipeLine:
     '''
@@ -204,6 +205,7 @@ class PipeLine:
         if isinstance(args[0], ptdata.PtData): self.data['input'] = args[0]
         else: self.data['input'] = ptdata.load(*args,**kwargs)
         self.par = dict.fromkeys(["filt", "red1D", "phase", "sync","stats"])
+        self.other = {}
 
     def run(self, stepar, sanitise=True):
         '''
@@ -225,10 +227,17 @@ class PipeLine:
         if sanitise:
             if stepar['sync']['method'] in ['GXWT']:
                 if sanitise is True: stepar['red1D'] = None
-                elif sanitise == 'halt': halt('red1D is an invalid step for GXWT')
+                elif sanitise == 'halt': halt('"red1D" is an invalid step for GXWT')
             if stepar['sync']['method'] in ['WCT', 'GXWT']:
                 if sanitise is True: stepar['phase'] = None
-                elif sanitise == 'halt': halt('phase is an invalid step for WCT and GXWT')
+                elif sanitise == 'halt': halt('"phase" is an invalid step for WCT and GXWT')
+
+        if stepar['sync']['method'] in ['GXWT']:
+            
+            pass
+            # if 'matlab' in self.other
+            
+
         d = self.data['input']
         for st in self.par:
             assert st in stepar, f'"{st}" is not an allowed key'
