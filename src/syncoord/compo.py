@@ -10,10 +10,13 @@ from . import ptdata, ndarr, utils
 
 # .............................................................................
 
-def _vis_dictargs(ptd, par, key):
-    if par:
-        if isinstance(par[key],dict): ptd.visualise(**par[key])
-        elif par[key]: ptd.visualise()
+def _vis_dictargs(ptd, vpar, key, **kwargs):
+    if vpar:
+        if key is None: vpar_n = vpar
+        elif key in vpar: vpar_n = vpar[key]
+        else: return
+        if isinstance(vpar_n,dict): ptd.visualise(**vpar_n,**kwargs)
+        elif vpar_n: ptd.visualise(**kwargs)
 
 # .............................................................................
 
@@ -101,29 +104,29 @@ def sync( ptdin, par ):
     def _check_CWT_par(ptd):
         if 'frequency' in ptdin.names.dim:
             raise Exception("Frequency-decomposed data is not suitable for CWT.")
-    visint = par.get('visint',False)
+    visint = par.pop('visint',False)
     mat_eng = par.get('mat_eng',None)
 
     if par['method'] == 'r':
         sync_1 = ptdata.kuramoto_r( ptdin )
+
     elif par['method'] == 'Rho':
         sync_1 = ptdata.rho( ptdin )
+
     elif par['method'] == 'PLV':
         plv_pairwise = ptdata.plv( ptdin, par['windows'] )
-        
-        
-        
+        _vis_dictargs(plv_pairwise, visint, None)
         sync_1 = ptdata.aggrax( plv_pairwise, function='mean' )
+
     elif par['method'] == 'WCT':
         _check_CWT_par(ptdin)
         if isinstance(par['cwt_freq'],list): minmaxf = par.pop('cwt_freq')
         else: minmaxf = [par['cwt_freq'], par.pop('cwt_freq')]
         if 'posprocess' not in par: par['postprocess'] = 'coinan'
         wct_pairwise = ptdata.wct( ptdin, minmaxf, 0, -1, **par )
-        
-        # _vis_dictargs(ptd, par, 'visint')
-        
+        _vis_dictargs(wct_pairwise, visint, None)
         sync_1 = ptdata.aggrax( wct_pairwise, axis=0, function='mean' )
+
     elif par['method'] == 'GXWT':
         _check_CWT_par(ptdin)
         if isinstance(par['cwt_freq'],list): minmaxf = par.pop('cwt_freq')
@@ -131,12 +134,12 @@ def sync( ptdin, par ):
         if ptdata.data[0].ndim == 3: fixed_axes = [-2,-1]
         elif ptdata.data[0].ndim == 2: fixed_axes = -1
         gxwt_pairwise = ptdata.gxwt( ptdin, minmaxf, 0, fixed_axes, **par  )
-        
-        
-        
+        _vis_dictargs(gxwt_pairwise, visint, None)
         sync_1 = ptdata.aggrax( gxwt_pairwise, axis=0, function='mean' )
+
     try:
         if sync_1.names.dim[-2] == 'frequency':
+            _vis_dictargs(sync_1, visint, None, vscale=1.3)
             sync_2 = ptdata.aggrax( sync_1, axis=-2, function='mean' )
         else: sync_2 = sync_1
     except: sync_2 = sync_1
@@ -166,8 +169,8 @@ def stats( ptdin, par ):
         yes_secmargins = ['$r$',r'$\rho$']
         not_secmargins = ['PLV','WCT','GXWT']
         if 'margins' not in kwargs:
-            if ptdin.labels.main in ['$r$',r'$\rho$']: kwargs['margins'] = 'secsfromnan'
-            elif ptdin.labels.main in ['PLV','WCT','GXWT']: kwargs['margins'] = None
+            if ptdin.labels.main in ['$r$',r'$\rho$','PLV']: kwargs['margins'] = 'secsfromnan'
+            elif ptdin.labels.main in ['WCT','GXWT']: kwargs['margins'] = None
             else: raise Exception(f'Invalild PtData.labels.main : {ptdin.labels.main}')
         ptdout = ptdata.secstats( ptdin, **kwargs )
     elif par['func'] == funcs[1]:
