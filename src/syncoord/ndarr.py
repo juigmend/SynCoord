@@ -5,6 +5,8 @@ import numpy as np
 from scipy import signal
 from scipy.interpolate import CubicSpline
 from scipy.fft import rfft
+import warnings
+warnings.filterwarnings(action='ignore', message='Mean of empty slice')
 
 from . import utils
 
@@ -465,7 +467,6 @@ def section_stats( arr_nd, idx_sections, fps, last=True, margins=None, axis=-1,
                          dimensions are [statistic, section] unless only one statistic has been
                          specified in statnames. Order as in argument 'statnames'.
     '''
-
     if isinstance(statnames,str): statnames = [statnames]
     n_stats = len(statnames)
     if 0 not in idx_sections: idx_sections = [0] + idx_sections
