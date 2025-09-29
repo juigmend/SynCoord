@@ -255,12 +255,13 @@ class PipeLine:
             assert st in stepar, f'"{st}" is not an allowed key'
             if stepar[st] != self.par[st]:
                 if stepar[st] is not None:
-                    if ('vis' in stepar[st]) and (stepar[st]['vis'] is not None):
-                        if stepar[st]['vis'] is True: stepar[st]['vis'] = gvis
-                        else: stepar[st]['vis'] = {**stepar[st]['vis'],**gvis}
-                    if ('visint' in stepar[st]) and (stepar[st]['visint'] is not None):
-                        if stepar[st]['visint'] is True: stepar[st]['visint'] = gvis
-                        else: stepar[st]['visint'] = {**stepar[st]['visint'],**gvis}
+                    if gvis is not None:
+                        if ('vis' in stepar[st]) and (stepar[st]['vis'] is not None):
+                            if stepar[st]['vis'] is True: stepar[st]['vis'] = gvis
+                            else: stepar[st]['vis'] = {**stepar[st]['vis'],**gvis}
+                        if ('visint' in stepar[st]) and (stepar[st]['visint'] is not None):
+                            if stepar[st]['visint'] is True: stepar[st]['visint'] = gvis
+                            else: stepar[st]['visint'] = {**stepar[st]['visint'],**gvis}
                     fstr = st + '(d, stepar[st])'
                     d = eval(fstr)
                 self.data[st] = d
