@@ -1881,7 +1881,7 @@ def visualise( ptdata, **kwargs ):
     idx_isochrsec = None
     x_ticklabelling_dictargs = dict( vistype=vistype, x_ticklabelling=x_ticklabelling,
                                      xpercent=xpercent )
-    font_sizes = {'small':10 * , 'medium': 12, 'large': 16}
+    font_sizes = {'small':10, 'medium': 12, 'large': 16}
     if isinstance(fontsize,(float,int)): font_sizes = {k:v*fontsize for k,v in font_sizes.items() }
     elif isinstance(fontsize,dict): font_sizes = {**font_sizes, **fontsize}
     else: raise Exception('Invalid value for arg "fontsize".')
