@@ -239,11 +239,13 @@ class PipeLine:
         '''
         if sanitise:
             if stepar['sync']['method'] in ['GXWT']:
-                if sanitise is True: stepar['red1D'] = None
-                elif sanitise == 'halt': halt('"red1D" is an invalid step for GXWT')
+                if stepar['red1D'] not in [None,False]:
+                    if sanitise is True: stepar['red1D'] = None
+                    elif sanitise == 'halt': halt('"red1D" is an invalid step for GXWT')
             if stepar['sync']['method'] in ['WCT', 'GXWT']:
-                if sanitise is True: stepar['phase'] = None
-                elif sanitise == 'halt': halt('"phase" is an invalid step for WCT and GXWT')
+                if stepar['phase'] not in [None,False]:
+                    if sanitise is True: stepar['phase'] = None
+                    elif sanitise == 'halt': halt('"phase" is an invalid step for WCT and GXWT')
 
         if stepar['sync']['method'] in ['GXWT']:
             if isinstance(self.other['matlab'],str) or isinstance(self.other['matlab'],list):
