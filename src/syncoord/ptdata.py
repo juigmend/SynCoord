@@ -1964,7 +1964,7 @@ def visualise( ptdata, **kwargs ):
     fig.supxlabel(xlabel,fontsize=font_sizes['medium'])
     plt.suptitle( super_title + figtitle, fontsize=font_sizes['large'] )
     plt.tight_layout(rect=[0, 0.005, 1, 0.98])
-# TO-DO: this might leave a bit too much space in between ticks:
+    # TO-DO: this might leave a bit too much space in between ticks:
     if (y_ticks is not None) and (vis_arr.ndim == 2):
         for i_ax,spax in enumerate(sp_axes):
             yticks_loc = spax.get_yticks()
@@ -1980,5 +1980,6 @@ def visualise( ptdata, **kwargs ):
                     yticks_loc = np.delete(yticks_loc,-2)
                     del yticks_lbl[-2]
             sp_axes[i_ax].set_yticks(yticks_loc,labels=yticks_lbl)
+    plt.pause(0.1)
     if savepath:
         plt.savefig(savepath + '.png')
