@@ -1608,8 +1608,9 @@ def visualise( ptdata, **kwargs ):
                                    'dim x' = use ptdata.labels.dim[x],
                                    'index','default', or None.
             figtitle (str): Figure's title. If 'default', ptdata.name.main will be used.
-            font_sizes (float,dict): Float to rescale (default = 1) or dict with keys
-                                    'small', 'medium' and 'large' with corresponding values.
+            fontsize (float,dict): Float to rescale (default = 1) or dict with keys
+                                   'small', 'medium' and 'large' with corresponding values.
+            sptitle (bool): True (default) to display subplots' titles. False to not display.
             axes (int): Dimensions to visualise. 1 for 'line' and'spectrogram', 2 for 'imshow'.
             sel_list (list): Selection to display. Also can be input as keywords.
                              See documentation for syncoord.ptdata.select
@@ -1764,7 +1765,8 @@ def visualise( ptdata, **kwargs ):
     y_ticks = kwargs.pop('y_ticks',None)
     x_ticklabelling = kwargs.pop('x_ticklabelling','s')
     figtitle = kwargs.pop('figtitle','default')
-    fontsize = kwargs.pop('font_sizes',None)
+    fontsize = kwargs.pop('fontsize',None)
+    sptitle = kwargs.pop('sptitle',True)
     axes = kwargs.pop('axes',-1)
     sel_list = kwargs.pop('sel_list',None)
     savepath = kwargs.pop('savepath',None)
@@ -1884,7 +1886,7 @@ def visualise( ptdata, **kwargs ):
     font_sizes = {'small':10, 'medium': 12, 'large': 16}
     if isinstance(fontsize,(float,int)): font_sizes = {k:v*fontsize for k,v in font_sizes.items() }
     elif isinstance(fontsize,dict): font_sizes = {**font_sizes, **fontsize}
-    else: raise Exception('Invalid value for arg "fontsize".')
+    elif fontsize is not None: raise Exception('Invalid value for arg "fontsize".')
     for i_top in range(n_sel_top):
         fps = ptdata.topinfo['fps'].iloc[i_top]
         top_arr = data_dict[data_dict_keys[i_top]]
@@ -1954,7 +1956,7 @@ def visualise( ptdata, **kwargs ):
                     sp_lbl = ptdata.labels.dimel[i] # (singleton dim.) same labels for all top arrays
                 sp_title = ''.join([sp_title,'\n',sp_lbl])
             if printd: print(np.round(vis_arr,3))
-            if sp_title:
+            if sptitle and sp_title:
                 plt.title(sp_title,y=spt_y,fontsize=font_sizes['medium'])
             if new_i_top: new_i_top = False
             i_sp += 1
