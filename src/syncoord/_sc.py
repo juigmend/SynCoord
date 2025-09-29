@@ -132,12 +132,10 @@ def sync( ptdin, par ):
         _vis_dictargs(gxwt_pairwise, visint, None)
         sync_1 = ptdata.aggrax( gxwt_pairwise, axis=0, function='mean' )
 
-    try:
-        if sync_1.names.dim[-2] == 'frequency':
-            _vis_dictargs(sync_1, visint, None, vscale=1.3)
-            sync_2 = ptdata.aggrax( sync_1, axis=-2, function='mean' )
-        else: sync_2 = sync_1
-    except: sync_2 = sync_1
+    if sync_1.names.dim[-2] == 'frequency':
+        _vis_dictargs(sync_1, visint, None, vscale=1.3)
+        sync_2 = ptdata.aggrax( sync_1, axis=-2, function='mean' )
+    else: sync_2 = sync_1
     return sync_2
 
 def stats( ptdin, par ):
@@ -220,7 +218,7 @@ class PipeLine:
         self.other = {}
         if matlab: self.other['matlab'] = matlab
 
-    def run(self, stepar, sanitise=True):
+    def run(self, stepar, gvis=None, sanitise=True):
         '''
         Run a pipeline accorptding to specified steps and their parameters.
         Args:
@@ -230,12 +228,14 @@ class PipeLine:
                     "filt", "red1D", "phase", "sync", "stats".
                 The parameters' dict may include a dict "vis" with visualisation options,
                 or True for default settings.
-            sanitise (bool,str): Check for invalid steps in arg. "stepar". For example, if
-                stepar['sync']['method'] is 'WCT' or 'GXWT', "phase" is an invalid step.
-                    If True: invalid steps will be discarded from stepar.
-                    If 'halt': An exception will be raised and thus, the program will be stopped.
+            Optional:
+                gvis (dict) : Global visualisation options. Passed to syncooord.ptdata.visualise
+                sanitise (bool,str): Check for invalid steps in arg. "stepar". For example, if
+                    stepar['sync']['method'] is 'WCT' or 'GXWT', "phase" is an invalid step.
+                        If True: Invalid steps will be discarded from stepar.
+                        If 'halt': An exception will be raised and the program will stop.
         Returns:
-            (syncoord.ptdata.PtData): Data out.
+            (syncoord.ptdata.PtData): Resulting data.
         '''
         if sanitise:
             if stepar['sync']['method'] in ['GXWT']:
@@ -255,6 +255,12 @@ class PipeLine:
             assert st in stepar, f'"{st}" is not an allowed key'
             if stepar[st] != self.par[st]:
                 if stepar[st] is not None:
+                    if ('vis' in stepar[st]) and (stepar[st]['vis'] is not None):
+                        if stepar[st]['vis'] is True: stepar[st]['vis'] = gvis
+                        else: stepar[st]['vis'] = {**stepar[st]['vis'],**gvis}
+                    if ('visint' in stepar[st]) and (stepar[st]['visint'] is not None):
+                        if stepar[st]['visint'] is True: stepar[st]['visint'] = gvis
+                        else: stepar[st]['visint'] = {**stepar[st]['visint'],**gvis}
                     fstr = st + '(d, stepar[st])'
                     d = eval(fstr)
                 self.data[st] = d
