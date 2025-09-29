@@ -1702,7 +1702,7 @@ def visualise( ptdata, **kwargs ):
         elif xlabel == '%':
             xticks_percent_( xpercent, hax_len, vistype, idx_isochrsec=idx_isochrsec )
 
-    def overlay_vlines_( ax, loc, vlattr, numcolour='k', num_hvoffset=None ):
+    def overlay_vlines_( ax, loc, vlattr, numcolour='k', num_hvoffset=None, numsize=10 ):
         '''
         Overlay vertical lines.
         Args:
@@ -1715,6 +1715,7 @@ def visualise( ptdata, **kwargs ):
                 numcolor (str): Colour for numbers. None for no numbers.
                 num_hvoffset (float): Horizontal and vertical offset for the numbers,
                                       as percentage of axes' lengths.
+                numsize (float,int): Font size of the number.
         '''
         if not vlattr: vlattr='r:2f'
         ylims = ax.get_ylim()
@@ -1747,7 +1748,7 @@ def visualise( ptdata, **kwargs ):
                 ax.text( loc[i_s] + hv_offset[0],
                          ylims[0] + hv_offset[1],
                          i_s, rotation=0, color=numcolour,
-                         horizontalalignment='center')
+                         horizontalalignment='center', fontsize=numsize)
 
     kwargs = {**ptdata.vis,**kwargs}
     vistype = kwargs.pop('vistype','line')
@@ -1945,8 +1946,8 @@ def visualise( ptdata, **kwargs ):
                     xstart,xend = plt.xlim()
                     vlsec = [ ( (v/hax_len)*(xend-xstart)+xstart ).item() for v in vlsec]
                     vlattr = vlattr.replace('k','w')
-                overlay_vlines_( plt.gca(), vlsec, vlattr,
-                                numcolour=[0.6,0.1,0.2], num_hvoffset=snum_hvoff )
+                overlay_vlines_( plt.gca(), vlsec, vlattr, numcolour=[0.6,0.1,0.2],
+                                 num_hvoffset=snum_hvoff, numsize=font_sizes['small'] )
             for i in i_ch:
                 if isinstance(ptdata.labels.dimel[i],dict): # dict: different labels for each top array
                     sp_lbl = ptdata.labels.dimel[i][data_dict_keys[i_top]][i_nd[i]]
