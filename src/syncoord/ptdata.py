@@ -1608,6 +1608,8 @@ def visualise( ptdata, **kwargs ):
                                    'dim x' = use ptdata.labels.dim[x],
                                    'index','default', or None.
             figtitle (str): Figure's title. If 'default', ptdata.name.main will be used.
+            font_sizes (float,dict): Float to rescale (default = 1) or dict with keys
+                                    'small', 'medium' and 'large' with corresponding values.
             axes (int): Dimensions to visualise. 1 for 'line' and'spectrogram', 2 for 'imshow'.
             sel_list (list): Selection to display. Also can be input as keywords.
                              See documentation for syncoord.ptdata.select
@@ -1762,6 +1764,7 @@ def visualise( ptdata, **kwargs ):
     y_ticks = kwargs.pop('y_ticks',None)
     x_ticklabelling = kwargs.pop('x_ticklabelling','s')
     figtitle = kwargs.pop('figtitle','default')
+    fontsize = kwargs.pop('font_sizes',None)
     axes = kwargs.pop('axes',-1)
     sel_list = kwargs.pop('sel_list',None)
     savepath = kwargs.pop('savepath',None)
@@ -1878,6 +1881,10 @@ def visualise( ptdata, **kwargs ):
     idx_isochrsec = None
     x_ticklabelling_dictargs = dict( vistype=vistype, x_ticklabelling=x_ticklabelling,
                                      xpercent=xpercent )
+    font_sizes = {'small':10 * , 'medium': 12, 'large': 16}
+    if isinstance(fontsize,(float,int)): font_sizes = {k:v*fontsize for k,v in font_sizes.items() }
+    elif isinstance(fontsize,dict): font_sizes = {**font_sizes, **fontsize}
+    else: raise Exception('Invalid value for arg "fontsize".')
     for i_top in range(n_sel_top):
         fps = ptdata.topinfo['fps'].iloc[i_top]
         top_arr = data_dict[data_dict_keys[i_top]]
@@ -1926,8 +1933,10 @@ def visualise( ptdata, **kwargs ):
                 if isinstance(y_ticks,list): sp_yticks.append(y_ticks)
                 elif isinstance(y_ticks,dict): sp_yticks.append(y_ticks[ data_dict_keys[i_top] ])
                 sp_axes.append( plt.gca() )
-            plt.ylabel(ylabel)
+            plt.ylabel(ylabel, fontsize=font_sizes['small'])
             x_tick_labelling_( x_ticklabelling_dictargs )
+            plt.xticks(fontsize=font_sizes['small'])
+            plt.yticks(fontsize=font_sizes['small'])
             if sections and sections_appaxis_exist:
                 vlsec = ptdata.topinfo[f'trimmed_sections_{appaxis_lbl}s'].iloc[i_top]
                 if 'spectrogram' in vistype:
@@ -1946,11 +1955,11 @@ def visualise( ptdata, **kwargs ):
                 sp_title = ''.join([sp_title,'\n',sp_lbl])
             if printd: print(np.round(vis_arr,3))
             if sp_title:
-                plt.title(sp_title,y=spt_y)
+                plt.title(sp_title,y=spt_y,fontsize=font_sizes['medium'])
             if new_i_top: new_i_top = False
             i_sp += 1
-    fig.supxlabel(xlabel)
-    plt.suptitle( super_title + figtitle , fontsize=16 )
+    fig.supxlabel(xlabel,fontsize=font_sizes['medium'])
+    plt.suptitle( super_title + figtitle, fontsize=font_sizes['large'] )
     plt.tight_layout(rect=[0, 0.005, 1, 0.98])
 # TO-DO: this might leave a bit too much space in between ticks:
     if (y_ticks is not None) and (vis_arr.ndim == 2):
