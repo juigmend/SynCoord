@@ -1607,7 +1607,7 @@ def visualise( ptdata, **kwargs ):
                                    '%' = xticks as automatic percentage,
                                    'dim x' = use ptdata.labels.dim[x],
                                    'index','default', or None.
-            figtitle (str): Figure's title. If None, ptdata.name.main will be used.
+            figtitle (str): Figure's title. If 'default', ptdata.name.main will be used.
             axes (int): Dimensions to visualise. 1 for 'line' and'spectrogram', 2 for 'imshow'.
             sel_list (list): Selection to display. Also can be input as keywords.
                              See documentation for syncoord.ptdata.select
@@ -1761,7 +1761,7 @@ def visualise( ptdata, **kwargs ):
     y_label = kwargs.pop('y_label','default')
     y_ticks = kwargs.pop('y_ticks',None)
     x_ticklabelling = kwargs.pop('x_ticklabelling','s')
-    figtitle = kwargs.pop('figtitle',None)
+    figtitle = kwargs.pop('figtitle','default')
     axes = kwargs.pop('axes',-1)
     sel_list = kwargs.pop('sel_list',None)
     savepath = kwargs.pop('savepath',None)
@@ -1799,7 +1799,8 @@ def visualise( ptdata, **kwargs ):
 # TO-DO:
     # select time maybe by xlims instead of select_data.
     # sections could follow frame selection.
-    if figtitle is None: figtitle = ptdata.names.main
+    if figtitle == 'default': figtitle = ptdata.names.main
+    elif (figtitle is None) or (figtitle is False): figtitle = ''
     super_title = ''
     if vistype in ('line','cline'):
         if (groupby == 'default') and (data_dict[data_dict_keys[0]].ndim > len(axes)):
