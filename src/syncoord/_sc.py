@@ -118,7 +118,9 @@ def sync( ptdin, par ):
         else: minmaxf = [par['cwt_freq'], par.pop('cwt_freq')]
         if 'postprocess' not in par: par['postprocess'] = 'coinan'
         wct_pairwise = ptdata.wct( ptdin, minmaxf, 0, -1, **par )
-        if visint: visint['savepath'] = visint['savepath'] + '_pairs'
+        try:
+            if visint: visint['savepath'] = visint['savepath'] + '_pairs'
+        except: pass
         _vis_dictargs(wct_pairwise, visint, None)
         sync_1 = ptdata.aggrax( wct_pairwise, axis=0, function='mean' )
 
@@ -130,12 +132,16 @@ def sync( ptdin, par ):
         elif ptdin.data[0].ndim == 2: fixed_axes = -1
         if 'postprocess' not in par: par['postprocess'] = 'coinan'
         gxwt_pairwise = ptdata.gxwt( ptdin, minmaxf, 0, fixed_axes, **par  )
-        if visint: visint['savepath'] = visint['savepath'] + '_pairs'
+        try:
+            if visint: visint['savepath'] = visint['savepath'] + '_pairs'
+        except: pass
         _vis_dictargs(gxwt_pairwise, visint, None)
         sync_1 = ptdata.aggrax( gxwt_pairwise, axis=0, function='mean' )
 
     if sync_1.names.dim[-2] == 'frequency':
-        if visint: visint['savepath'] = visint['savepath'] + '_group'
+        try:
+            if visint: visint['savepath'] = visint['savepath'] + '_group'
+        except: pass
         _vis_dictargs(sync_1, visint, None, vscale=1.3)
         sync_2 = ptdata.aggrax( sync_1, axis=-2, function='mean' )
     else: sync_2 = sync_1
