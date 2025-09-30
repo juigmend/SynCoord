@@ -1981,5 +1981,4 @@ def visualise( ptdata, **kwargs ):
                     del yticks_lbl[-2]
             sp_axes[i_ax].set_yticks(yticks_loc,labels=yticks_lbl)
     plt.pause(0.1)
-    if savepath:
-        plt.savefig(savepath + '.png')
+    if savepath: plt.savefig(savepath + '.png')
