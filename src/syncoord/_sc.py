@@ -118,6 +118,7 @@ def sync( ptdin, par ):
         else: minmaxf = [par['cwt_freq'], par.pop('cwt_freq')]
         if 'postprocess' not in par: par['postprocess'] = 'coinan'
         wct_pairwise = ptdata.wct( ptdin, minmaxf, 0, -1, **par )
+        if visint: visint['savepath'] = visint['savepath'] + '_pairs'
         _vis_dictargs(wct_pairwise, visint, None)
         sync_1 = ptdata.aggrax( wct_pairwise, axis=0, function='mean' )
 
@@ -129,10 +130,12 @@ def sync( ptdin, par ):
         elif ptdin.data[0].ndim == 2: fixed_axes = -1
         if 'postprocess' not in par: par['postprocess'] = 'coinan'
         gxwt_pairwise = ptdata.gxwt( ptdin, minmaxf, 0, fixed_axes, **par  )
+        if visint: visint['savepath'] = visint['savepath'] + '_pairs'
         _vis_dictargs(gxwt_pairwise, visint, None)
         sync_1 = ptdata.aggrax( gxwt_pairwise, axis=0, function='mean' )
 
     if sync_1.names.dim[-2] == 'frequency':
+        if visint: visint['savepath'] = visint['savepath'] + '_group'
         _vis_dictargs(sync_1, visint, None, vscale=1.3)
         sync_2 = ptdata.aggrax( sync_1, axis=-2, function='mean' )
     else: sync_2 = sync_1
@@ -209,16 +212,17 @@ class PipeLine:
     def __init__(self,*args,**kwargs):
         if 'matlab' in kwargs: matlab = kwargs.pop('matlab')
         else: matlab = None
-        self.data = {}
+        steps = ["filt", "red1D", "phase", "sync","stats"]
+        self.data = dict.fromkeys(steps)
         self.data['input'] = None
         if args:
             if isinstance(args[0], ptdata.PtData): self.data['input'] = args[0]
             elif kwargs: self.data['input'] = ptdata.load(*args,**kwargs)
-        self.par = dict.fromkeys(["filt", "red1D", "phase", "sync","stats"])
+        self.par = dict.fromkeys(steps)
         self.other = {}
         if matlab: self.other['matlab'] = matlab
 
-    def run(self, stepar, gvis=None, sanitise=True):
+    def run(self, stepar, gvis=None, sanitise=True, verbose=False):
         '''
         Run a pipeline accorptding to specified steps and their parameters.
         Args:
@@ -230,6 +234,7 @@ class PipeLine:
                 or True for default settings.
             Optional:
                 gvis (dict) : Global visualisation options. Passed to syncooord.ptdata.visualise
+                    gvis['pathfolder'] (bool): True = 'savepath' is a folder. Default = False
                 sanitise (bool,str): Check for invalid steps in arg. "stepar". For example, if
                     stepar['sync']['method'] is 'WCT' or 'GXWT', "phase" is an invalid step.
                         If True: Invalid steps will be discarded from stepar.
@@ -247,6 +252,14 @@ class PipeLine:
                     if sanitise is True: stepar['phase'] = None
                     elif sanitise == 'halt': halt('"phase" is an invalid step for WCT and GXWT')
 
+        if isinstance(gvis,dict):
+            gvis_sw = True
+            if ('pathfolder' in gvis) and ('savepath' in gvis):
+                del gvis['pathfolder']
+                folderpath = gvis['savepath']
+            else: folderpath = None
+        else: gvis_sw = False
+
         if stepar['sync']['method'] in ['GXWT']:
             if isinstance(self.other['matlab'],str) or isinstance(self.other['matlab'],list):
                 self.other['matlab'] = utils.matlab_eng( addpaths=self.other['matlab'] )
@@ -255,17 +268,22 @@ class PipeLine:
         d = self.data['input']
         for st in self.par:
             assert st in stepar, f'"{st}" is not an allowed key'
-            if stepar[st] != self.par[st]:
+            if gvis_sw and (stepar[st] is not None):
+                if folderpath: gvis['savepath'] = f'{folderpath}/{st}'
+                if ('vis' in stepar[st]) and (stepar[st]['vis'] is not None):
+                    if stepar[st]['vis'] is True: stepar[st]['vis'] = gvis
+                    else: stepar[st]['vis'] = {**stepar[st]['vis'],**gvis}
+                if ('visint' in stepar[st]) and (stepar[st]['visint'] is not None):
+                    if stepar[st]['visint'] is True: stepar[st]['visint'] = gvis
+                    else: stepar[st]['visint'] = {**stepar[st]['visint'],**gvis}
+            if stepar[st] == self.par[st]:
+                if self.data[st]: d = self.data[st]
+            else:
                 if stepar[st] is not None:
-                    if gvis is not None:
-                        if ('vis' in stepar[st]) and (stepar[st]['vis'] is not None):
-                            if stepar[st]['vis'] is True: stepar[st]['vis'] = gvis
-                            else: stepar[st]['vis'] = {**stepar[st]['vis'],**gvis}
-                        if ('visint' in stepar[st]) and (stepar[st]['visint'] is not None):
-                            if stepar[st]['visint'] is True: stepar[st]['visint'] = gvis
-                            else: stepar[st]['visint'] = {**stepar[st]['visint'],**gvis}
+                    if verbose: print('computing',st,'...')
                     fstr = st + '(d, stepar[st])'
                     d = eval(fstr)
+                    self.par[st] = deepcopy(stepar[st])
                 self.data[st] = d
             _vis_dictargs(d, stepar[st], 'vis')
         self.data['output'] = d
