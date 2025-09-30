@@ -195,7 +195,7 @@ def select( ptdata,*args,**kwargs ):
                 name_sel = e
     sel = PtData(ptdata.topinfo)
 
-    def checktype_(obj):
+    def _checktype(obj):
         allowed_types = ( isinstance(obj,str), isinstance(obj,int),
                           isinstance(obj,slice), isinstance(obj,list) )
         if not any(allowed_types):
@@ -210,7 +210,7 @@ def select( ptdata,*args,**kwargs ):
         other_keys = [k for k in name_sel.keys() if k not in valid_names]
         if other_keys: raise Exception(f'Invalid keys: {", ".join(other_keys)}')
         name_sel = {k:v for k,v in name_sel.items() if k in valid_names}
-        for k in name_sel: checktype_(name_sel[k])
+        for k in name_sel: _checktype(name_sel[k])
         if 'top' in name_sel:
             idx_top_sel = name_sel.pop('top')
         loc_dim = [None for _ in range(len(ptdata.names.dim))]
@@ -223,7 +223,7 @@ def select( ptdata,*args,**kwargs ):
             else: loc_dim[i_dim] = 'all'
 
     if loc_sel:
-        for el in loc_sel: checktype_(el)
+        for el in loc_sel: _checktype(el)
         idx_top_sel = loc_sel[0]
         if len(loc_sel) > 1:
             loc_dim = loc_sel[1:]
@@ -457,21 +457,21 @@ def smooth( ptdata,**kwargs ):
         main_name =  f'Filtered with Butterworth {freq_response}'
         if ptdata.names.main: main_name = f'{main_name}\n{ptdata.names.main}'
         other = dict(list(kwargs.items())[:4]+list(kwargs.items())[5:])
-        def sosfiltfilt_(arr,sos):
+        def _sosfiltfilt(arr,sos):
             return signal.sosfiltfilt(sos, arr)
     elif filter_type in ['savgol','mean']:
         multiband_param = window_size
         if filter_type == 'savgol':
             main_name =  f'Filtered with Savitzky-Golay\n{ptdata.names.main}'
-            def savgol_(arr,ws):
-                return signal.savgol_filter( arr, ws, order)
+            def _savgol(arr,ws):
+                return signal._savgolfilter( arr, ws, order)
         elif filter_type == 'mean':
             # mean (moving average) disabled until topinfo start and sections are offset when
             # mode = 'valid'
             raise Exception("filter_type = 'mean' option not available")
             mode = kwargs.get('mode','same')
             main_name =  f'Filtered with moving mean)\n{ptdata.names.main}'
-            def mean_(arr,ws,mode):
+            def _mean(arr,ws,mode):
                 wsr = round(ws)
                 return np.convolve( arr, np.ones(wsr)/wsr, mode=mode)
         other = dict(list(kwargs.items())[4:])
@@ -508,12 +508,12 @@ def smooth( ptdata,**kwargs ):
         for mbp in multiband_param:
             if filter_type == 'butter':
                 sos = signal.butter(order, mbp, freq_response, fs=fps, output='sos')
-                arr_out = np.apply_along_axis(sosfiltfilt_, axis,  dd_in[i_top], sos)
+                arr_out = np.apply_along_axis(_sosfiltfilt, axis,  dd_in[i_top], sos)
             else:
                 if filter_type == 'savgol':
-                    arr_out = np.apply_along_axis(savgol_, axis, dd_in[i_top], int(mbp*fps))
+                    arr_out = np.apply_along_axis(_savgol, axis, dd_in[i_top], int(mbp*fps))
                 if filter_type == 'mean':
-                    arr_out = np.apply_along_axis(mean_, axis, dd_in[i_top], int(mbp*fps), mode)
+                    arr_out = np.apply_along_axis(_mean, axis, dd_in[i_top], int(mbp*fps), mode)
             out_matrix.append(arr_out)
         if (axis != 0) and (n_mbp > 1):
             dd_out[i_top] = np.transpose( np.array(out_matrix) , np.argsort(transposed_axes) )
@@ -1617,7 +1617,7 @@ def visualise( ptdata, **kwargs ):
             savepath (str): Full path (directories, filename, and extension) to save as PNG
     '''
 
-    def xticks_minsec_( fps, length_x, vistype, minseps=2 ):
+    def _xticks_minsec( fps, length_x, vistype, minseps=2 ):
         '''
         Convert and cast xticks expressed in frames to format "minutes:seconds".
         Args:
@@ -1652,7 +1652,7 @@ def visualise( ptdata, **kwargs ):
                 lbl_new = np.delete(lbl_new,-2)
         plt.xticks(loc_new, lbl_new)
 
-    def xticks_percent_( x_percent, length_x, vistype, idx_isochrsec=None ):
+    def _xticks_percent( x_percent, length_x, vistype, idx_isochrsec=None ):
         '''
         Make and cast xticks as percentage.
         Args:
@@ -1682,7 +1682,7 @@ def visualise( ptdata, **kwargs ):
         if 100 not in x_labels: x_labels[-1] = 100
         plt.xticks(x_ticks,x_labels)
 
-    def x_tick_labelling_( x_ticklabelling_dictargs ):
+    def _x_tick_labelling( x_ticklabelling_dictargs ):
         '''
         x_ticklabelling_dictargs.keys:
             vistype, x_ticklabelling, xpercent, fps, idx_isochrsec, hax_len
@@ -1694,15 +1694,15 @@ def visualise( ptdata, **kwargs ):
         idx_isochrsec = x_ticklabelling_dictargs['idx_isochrsec']
         hax_len = x_ticklabelling_dictargs['hax_len']
         if x_ticklabelling == 's':
-            xticks_minsec_( fps, hax_len, vistype )
+            _xticks_minsec( fps, hax_len, vistype )
         elif x_ticklabelling == 'blank':
             plt.xticks([],[])
         elif x_ticklabelling == 'index':
             plt.xticks((range(hax_len)),([str(v) for v in range(hax_len)]))
         elif xlabel == '%':
-            xticks_percent_( xpercent, hax_len, vistype, idx_isochrsec=idx_isochrsec )
+            _xticks_percent( xpercent, hax_len, vistype, idx_isochrsec=idx_isochrsec )
 
-    def overlay_vlines_( ax, loc, vlattr, numcolour='k', num_hvoffset=None, numsize=10 ):
+    def _overlay_vlines( ax, loc, vlattr, numcolour='k', num_hvoffset=None, numsize=10 ):
         '''
         Overlay vertical lines.
         Args:
@@ -1906,7 +1906,7 @@ def visualise( ptdata, **kwargs ):
                     sp_title = '"'+ptdata.topinfo['Name'].iloc[i_top]+'"'
                 elif 'Group' in ptdata.topinfo:
                     sp_title = 'Group: "'+ptdata.topinfo['Group'].iloc[i_top]+'"'
-            plt.subplot(n_sp,1,i_sp)
+            plt.subplot(n_sp, 1, i_sp)
             if sing_dims: vis_arr = np.squeeze(vis_arr)
             hax_len = vis_arr.shape[axes[-1]]
             x_ticklabelling_dictargs['hax_len'] = hax_len
@@ -1937,7 +1937,7 @@ def visualise( ptdata, **kwargs ):
                 elif isinstance(y_ticks,dict): sp_yticks.append(y_ticks[ data_dict_keys[i_top] ])
                 sp_axes.append( plt.gca() )
             plt.ylabel(ylabel, fontsize=font_sizes['small'])
-            x_tick_labelling_( x_ticklabelling_dictargs )
+            _x_tick_labelling( x_ticklabelling_dictargs )
             plt.xticks(fontsize=font_sizes['small'])
             plt.yticks(fontsize=font_sizes['small'])
             if sections and sections_appaxis_exist:
@@ -1946,7 +1946,7 @@ def visualise( ptdata, **kwargs ):
                     xstart,xend = plt.xlim()
                     vlsec = [ ( (v/hax_len)*(xend-xstart)+xstart ).item() for v in vlsec]
                     vlattr = vlattr.replace('k','w')
-                overlay_vlines_( plt.gca(), vlsec, vlattr, numcolour=[0.6,0.1,0.2],
+                _overlay_vlines( plt.gca(), vlsec, vlattr, numcolour=[0.6,0.1,0.2],
                                  num_hvoffset=snum_hvoff, numsize=font_sizes['small'] )
             for i in i_ch:
                 if isinstance(ptdata.labels.dimel[i],dict): # dict: different labels for each top array
