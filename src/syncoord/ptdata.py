@@ -1616,7 +1616,7 @@ def visualise( ptdata, **kwargs ):
             axes (int): Dimensions to visualise. 1 for 'line' and'spectrogram', 2 for 'imshow'.
             sel_list (list): Selection to display. Also can be input as keywords.
                              See documentation for syncoord.ptdata.select
-            retspax (bool): Return a list with subplot axes. Default = False
+            retspax (bool): Return subplot axes. Default = False
             savepath (str): Full path (directories, filename, and extension) to save as PNG
     Returns:
         spax (dict{key:list}): Subplot axes, if arg. "retspax" is True. Keys are same as in
