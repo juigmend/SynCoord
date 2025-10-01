@@ -188,8 +188,10 @@ def _vis_dictargs(ptd, vpar, key, **kwargs):
         if key is None: vpar_n = vpar
         elif key in vpar: vpar_n = vpar[key]
         else: return
-        if isinstance(vpar_n,dict): ptd.visualise(**vpar_n,**kwargs)
-        elif vpar_n: ptd.visualise(**kwargs)
+        if isinstance(vpar_n,dict): spax = ptd.visualise(**vpar_n,**kwargs)
+        elif vpar_n: spax = ptd.visualise(**kwargs)
+        try: return spax
+        except: pass
 # .............................................................................
 
 class PipeLine:
@@ -238,6 +240,9 @@ class PipeLine:
                     "filt", "red1D", "phase", "sync", "stats".
                 The parameters' dict may include a dict "vis" with visualisation options,
                 or True for default settings.
+                Other optional arguments:
+                    stepar['stats']['vis']['merge'] (bool): If True, the continuous group
+                        synchronisation plot and the statistics plot will be merged.
             Optional:
                 gvis (dict) : Global visualisation options. Passed to syncooord.ptdata.visualise
                     gvis['pathfolder'] (bool): True = 'savepath' is a folder. Default = False
@@ -271,6 +276,9 @@ class PipeLine:
                 self.other['matlab'] = utils.matlab_eng( addpaths=self.other['matlab'] )
             stepar['sync']['matlabeng'] = self.other['matlab']
 
+        try: vismrg = stepar['stats']['vis'].pop('merge')
+        except: vismrg = False
+
         d = self.data['input']
         for st in self.par:
             assert st in stepar, f'"{st}" is not an allowed key'
@@ -291,6 +299,28 @@ class PipeLine:
                     d = eval(fstr)
                     self.par[st] = deepcopy(stepar[st])
                 self.data[st] = d
-            _vis_dictargs(d, stepar[st], 'vis')
+            
+            if vismrg is True:
+                if st == 'sync':
+                    stepar[st]['vis']['retspax'] = True
+                    spax = _vis_dictargs(d, stepar[st], 'vis')
+                elif st == 'stats':
+                    for k in d.data:
+                        assert len(spax[k]) == 1, ''.join([ 'Cannot merge visualisation of sync and ',
+                            'stats when there are more than one dimensions of sync data.'])
+                        ax = spax[k][0]
+                        n_frames = self.data['sync'].data[k].shape[-1]
+                        contsex = np.zeros(n_frames)
+                        idx_secends = d.topinfo['trimmed_sections_frames'][k] + [n_frames]
+                        i_start = 0
+                        for i_sec, i_end in enumerate(idx_secends):
+                            contsex[i_start:i_end] = d.data[k][i_sec]
+                            i_start = i_end
+                        try:
+                            if stepar[st]['vis']['printd'] is True: print(np.round(d.data[k],3))
+                        except: pass
+                        ax.plot(contsex,'--',linewidth=3)
+            else: _vis_dictargs(d, stepar[st], 'vis')
+            
         self.data['output'] = d
         return d
