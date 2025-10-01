@@ -115,7 +115,9 @@ class PtData:
             return -1
 
     def visualise(self,**kwargs):
-        visualise(self,**kwargs)
+        retspax = kwargs.get('retspax',False)
+        if retspax is True: return visualise(self,**kwargs)
+        else: visualise(self,**kwargs)
 
 def load( preproc_data, *props, annot_path=None, max_n_files=None,
               print_info=True, **kwargs ):
@@ -1614,7 +1616,11 @@ def visualise( ptdata, **kwargs ):
             axes (int): Dimensions to visualise. 1 for 'line' and'spectrogram', 2 for 'imshow'.
             sel_list (list): Selection to display. Also can be input as keywords.
                              See documentation for syncoord.ptdata.select
+            retspax (bool): Return a list with subplot axes. Default = False
             savepath (str): Full path (directories, filename, and extension) to save as PNG
+    Returns:
+        spax (dict{key:list}): Subplot axes, if arg. "retspax" is True. Keys are same as in
+                                 topinfo and data.
     '''
 
     def _xticks_minsec( fps, length_x, vistype, minseps=2 ):
@@ -1770,6 +1776,7 @@ def visualise( ptdata, **kwargs ):
     sptitle = kwargs.pop('sptitle',True)
     axes = kwargs.pop('axes',-1)
     sel_list = kwargs.pop('sel_list',None)
+    retspax = kwargs.pop('retspax',False)
     savepath = kwargs.pop('savepath',None)
 
     if y_label == 'default': ylabel = ptdata.labels.main
@@ -1880,7 +1887,6 @@ def visualise( ptdata, **kwargs ):
     fig = plt.figure(figsize=(12*hscale,fig_height))
     if y_ticks is not None:
         sp_yticks = []
-        sp_axes = []
     idx_isochrsec = None
     x_ticklabelling_dictargs = dict( vistype=vistype, x_ticklabelling=x_ticklabelling,
                                      xpercent=xpercent )
@@ -1888,16 +1894,18 @@ def visualise( ptdata, **kwargs ):
     if isinstance(fontsize,(float,int)): font_sizes = {k:v*fontsize for k,v in font_sizes.items() }
     elif isinstance(fontsize,dict): font_sizes = {**font_sizes, **fontsize}
     elif fontsize is not None: raise Exception('Invalid value for arg "fontsize".')
+    spax = {}
     for i_top in range(n_sel_top):
         fps = ptdata.topinfo['fps'].iloc[i_top]
-        top_arr = data_dict[data_dict_keys[i_top]]
+        k = data_dict_keys[i_top]
+        top_arr = data_dict[k]
         new_i_top = True
         if xticks_percent__sections:
-            idx_isochrsec = ptdata.topinfo[f'trimmed_sections_{appaxis_lbl}s'].\
-                            loc[data_dict_keys[i_top]]
+            idx_isochrsec = ptdata.topinfo[f'trimmed_sections_{appaxis_lbl}s'].loc[k]
         x_ticklabelling_dictargs['fps'] = fps
         x_ticklabelling_dictargs['idx_isochrsec'] = idx_isochrsec
         array_iterator = ndarr.diter( top_arr, lockdim=groupby )
+        spax[k] = []
         for vis_arr,i_ch,i_nd in array_iterator:
 # TO-DO: Arg. 'topidxkey' (boolean) to add index and key of the top array to the title.
             sp_title = ''
@@ -1906,7 +1914,8 @@ def visualise( ptdata, **kwargs ):
                     sp_title = '"'+ptdata.topinfo['Name'].iloc[i_top]+'"'
                 elif 'Group' in ptdata.topinfo:
                     sp_title = 'Group: "'+ptdata.topinfo['Group'].iloc[i_top]+'"'
-            plt.subplot(n_sp, 1, i_sp)
+            ax = plt.subplot(n_sp, 1, i_sp)
+            spax[k].append(ax)
             if sing_dims: vis_arr = np.squeeze(vis_arr)
             hax_len = vis_arr.shape[axes[-1]]
             x_ticklabelling_dictargs['hax_len'] = hax_len
@@ -1934,8 +1943,7 @@ def visualise( ptdata, **kwargs ):
             if y_lim: plt.ylim(y_lim)
             if (y_ticks is not None) and (vis_arr.ndim == 2) and (vistype == 'imshow'):
                 if isinstance(y_ticks,list): sp_yticks.append(y_ticks)
-                elif isinstance(y_ticks,dict): sp_yticks.append(y_ticks[ data_dict_keys[i_top] ])
-                sp_axes.append( plt.gca() )
+                elif isinstance(y_ticks,dict): sp_yticks.append(y_ticks[ k ])
             plt.ylabel(ylabel, fontsize=font_sizes['small'])
             _x_tick_labelling( x_ticklabelling_dictargs )
             plt.xticks(fontsize=font_sizes['small'])
@@ -1950,7 +1958,7 @@ def visualise( ptdata, **kwargs ):
                                  num_hvoffset=snum_hvoff, numsize=font_sizes['small'] )
             for i in i_ch:
                 if isinstance(ptdata.labels.dimel[i],dict): # dict: different labels for each top array
-                    sp_lbl = ptdata.labels.dimel[i][data_dict_keys[i_top]][i_nd[i]]
+                    sp_lbl = ptdata.labels.dimel[i][k][i_nd[i]]
                 elif isinstance(ptdata.labels.dimel[i],list):
                     sp_lbl = ptdata.labels.dimel[i][i_nd[i]] # list: same labels for all top arrays
                 else:
@@ -1966,19 +1974,21 @@ def visualise( ptdata, **kwargs ):
     plt.tight_layout(rect=[0, 0.005, 1, 0.98])
     # TO-DO: this might leave a bit too much space in between ticks:
     if (y_ticks is not None) and (vis_arr.ndim == 2):
-        for i_ax,spax in enumerate(sp_axes):
-            yticks_loc = spax.get_yticks()
-            if min(yticks_loc) < 0: yticks_loc = np.delete(yticks_loc,0)
-            if max(yticks_loc) > (len(sp_yticks[i_ax])-1): yticks_loc = np.delete(yticks_loc,-1)
-            yticks_lbl = [ str(round(sp_yticks[i_ax][int(i)],1)).rstrip('0').rstrip('.') \
-                           for i in yticks_loc ]
-            max_ytick = len(sp_yticks[i_ax])-1
-            if max_ytick not in yticks_loc:
-                yticks_loc = np.append(yticks_loc,max_ytick)
-                yticks_lbl.append(str(round(sp_yticks[i_ax][-1],1)).rstrip('0').rstrip('.'))
-                if (yticks_loc[-1] - yticks_loc[-2]) <= 1:
-                    yticks_loc = np.delete(yticks_loc,-2)
-                    del yticks_lbl[-2]
-            sp_axes[i_ax].set_yticks(yticks_loc,labels=yticks_lbl)
-    plt.pause(0.1)
+        for k in data_dict_keys:
+            for i_ax, ax_ in enumerate(spax[k]):
+                yticks_loc = ax_.get_yticks()
+                if min(yticks_loc) < 0: yticks_loc = np.delete(yticks_loc,0)
+                if max(yticks_loc) > (len(sp_yticks[i_ax])-1): yticks_loc = np.delete(yticks_loc,-1)
+                yticks_lbl = [ str(round(sp_yticks[i_ax][int(i)],1)).rstrip('0').rstrip('.') \
+                               for i in yticks_loc ]
+                max_ytick = len(sp_yticks[i_ax])-1
+                if max_ytick not in yticks_loc:
+                    yticks_loc = np.append(yticks_loc,max_ytick)
+                    yticks_lbl.append(str(round(sp_yticks[i_ax][-1],1)).rstrip('0').rstrip('.'))
+                    if (yticks_loc[-1] - yticks_loc[-2]) <= 1:
+                        yticks_loc = np.delete(yticks_loc,-2)
+                        del yticks_lbl[-2]
+                spax[k][i_ax].set_yticks(yticks_loc,labels=yticks_lbl)
+    # plt.pause(0.1)
     if savepath: fig.savefig(savepath + '.png')
+    if retspax is True:  return spax
