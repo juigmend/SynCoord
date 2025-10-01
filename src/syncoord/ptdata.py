@@ -1989,6 +1989,6 @@ def visualise( ptdata, **kwargs ):
                         yticks_loc = np.delete(yticks_loc,-2)
                         del yticks_lbl[-2]
                 spax[k][i_ax].set_yticks(yticks_loc,labels=yticks_lbl)
-    # plt.pause(0.1)
     if savepath: fig.savefig(savepath + '.png')
     if retspax is True:  return spax
+    plt.pause(0.1)
