@@ -323,6 +323,8 @@ class PipeLine:
                                 print(np.round(discrete_secs,3))
                         except: pass
                         ax.plot(d.data[k],linewidth=3)
+                        try: ax.figure.savefig(stepar[st]['vis']['savepath'] + '.png')
+                        except: pass
             else: _vis_dictargs(d, stepar[st], 'vis')
         self.data['output'] = d
         return d
