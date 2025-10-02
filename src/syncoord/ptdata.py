@@ -1602,7 +1602,9 @@ def visualise( ptdata, **kwargs ):
             vlattr (str): Vertical lines' attributes colour, style, width, f (full vertical)
                           or b (bits at the top and bottom).
                           Example: 'r:2f' means red, dotted, width=2, full vertical line.
-            snum_hvoff (list[float]): Horizontal and vertical offset factor for section numbers.
+            snumpar (dict): Parameters for section numbrs.
+                            snumpar['offset'] (list): Offset factor [horizontal, vertical].
+                            snumpar['colour'] (list): RGB. None to not show numbers.
             y_lim (list[float]): Minimum and maximum for vertical axes. Overrides "rescale".
             y_label (str): Label for vertical axis. 'default' uses ptdata.labels.main
                            or 'Hz' if ptdata.names.dim[-2] = 'frequency'
@@ -1770,7 +1772,8 @@ def visualise( ptdata, **kwargs ):
     dlattr = kwargs.pop('dlattr',None)
     sections = kwargs.pop('sections',True)
     vlattr = kwargs.pop('vlattr','k:2f')
-    snum_hvoff = kwargs.pop('snum_hvoff',[0,1.13])
+    snumpar = kwargs.pop('snumpar',{})
+    snumpar = {'offset':[0,1.13], 'colour':[0.6,0.1,0.2], **snumpar}
     y_lim = kwargs.pop('y_lim',None)
     y_label = kwargs.pop('y_label','default')
     y_ticks = kwargs.pop('y_ticks',None)
@@ -1837,7 +1840,7 @@ def visualise( ptdata, **kwargs ):
         else: groupby = None
     spt_y = 1
     if sections and sections_appaxis_exist:
-        spt_y = snum_hvoff[1]*1.1
+        spt_y = snumpar['offset'][1]*1.1
         xticks_percent__sections = True
     else: xticks_percent__sections = False
     data_shape = list(data_dict[data_dict_keys[0]].shape)
@@ -1958,8 +1961,8 @@ def visualise( ptdata, **kwargs ):
                     xstart,xend = plt.xlim()
                     vlsec = [ ( (v/hax_len)*(xend-xstart)+xstart ).item() for v in vlsec]
                     vlattr = vlattr.replace('k','w')
-                _overlay_vlines( plt.gca(), vlsec, vlattr, numcolour=[0.6,0.1,0.2],
-                                 num_hvoffset=snum_hvoff, numsize=font_sizes['small'] )
+                _overlay_vlines( plt.gca(), vlsec, vlattr, numcolour=snumpar['colour'],
+                                 num_hvoffset=snumpar['offset'], numsize=font_sizes['small'] )
             for i in i_ch:
                 if isinstance(ptdata.labels.dimel[i],dict): # dict: different labels for each top array
                     sp_lbl = ptdata.labels.dimel[i][k][i_nd[i]]
