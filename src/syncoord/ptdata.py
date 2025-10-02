@@ -1339,6 +1339,7 @@ def secstats( ptdata, **kwargs ):
     Returns:
         New PtData object.
     '''
+    cont = kwargs.get('cont',False)
     if not 'statnames' in kwargs:
         kwargs['statnames'] = [ 'mean','median','min','max','std' ]
     axis = kwargs.get('axis',-1)
@@ -1361,9 +1362,13 @@ def secstats( ptdata, **kwargs ):
     main_label = ptdata.labels.main
     dim_labels = deepcopy(ptdata.labels.dim)
     dimel_labels = deepcopy(ptdata.labels.dimel)
-    dim_names[-1] = 'section'
-    dim_labels[-1] = 'sec.'
-    dimel_labels[-1] = 'sec.'
+    if cont is False:
+        vis ={ 'groupby':None, 'vistype':'cline', 'dlattr':ptdata.vis['dlattr'],
+               'sections':False, 'x_ticklabelling':'index' }
+        dim_names[-1] = 'section'
+        dim_labels[-1] = 'sec.'
+        dimel_labels[-1] = 'sec.'
+    else: vis = {**ptdata.vis, 'sections':True}
 
     one_stat = ( isinstance(kwargs['statnames'],str)
                  or (isinstance(kwargs['statnames'],list) and len(kwargs['statnames'])==1) )
@@ -1382,8 +1387,7 @@ def secstats( ptdata, **kwargs ):
     sextats.labels.dim = dim_labels
     sextats.labels.dimel = dimel_labels
     sextats.data = dd_out
-    sextats.vis = {'groupby':None,'vistype':'cline','dlattr':ptdata.vis['dlattr'],'sections':False,
-                   'x_ticklabelling':'index'}
+    sextats.vis = vis
     sextats.other = ptdata.other.copy()
     return sextats
 
@@ -1795,8 +1799,8 @@ def visualise( ptdata, **kwargs ):
     if rescale:
         minmax = [float('inf'),-float('inf')]
         for _,arr in data_dict.items():
-            arr_max = arr.max()
-            arr_min = arr.min()
+            arr_max = np.nanmax(arr)
+            arr_min = np.nanmin(arr)
             if arr_min < minmax[0]: minmax[0] = arr_min
             if arr_max > minmax[1]: minmax[1] = arr_max
         minmax = [None if abs(v)==float('inf') else v for v in minmax]
