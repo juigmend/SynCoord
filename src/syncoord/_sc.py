@@ -299,28 +299,30 @@ class PipeLine:
                     d = eval(fstr)
                     self.par[st] = deepcopy(stepar[st])
                 self.data[st] = d
-            
+
             if vismrg is True:
                 if st == 'sync':
                     stepar[st]['vis']['retspax'] = True
                     spax = _vis_dictargs(d, stepar[st], 'vis')
                 elif st == 'stats':
+                    assert stepar[st]['func'] == 'secstats', 'Merge not yet implemented for func "corr".'
                     for k in d.data:
                         assert len(spax[k]) == 1, ''.join([ 'Cannot merge visualisation of sync and ',
                             'stats when there are more than one dimensions of sync data.'])
                         ax = spax[k][0]
-                        n_frames = self.data['sync'].data[k].shape[-1]
-                        contsex = np.zeros(n_frames)
-                        idx_secends = d.topinfo['trimmed_sections_frames'][k] + [n_frames]
-                        i_start = 0
-                        for i_sec, i_end in enumerate(idx_secends):
-                            contsex[i_start:i_end] = d.data[k][i_sec]
-                            i_start = i_end
                         try:
-                            if stepar[st]['vis']['printd'] is True: print(np.round(d.data[k],3))
+                            if stepar[st]['vis']['printd'] is True:
+                                n_frames = d.data[k].shape[-1]
+                                discrete_secs = []
+                                idx_secends = d.topinfo['trimmed_sections_frames'][k] + [n_frames]
+                                i_start = 0
+                                for i_end in idx_secends:
+                                    section = d.data[k][...,i_start:i_end]
+                                    discrete_secs.append( section[np.isfinite(section)][0].item() )
+                                    i_start = i_end
+                                print(np.round(discrete_secs,3))
                         except: pass
-                        ax.plot(contsex,'--',linewidth=3)
+                        ax.plot(d.data[k],linewidth=3)
             else: _vis_dictargs(d, stepar[st], 'vis')
-            
         self.data['output'] = d
         return d
