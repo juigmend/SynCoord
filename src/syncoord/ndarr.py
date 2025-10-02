@@ -502,7 +502,6 @@ def section_stats( arr_nd, idx_sections, fps, **kwargs):
             stats_cont = np.empty((n_stats,len(arr_1d_in)))
             stats_cont.fill(np.nan)
         stats_disc = np.empty((n_stats,n_sections))
-        
         if isinstance(margins_f,str):
             mf = np.isnan(arr_1d_in).argmin()
             mf_end = np.isnan(np.flip(arr_1d_in)).argmin()
@@ -536,7 +535,6 @@ def section_stats( arr_nd, idx_sections, fps, **kwargs):
                 elif this_statname == 'std':
                     if omitnan: stats_disc[i_stat,i_sec] = np.nanstd(this_section)
                     else: stats_disc[i_stat,i_sec] = np.std(this_section)
-                
                 if cont:
                     i_cont_start = i_sec_start
                     i_cont_end = i_sec_end
@@ -544,7 +542,6 @@ def section_stats( arr_nd, idx_sections, fps, **kwargs):
                         i_cont_start = i_cont_start + i_trim_start
                         i_cont_end = i_cont_end - i_trim_start
                     stats_cont[i_stat,i_cont_start:i_cont_end] = stats_disc[i_stat,i_sec]
-        
         if cont: return stats_cont
         else: return stats_disc
 
