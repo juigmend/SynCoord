@@ -149,36 +149,49 @@ def sync( ptdin, par ):
 
 def stats( ptdin, par ):
     '''
-    Apply statistics functions from syncoord.ptdata
+    Apply one or more statistics functions from syncoord.ptdata
     Available functions are: 'secstats', 'corr'.
+    The functions will be executed in the order as above.
     Args:
         ptdin (syncoord.ptdata.PtData): Data in.
         par (dict):
-            par['func'] (str): Funcion (see available functions above)
+            par['func'] (str,list): Funcion or functions (see available functions above)
             Optional:
                 kwargs: Arguments for the functions.
                 If func is 'secstats' the default for 'statnames' is 'mean".
     Returns:
-        (syncoord.ptdata.PtData): Data out.
+        If par['func'] is str:
+            (syncoord.ptdata.PtData): Data out.
+        If par['func'] is list:
+            stres (dict): Keys are as the input functions. Values are PtData objects.
     '''
     funcs = ['secstats', 'corr']
-    assert par['func'] in funcs, f"par['func'] = {par['func']} is invalid."
+    input_str = isinstance(par['func'],str)
+    if input_str: par['func'] = [par['func']]
+    for f in par['func']: assert f in funcs, f"par['func'] = {par['func']} is invalid."
     kwargs = par.copy()
     [kwargs.pop(k) for k in ['func','vis']]
+    d = ptdin
+    stres = {}
 
-    if par['func'] == funcs[0]:
+    if 'secstats' in par['func']:
         if 'statnames' not in kwargs: kwargs['statnames'] = 'mean'
         yes_secmargins = ['$r$',r'$\rho$']
         not_secmargins = ['PLV','WCT','GXWT']
         if 'margins' not in kwargs:
-            if ptdin.labels.main in ['$r$',r'$\rho$','PLV']: kwargs['margins'] = 'secsfromnan'
-            elif ptdin.labels.main in ['WCT','GXWT']: kwargs['margins'] = None
-            else: raise Exception(f'Invalild PtData.labels.main : {ptdin.labels.main}')
-        ptdout = ptdata.secstats( ptdin, **kwargs )
-    elif par['func'] == funcs[1]:
-        par.pop('func')
-        ptdout = ptdata.corr( ptdin, **kwargs )
-    return ptdout
+            if d.labels.main in ['$r$',r'$\rho$','PLV']: kwargs['margins'] = 'secsfromnan'
+            elif d.labels.main in ['WCT','GXWT']: kwargs['margins'] = None
+            else: raise Exception(f'Invalild PtData.labels.main : {d.labels.main}')
+        d = ptdata.secstats( d, **kwargs )
+        stres['secstats'] = d
+
+    if 'corr' in par['func']:
+        arr = kwargs.pop('arr')
+        d = ptdata.corr( d, arr, **kwargs )
+        stres['corr'] = d
+
+    if input_str: return d
+    else: return stres
 
 # .............................................................................
 # PRIVATE FUNCTIONS:
@@ -192,6 +205,11 @@ def _vis_dictargs(ptd, vpar, key, **kwargs):
         elif vpar_n: spax = ptd.visualise(**kwargs)
         try: return spax
         except: pass
+
+def _pvdisp(pval, sigdec=3):
+    thresh = 10**-sigdec
+    if pval < thresh: return f'p value < {thresh}'
+    else: return f'p value = {round(pval,sigdec)}'
 # .............................................................................
 
 class PipeLine:
@@ -300,31 +318,60 @@ class PipeLine:
                     self.par[st] = deepcopy(stepar[st])
                 self.data[st] = d
 
-            if vismrg is True:
-                if st == 'sync':
-                    stepar[st]['vis']['retspax'] = True
-                    spax = _vis_dictargs(d, stepar[st], 'vis')
-                elif st == 'stats':
-                    assert stepar[st]['func'] == 'secstats', 'Merge not yet implemented for func "corr".'
-                    for k in d.data:
-                        assert len(spax[k]) == 1, ''.join([ 'Cannot merge visualisation of sync and ',
-                            'stats when there are more than one dimensions of sync data.'])
-                        ax = spax[k][0]
-                        try:
-                            if stepar[st]['vis']['printd'] is True:
-                                n_frames = d.data[k].shape[-1]
-                                discrete_secs = []
-                                idx_secends = d.topinfo['trimmed_sections_frames'][k] + [n_frames]
-                                i_start = 0
-                                for i_end in idx_secends:
-                                    section = d.data[k][...,i_start:i_end]
-                                    discrete_secs.append( section[np.isfinite(section)][0].item() )
-                                    i_start = i_end
-                                print(np.round(discrete_secs,3))
-                        except: pass
-                        ax.plot(d.data[k],linewidth=3)
-                        try: ax.figure.savefig(stepar[st]['vis']['savepath'] + '.png')
-                        except: pass
+            if ((st == 'sync') or (st == 'stats')) and (vismrg is True):
+                if stepar['stats'].get('cont',False):
+                    if st == 'sync':
+                        if 'vis' not in stepar[st]: stepar[st]['vis'] = {}
+                        stepar[st]['vis']['retspax'] = True
+                        spax = _vis_dictargs(d, stepar[st], 'vis')
+                    elif st == 'stats':
+                        assert stepar[st]['func'] == 'secstats', 'Merge not yet implemented for func "corr".'
+                        for k in d.data:
+                            assert len(spax[k]) == 1, ''.join([ 'Cannot merge visualisation of sync ',
+                                'and stats when there are more than one dimensions of sync data.'])
+                            ax = spax[k][0]
+                            try:
+                                if stepar[st]['vis']['printd'] is True:
+                                    n_frames = d.data[k].shape[-1]
+                                    discrete_secs = []
+                                    fr = d.topinfo['trimmed_sections_frames'][k]
+                                    idx_secends = fr + [n_frames]
+                                    i_start = 0
+                                    for i_end in idx_secends:
+                                        section = d.data[k][...,i_start:i_end]
+                                        item = section[np.isfinite(section)][0].item()
+                                        discrete_secs.append(item)
+                                        i_start = i_end
+                                    print(np.round(discrete_secs,3))
+                            except: pass
+                            ax.plot(d.data[k],linewidth=3)
+                            try: ax.figure.savefig(stepar[st]['vis']['savepath'] + '.png')
+                            except: pass
+                else: # merged visualisation with discrete sections
+                    if st == 'stats':
+                        if isinstance(stepar[st]['func'],list):
+                            try:
+                                printd = stepar[st]['vis']['printd']
+                                corrkind = stepar[st].get('kind','Kendall')
+                                if corrkind == 'Kendall': corrsymbol = 'Tau'
+                            except: printd = False
+                            dsc = ptdata.PtData(d['secstats'].topinfo)
+                            for k in d['secstats'].data:
+                                sync_secmeans_rs = ndarr.rescale( d['secstats'].data[k] )
+                                arr_rs = ndarr.rescale(stepar[st]['arr'])
+                                if printd:
+                                    print(f'{corrsymbol} =',round(d['corr'].data[k][0],3))
+                                    print(_pvdisp(d['corr'].data[k][1]))
+                                dsc.data[k] = np.array([sync_secmeans_rs, arr_rs])
+                            dsc_vis = { 'vistype':'cline', 'sections':False,
+                                        'x_ticklabelling':'index' }
+                            spax = dsc.visualise( retspax=True, **dsc_vis, **gvis )
+                            lbl_1 = 'rescaled ' + stepar['sync']['method']
+                            lbl_2 = 'rescaled ' + stepar['stats'].get('arrlbl','arr')
+                            lbl_fs = gvis.get('fontsize',1) * 10
+                            for k in d['secstats'].data:
+                                spax[k][0].legend([lbl_1, lbl_2], fontsize=lbl_fs)
+
             else: _vis_dictargs(d, stepar[st], 'vis')
         self.data['output'] = d
         return d
