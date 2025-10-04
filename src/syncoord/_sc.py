@@ -345,8 +345,6 @@ class PipeLine:
                                     print(np.round(discrete_secs,3))
                             except: pass
                             ax.plot(d.data[k],linewidth=3)
-                            try: ax.figure.savefig(stepar[st]['vis']['savepath'] + '.png')
-                            except: pass
                 else: # merged visualisation with discrete sections
                     if st == 'stats':
                         if isinstance(stepar[st]['func'],list):
@@ -363,15 +361,19 @@ class PipeLine:
                                     print(f'{corrsymbol} =',round(d['corr'].data[k][0],3))
                                     print(_pvdisp(d['corr'].data[k][1]))
                                 dsc.data[k] = np.array([sync_secmeans_rs, arr_rs])
-                            dsc_vis = { 'vistype':'cline', 'sections':False,
+                            dsc_vis = { **gvis, 'vistype':'cline', 'sections':False,
                                         'x_ticklabelling':'index' }
-                            spax = dsc.visualise( retspax=True, **dsc_vis, **gvis )
+                            try: spath = dsc_vis.pop('savepath')
+                            except: spath = False
+                            spax = dsc.visualise( retspax=True, **dsc_vis )
                             lbl_1 = 'rescaled ' + stepar['sync']['method']
                             lbl_2 = 'rescaled ' + stepar['stats'].get('arrlbl','arr')
                             lbl_fs = gvis.get('fontsize',1) * 10
                             for k in d['secstats'].data:
-                                spax[k][0].legend([lbl_1, lbl_2], fontsize=lbl_fs)
-
+                                ax = spax[k][0]
+                                ax.legend([lbl_1, lbl_2], fontsize=lbl_fs)
+                try: ax.figure.savefig(stepar[st]['vis']['savepath'] + '.png')
+                except: pass
             else: _vis_dictargs(d, stepar[st], 'vis')
         self.data['output'] = d
         return d
