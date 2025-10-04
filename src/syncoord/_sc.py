@@ -186,9 +186,9 @@ def stats( ptdin, par ):
         stres['secstats'] = d
 
     if 'corr' in par['func']:
-        assert len(d.data) == 1, '"corr" "cont" only for PtData object with only one array.'
         arr = kwargs.pop('arr')
         if kwargs.get('cont',False):
+            assert len(d.data) == 1, '"corr" "cont" only for PtData object with only one array.'
             secs = d.topinfo.trimmed_sections_frames[0]
             shape = d.data[0].shape
             arr = ndarr.constant_secs(arr, secs, shape, last=True)
