@@ -13,6 +13,26 @@ from . import utils
 # .............................................................................
 # UTILITARIAN OPERATIONS:
 
+def constant_secs(shape, sections, values, last=True)
+    '''
+    Generates an array of constant values for each section.
+    Args:
+        shape (tuple)
+        sections (list,numpy.ndarray): Index of sections (frames).
+        values (list,numpy.ndarray): The constant values.
+        last (bool): If True (default), last section starts at the last index.
+    Returns:
+        (numpy.ndarray)
+    '''
+    assert len(values) == (len(sections) + last), 'lengths of sections and values are incompatible'
+    length = shape[-1]
+    arr = np.empty(shape)
+    i_prev = 0
+    for i_next, v in zip(sections, values):
+        arr[...,i_prev:i_next] = v
+        i_prev = i_next
+    return arr
+
 def rescale( arr, minmax=[0,1] ):
     arr = np.array(arr).astype(float)
     arr -= np.nanmin(arr)
