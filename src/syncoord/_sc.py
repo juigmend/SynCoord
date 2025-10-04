@@ -166,8 +166,8 @@ def stats( ptdin, par ):
             stres (dict): Keys are as the input functions. Values are PtData objects.
     '''
     funcs = ['secstats', 'corr']
-    input_str = isinstance(par['func'],str)
-    if input_str: par['func'] = [par['func']]
+    if isinstance(par['func'],str): par['func'] = [par['func']]
+    return_dict = len(par['func']) > 1
     for f in par['func']: assert f in funcs, f"par['func'] = {par['func']} is invalid."
     kwargs = par.copy()
     [kwargs.pop(k) for k in ['func','vis']]
@@ -186,17 +186,17 @@ def stats( ptdin, par ):
         stres['secstats'] = d
 
     if 'corr' in par['func']:
+        assert len(d.data) == 1, '"corr" "cont" only for PtData object with only one array.'
         arr = kwargs.pop('arr')
-        
-        arr = ndarr.constant_secs(, sections, values, last=True)
-        print(arr)
-        
-        
+        if kwargs.get('cont',False):
+            secs = d.topinfo.trimmed_sections_frames[0]
+            shape = d.data[0].shape
+            arr = ndarr.constant_secs(arr, secs, shape, last=True)
         d = ptdata.corr( d, arr, **kwargs )
         stres['corr'] = d
 
-    if input_str: return d
-    else: return stres
+    if return_dict: return stres
+    else: return d
 
 # .............................................................................
 # PRIVATE FUNCTIONS:
