@@ -187,6 +187,11 @@ def stats( ptdin, par ):
 
     if 'corr' in par['func']:
         arr = kwargs.pop('arr')
+        
+        arr = ndarr.constant_secs(, sections, values, last=True)
+        print(arr)
+        
+        
         d = ptdata.corr( d, arr, **kwargs )
         stres['corr'] = d
 

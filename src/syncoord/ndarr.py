@@ -13,13 +13,13 @@ from . import utils
 # .............................................................................
 # UTILITARIAN OPERATIONS:
 
-def constant_secs(shape, sections, values, last=True):
+def constant_secs(values, sections, shape, last=True):
     '''
     Generates an array of constant values for each section.
     Args:
-        shape (tuple)
-        sections (list,numpy.ndarray): Index of sections (frames).
         values (list,numpy.ndarray): The constant values.
+        sections (list,numpy.ndarray): Index of sections (frames).
+        shape (tuple): Shape of the resulting array.
         last (bool): If True (default), last section starts at the last index.
     Returns:
         (numpy.ndarray)
