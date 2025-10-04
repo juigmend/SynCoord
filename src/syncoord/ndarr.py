@@ -1,4 +1,4 @@
-'''Functions that take numpy.ndarray as main input.'''
+'''Functions whose main inputs and outputs are numpy.ndarray.'''
 
 import pycwt
 import numpy as np
@@ -13,7 +13,7 @@ from . import utils
 # .............................................................................
 # UTILITARIAN OPERATIONS:
 
-def constant_secs(shape, sections, values, last=True)
+def constant_secs(shape, sections, values, last=True):
     '''
     Generates an array of constant values for each section.
     Args:
@@ -25,9 +25,9 @@ def constant_secs(shape, sections, values, last=True)
         (numpy.ndarray)
     '''
     assert len(values) == (len(sections) + last), 'lengths of sections and values are incompatible'
-    length = shape[-1]
     arr = np.empty(shape)
     i_prev = 0
+    if last: sections = np.append(sections, shape[-1])
     for i_next, v in zip(sections, values):
         arr[...,i_prev:i_next] = v
         i_prev = i_next
