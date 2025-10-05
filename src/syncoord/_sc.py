@@ -329,12 +329,12 @@ class PipeLine:
                     for n in ['secstats','corr']:
                         funcn.append( stepar['stats']['func'] in [n,[n]] )
                 if st == 'stats':
+                    try: printd = stepar[st]['vis']['printd']
+                    except: printd = False
                     if funcn[1]:
-                        try:
-                            printd = stepar[st]['vis']['printd']
-                            corrkind = stepar[st].get('kind','Kendall')
-                            if corrkind == 'Kendall': corrsymbol = 'Tau'
-                        except: printd = False
+                        corrkind = stepar[st].get('kind','Kendall')
+                        if corrkind == 'Kendall': corrsymbol = 'Tau'
+                        else: raise Exception(f'"kind" = {corrkind} not available')
                 if stepar['stats'].get('cont',False):
                     if st == 'sync':
                         if 'vis' not in stepar[st]: stepar[st]['vis'] = {}
