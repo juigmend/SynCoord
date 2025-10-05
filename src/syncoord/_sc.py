@@ -336,6 +336,8 @@ class PipeLine:
                         if corrkind == 'Kendall': corrsymbol = 'Tau'
                         else: raise Exception(f'"kind" = {corrkind} not available')
                 if stepar['stats'].get('cont',False):
+                    assert sum(funcn) == 1, ''.join([ '"cont" for either "func" "secstats" or ',
+                                                      '"corr", not both' ])
                     if st == 'sync':
                         if 'vis' not in stepar[st]: stepar[st]['vis'] = {}
                         stepar[st]['vis']['retspax'] = True
