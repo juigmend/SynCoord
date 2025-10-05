@@ -191,8 +191,8 @@ def stats( ptdin, par ):
             assert len(d.data) == 1, '"corr" "cont" only for PtData object with only one top-level array.'
             secs = d.topinfo.trimmed_sections_frames[0]
             shape = d.data[0].shape
-            carr = ndarr.constant_secs(arr, secs, shape, last=True)
-        d = ptdata.corr( d, carr, **kwargs )
+            arr = ndarr.constant_secs(arr, secs, shape, last=True)
+        d = ptdata.corr( d, arr, **kwargs )
         stres['corr'] = d
 
     if return_dict: return stres
@@ -326,8 +326,9 @@ class PipeLine:
             if ((st == 'sync') or (st == 'stats')) and (vismrg is True):
                 if st == 'sync':
                     funcn = []
+                    p = stepar['stats']['func']
                     for n in ['secstats','corr']:
-                        funcn.append( stepar['stats']['func'] in [n,[n]] )
+                        funcn.append( (n in p) or (n in [p]))
                 if st == 'stats':
                     try: printd = stepar[st]['vis']['printd']
                     except: printd = False
