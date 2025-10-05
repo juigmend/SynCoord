@@ -188,11 +188,11 @@ def stats( ptdin, par ):
     if 'corr' in par['func']:
         arr = kwargs.pop('arr')
         if kwargs.get('cont',False):
-            assert len(d.data) == 1, '"corr" "cont" only for PtData object with only one array.'
+            assert len(d.data) == 1, '"corr" "cont" only for PtData object with only one top-level array.'
             secs = d.topinfo.trimmed_sections_frames[0]
             shape = d.data[0].shape
-            arr = ndarr.constant_secs(arr, secs, shape, last=True)
-        d = ptdata.corr( d, arr, **kwargs )
+            carr = ndarr.constant_secs(arr, secs, shape, last=True)
+        d = ptdata.corr( d, carr, **kwargs )
         stres['corr'] = d
 
     if return_dict: return stres
@@ -324,19 +324,34 @@ class PipeLine:
                 self.data[st] = d
 
             if ((st == 'sync') or (st == 'stats')) and (vismrg is True):
+                if st == 'sync':
+                    funcn = []
+                    for n in ['secstats','corr']:
+                        funcn.append( stepar['stats']['func'] in [n,[n]] )
+                if st == 'stats':
+                    if funcn[1]:
+                        try:
+                            printd = stepar[st]['vis']['printd']
+                            corrkind = stepar[st].get('kind','Kendall')
+                            if corrkind == 'Kendall': corrsymbol = 'Tau'
+                        except: printd = False
                 if stepar['stats'].get('cont',False):
                     if st == 'sync':
                         if 'vis' not in stepar[st]: stepar[st]['vis'] = {}
                         stepar[st]['vis']['retspax'] = True
-                        spax = _vis_dictargs(d, stepar[st], 'vis')
+                        if funcn[0]: d_vis = d
+                        elif funcn[1]:
+                            d_vis = d.copy()
+                            for k in d_vis.data:
+                                d_vis.data[k] = ndarr.rescale(d_vis.data[k])
+                        spax = _vis_dictargs(d_vis, stepar[st], 'vis')
                     elif st == 'stats':
-                        assert stepar[st]['func'] == 'secstats', 'Merge not yet implemented for func "corr".'
                         for k in d.data:
                             assert len(spax[k]) == 1, ''.join([ 'Cannot merge visualisation of sync ',
                                 'and stats when there are more than one dimensions of sync data.'])
                             ax = spax[k][0]
-                            try:
-                                if stepar[st]['vis']['printd'] is True:
+                            if funcn[0]:
+                                if printd:
                                     n_frames = d.data[k].shape[-1]
                                     discrete_secs = []
                                     fr = d.topinfo['trimmed_sections_frames'][k]
@@ -348,16 +363,21 @@ class PipeLine:
                                         discrete_secs.append(item)
                                         i_start = i_end
                                     print(np.round(discrete_secs,3))
-                            except: pass
-                            ax.plot(d.data[k],linewidth=3)
+                                ax.plot(d.data[k],linewidth=3)
+                            elif funcn[1]:
+                                if printd:
+                                    print(f'{corrsymbol} =',round(d.data[k][0],3))
+                                    print(_pvdisp(d.data[k][1]))
+                                arr = ndarr.rescale( stepar[st].pop('arr') )
+                                secs = d.topinfo.trimmed_sections_frames[0]
+                                shape = [int(ax.get_xlim()[1])]
+                                carr = ndarr.constant_secs(arr, secs, shape, last=True)
+                                nanmask = np.isnan(self.data['sync'].data[0])
+                                carr[nanmask] = np.nan
+                                ax.plot(carr,linewidth=2)
                 else: # merged visualisation with discrete sections
                     if st == 'stats':
-                        if isinstance(stepar[st]['func'],list):
-                            try:
-                                printd = stepar[st]['vis']['printd']
-                                corrkind = stepar[st].get('kind','Kendall')
-                                if corrkind == 'Kendall': corrsymbol = 'Tau'
-                            except: printd = False
+                        if sum(funcn) == 2:
                             dsc = ptdata.PtData(d['secstats'].topinfo)
                             for k in d['secstats'].data:
                                 sync_secmeans_rs = ndarr.rescale( d['secstats'].data[k] )
@@ -368,8 +388,8 @@ class PipeLine:
                                 dsc.data[k] = np.array([sync_secmeans_rs, arr_rs])
                             dsc_vis = { **gvis, 'vistype':'cline', 'sections':False,
                                         'x_ticklabelling':'index' }
-                            try: spath = dsc_vis.pop('savepath')
-                            except: spath = False
+                            try: del dsc_vis['savepath']
+                            except: pass
                             spax = dsc.visualise( retspax=True, **dsc_vis )
                             lbl_1 = 'rescaled ' + stepar['sync']['method']
                             lbl_2 = 'rescaled ' + stepar['stats'].get('arrlbl','arr')
