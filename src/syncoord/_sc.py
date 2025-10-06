@@ -170,7 +170,9 @@ def stats( ptdin, par ):
     return_dict = len(par['func']) > 1
     for f in par['func']: assert f in funcs, f"par['func'] = {par['func']} is invalid."
     kwargs = par.copy()
-    [kwargs.pop(k) for k in ['func','vis']]
+    del kwargs['func']
+    try: del kwargs['vis']
+    except: pass
     d = ptdin
     stres = {}
 
