@@ -466,7 +466,7 @@ def smooth( ptdata,**kwargs ):
         if filter_type == 'savgol':
             main_name =  f'Filtered with Savitzky-Golay\n{ptdata.names.main}'
             def _savgol(arr,ws):
-                return signal._savgolfilter( arr, ws, order)
+                return signal.savgol_filter( arr, ws, order)
         elif filter_type == 'mean':
             # mean (moving average) disabled until topinfo start and sections are offset when
             # mode = 'valid'
