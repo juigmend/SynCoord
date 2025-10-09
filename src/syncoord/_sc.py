@@ -260,9 +260,10 @@ class PipeLine:
         Run a pipeline accorptding to specified steps and their parameters.
         Args:
             stepar (dict): Ordered steps and their parameters for the pipeline. Steps are the
-                dict's keys and parameters are a dict of keyword args or None. Steps are functions
-                in syncoord.compo and are executed in the following order:
-                    "filt", "red1D", "phase", "sync", "stats".
+                dict's keys and parameters are a dict of keyword args or None, to functions
+                in syncoord._sc which are executed in the following order:
+                    Function names: "filt", "red1D", "phase", "sync", "stats".
+                For details see help(syncoord.FUNCTION_NAME)
                 The parameters' dict may include a dict "vis" with visualisation options,
                 or True for default settings.
                 Other optional arguments:
