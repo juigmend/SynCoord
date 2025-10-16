@@ -138,7 +138,7 @@ def sync( ptdin, par ):
         _vis_dictargs(gxwt_pairwise, visint, None)
         sync_1 = ptdata.aggrax( gxwt_pairwise, axis=0, function='mean' )
 
-    if sync_1.names.dim[-2] == 'frequency':
+    if (len(sync_1.names.dim) > 1) and (sync_1.names.dim[-2] == 'frequency'):
         try:
             if visint: visint['savepath'] = visint['savepath'] + '_group'
         except: pass
