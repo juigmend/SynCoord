@@ -292,6 +292,8 @@ class PipeLine:
                     if sanitise is True: stepar['phase'] = None
                     elif sanitise == 'halt': halt('"phase" is an invalid step for WCT and GXWT')
 
+        stepar['stats']['return_type'] = 'all'
+
         if isinstance(gvis,dict):
             gvis_sw = True
             if ('pathfolder' in gvis) and ('savepath' in gvis):
