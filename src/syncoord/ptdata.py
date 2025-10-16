@@ -1980,7 +1980,7 @@ def visualise( ptdata, **kwargs ):
     plt.suptitle( super_title + figtitle, fontsize=font_sizes['large'] )
     plt.tight_layout(rect=[0, 0.005, 1, 0.98])
     # TO-DO: this might leave a bit too much space in between ticks:
-    if (y_ticks is not None) and (vis_arr.ndim == 2):
+    if (y_ticks is not None) and (vis_arr.ndim == 2) and sp_yticks:
         for k in data_dict_keys:
             for i_ax, ax_ in enumerate(spax[k]):
                 yticks_loc = ax_.get_yticks()
