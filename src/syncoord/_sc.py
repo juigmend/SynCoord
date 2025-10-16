@@ -249,7 +249,7 @@ class PipeLine:
         if 'matlab' in kwargs: matlab = kwargs.pop('matlab')
         else: matlab = None
         steps = ["filt", "red1D", "phase", "sync","stats"]
-        self.data = dict.fromkeys(steps)
+        self.data = dict.fromkeys(['input'] + steps + ['output'])
         self.data['input'] = None
         if args:
             if isinstance(args[0], ptdata.PtData): self.data['input'] = args[0]
@@ -331,7 +331,13 @@ class PipeLine:
                     self.par[st] = deepcopy(stepar[st])
                 self.data[st] = d
 
+            
+            print('st =',st)
+            
             if ((st == 'sync') or (st == 'stats')) and (vismrg is True):
+                
+                print('vismrg is True')
+                
                 if st == 'sync':
                     funcn = []
                     p = stepar['stats']['func']
@@ -410,6 +416,9 @@ class PipeLine:
                                 ax.legend([lbl_1, lbl_2], fontsize=lbl_fs)
                 try: ax.figure.savefig(stepar[st]['vis']['savepath'] + '.png')
                 except: pass
-            else: _vis_dictargs(d, stepar[st], 'vis')
+            else:
+                if isinstance(d,dict):
+                    for v in d.values(): _vis_dictargs(v, stepar[st], 'vis')
+                else: _vis_dictargs(d, stepar[st], 'vis')
         self.data['output'] = d
         return d
