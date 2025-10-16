@@ -158,16 +158,19 @@ def stats( ptdin, par ):
             par['func'] (str,list): Funcion or functions (see available functions above)
             Optional:
                 kwargs: Arguments for the functions.
-                If func is 'secstats' the default for 'statnames' is 'mean".
+                    If func is 'secstats' the default for 'statnames' is 'mean".
+                return_type (str): 'last' (default) to return only the last result of par['func'] if
+                                    it is a list; 'all' for a dict of results of all processes.
     Returns:
-        If par['func'] is str:
-            (syncoord.ptdata.PtData): Data out.
+        If par['func'] is str or return_type is 'last':
+            d (syncoord.ptdata.PtData): Data out.
         If par['func'] is list:
             stres (dict): Keys are as the input functions. Values are PtData objects.
     '''
     funcs = ['secstats', 'corr']
     if isinstance(par['func'],str): par['func'] = [par['func']]
-    return_dict = len(par['func']) > 1
+    if 'return_type' in par: return_type = par.pop('return_type')
+    else: return_type = 'last'
     for f in par['func']: assert f in funcs, f"par['func'] = {par['func']} is invalid."
     kwargs = par.copy()
     del kwargs['func']
@@ -197,8 +200,8 @@ def stats( ptdin, par ):
         d = ptdata.corr( d, arr, **kwargs )
         stres['corr'] = d
 
-    if return_dict: return stres
-    else: return d
+    if (len(par['func']) == 1) or (return_type == 'last'): return d
+    elif return_type == 'all': return stres
 
 # .............................................................................
 # PRIVATE FUNCTIONS:
