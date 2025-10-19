@@ -5,10 +5,15 @@ For example, to instantiate a PipeLine object: syncoord.PipeLine()
 No need to do this: syncoord._sc.PipeLine()
 
 '''
-
+import csv
+import itertools
+from os import path
+from time import time
+from datetime import timedelta
 from copy import deepcopy
 
 import numpy as np
+import pandas as pd
 
 from . import ptdata, ndarr, utils
 
@@ -431,3 +436,232 @@ class PipeLine:
                 else: _vis_dictargs(d, stepar[st], 'vis')
         self.data['output'] = d
         return d
+
+def multicombo(*args,**kwargs):
+    '''
+    Run a data pipeline with multiple combinations of parameters.
+    Args:
+        (*args,**kwargs): Data arguments to PipeLine. See help(syncoord.PipeLine)
+        itpar (dict): Iteration parameters and values for steps of the data pipeline, as a dict
+                      with tuple keys:
+                            itpar[('STEP','PAR','SUBPAR',...)] = values
+                      For details of steps and their parameters see help(syncoord.PipeLine.run)
+                      For each STEP there should be a PAR 'main' for the name of the main parameter,
+                      some of which have corresponding PAR 'spec' (specifications) that have a
+                      SUBPAR with the name of the main parameter. Other PAR are for parameters that
+                      are common to all values of the main parameter.
+                      Example:
+                            itpar[('filtred','main')] = 'method'
+                            itpar[('filtred','method')] = ['norms','speed','x']
+                            itpar[('filtred','spec','norms','dim')] = ['2']
+                            itpar[('filtred','spec','speed','dim')] = ['2']
+                            itpar[('filtred','spec','speed','filter_type')] = ['savgol']
+                            itpar[('filtred','spec','speed','window_size')] = 1
+                            itpar[('filtred','spec','speed','order')] = [1, 2]
+        rlbl (dict): Labels (str) for parameters and results to record in columns of a table. The
+                     labels become headers of the table, in the same order as in the dict.
+                     The results are from the last step of the pipeline. If more than one result is
+                     produced for a combination of parameters, their corresponding labels should be
+                     in a list. The keys are the same as for itpar, but with a prepended element:
+                     'par' for parameter, or 'res' for result.
+        results_folder (str): Folder where to save the resulting table.
+        Optional:
+            max_newres (int): Maximum number of new results. Useful for testing.
+            verbose (int): 0 = Don't print anything (default);
+                           1 = Print computation time and total number of results;
+                           2 = As 1 and also print last result while running. Useful for testing.
+    Returns:
+        (pandas.DataFrame): Tabulated results.
+    '''
+    class breakloops(Exception): pass
+
+    def _flat_unique_dict_values(d):
+        def _notin(a,b):
+            if a not in b: b.append(a)
+            return b
+        out = []
+        for v in d.values():
+            if isinstance(v,list):
+                for e in v: out = _notin(e,out)
+            else: out = _notin(v,out)
+        return out
+
+    def _make_sgrid(itpar, sm, STEPSW, final_step_lbl, sgrid_order):
+        sgrid = {}
+        for k_itpar in itpar:
+
+            if sgrid_order < 3: final_step_sw = k_itpar[0] != final_step_lbl
+            else: final_step_sw =  k_itpar[0] == final_step_lbl
+
+            if (STEPSW[sm][k_itpar[0]] is True) and final_step_sw:
+
+                if sgrid_order in [1,3]:
+                    if 'spec' in k_itpar: get_this = False
+                    else: get_this = True
+
+                elif sgrid_order in [2,4]:
+                    if 'main' in k_itpar:
+                        mpar_val = itpar[(k_itpar[0],itpar[(k_itpar)])]
+                        if sgrid_order == 2: get_this = True
+                        else: get_this = False
+                    elif ('spec' in k_itpar) and (mpar_val in k_itpar):
+                        get_this = True
+                    elif 'spec' not in k_itpar: get_this = True
+                    else: get_this = False
+
+                else: raise Exception('wrong sgrid_order')
+
+                if get_this:
+                    this_itpar = deepcopy(itpar[k_itpar])
+                    if not isinstance(itpar[k_itpar],list): this_itpar = [this_itpar]
+                    sgrid[k_itpar] = this_itpar
+        return sgrid
+
+    def _siter(itpar, STEPSW):
+
+        for sm in itpar[('sync','method')]:
+            final_step_lbl = tuple(STEPSW[sm].keys())[-1]
+            sgrid_1 = _make_sgrid(itpar, sm, STEPSW, final_step_lbl, sgrid_order=1)
+
+            # iterate mains, except final step:
+            for v_1 in itertools.product(*sgrid_1.values()):
+                iter_param_1 = {**itpar, **dict(zip(sgrid_1.keys(), v_1))}
+                sgrid_2 = _make_sgrid(iter_param_1, sm, STEPSW, final_step_lbl, sgrid_order=2)
+
+                # iterate specs, except final step:
+                for v_2 in itertools.product(*sgrid_2.values()):
+                    iter_param_2 = dict(zip(sgrid_2.keys(), v_2))
+                    # iter_param_2: all parameters selected except for final step
+                    sgrid_3 = _make_sgrid(itpar, sm, STEPSW, final_step_lbl, sgrid_order=3)
+
+                    # iterate final step's mains:
+                    for v_3 in itertools.product(*sgrid_3.values()):
+                        iter_param_3 = {**itpar, **dict(zip(sgrid_3.keys(), v_3))}
+                        sgrid_4 = _make_sgrid( iter_param_3, sm, STEPSW, final_step_lbl,
+                                               sgrid_order=4 )
+
+                        # iterate final step's specs:
+                        for v_4 in itertools.product(*sgrid_4.values()):
+                            iter_param_4 = {**iter_param_2, **dict(zip(sgrid_4.keys(), v_4))}
+                            yield iter_param_4, final_step_lbl
+
+    def _make_stepar(iter_param, STEPSW):
+        sm = iter_param[('sync','method')]
+        stepar = {st:{} for st,sw in STEPSW[sm].items() if sw is True}
+        for k_sp, v_sp in iter_param.items():
+            if k_sp[1] == 'spec':
+                k_sp = tuple( v for i,v in enumerate(k_sp) if i not in [1,2] )
+            if (STEPSW[sm][k_sp[0]] is True) and ('main' not in k_sp) and (len(k_sp) > 1):
+                stepar[k_sp[0]][k_sp[1]] = v_sp
+        return stepar
+
+    def _append_results( result, all_results, iter_param, final_step_lbl, i_comb, gvars ):
+        for arv in all_results.values():
+            arv = arv.append('-')
+        for k_sp, v_sp in iter_param.items():
+            k_sp_list = list(k_sp)
+            if k_sp[0] == final_step_lbl:
+                k_res = tuple(['res'] + k_sp_list)
+                if k_res in gvars['rlbl']:
+                    these_lbl = gvars['rlbl'][k_res]
+                    if isinstance(these_lbl,list):
+                        for ie, e in enumerate(these_lbl):
+                            all_results[ e ][-1] = result[ie]
+                    else: all_results[ these_lbl ][-1] = result
+            else:
+                k_par = tuple(['par'] + k_sp_list)
+                if k_par in gvars['rlbl']:
+                    all_results[ gvars['rlbl'][k_par] ][-1] = v_sp
+        all_results['i'][-1] = i_comb
+        iter_result = [ all_results[h][-1] for h in gvars['headers'] ]
+        if gvars['verbose'] == 2:
+            iter_result_fmt = [ v if isinstance(v,str)
+                                else '-' if v is None
+                                else ':'.join([str(u) for u in v]) if isinstance(v,list)
+                                else f'{v:,.3g}' for v in iter_result[1:] ]
+            print(', '.join([str(i_comb)] + iter_result_fmt))
+        return all_results, iter_result
+
+    STEPSW = {}
+    STEPSW['r'] = {'filtred':True,'phase':True,'sync':True,'stats':True}
+    STEPSW['Rho'] = {'filtred':True,'phase':True,'sync':True,'stats':True}
+    STEPSW['PLV'] = {'filtred':True,'phase':True,'sync':True,'stats':True}
+    STEPSW['WCT'] = {'filtred':True,'phase':False,'sync':True,'stats':True}
+    STEPSW['GXWT'] = {'filtred':False,'phase':False,'sync':True,'stats':True}
+
+    gvars = {}
+    itpar = kwargs.pop('itpar')
+    strvar = kwargs.get('strvar',None)
+    gvars['rlbl'] = kwargs.pop('rlbl')
+    results_folder = kwargs.pop('results_folder')
+    max_newres = kwargs.get('max_newres',None)
+    gvars['verbose'] = kwargs.get('verbose',False)
+
+    if not isinstance(itpar[('sync','method')],list):
+        itpar[('sync','method')] = [itpar[('sync','method')]]
+    if max_newres is None: max_newres = -1
+    elif max_newres > 0: max_newres = max_newres-1
+    else: raise Exception('max_newres should be None or greater than 0')
+
+    gvars['headers'] = ['i'] + _flat_unique_dict_values(gvars['rlbl'])
+    all_results = {k:[] for k in gvars['headers']}
+    all_results_ffn = results_folder + '/all_results.csv'
+    if gvars['verbose']: start_time = time()
+    if path.isfile(all_results_ffn):
+        with open(all_results_ffn,'r',newline='') as f:
+            csv_reader = csv.reader(f)
+            next(csv_reader, None)  # skip headers
+            for i_row,v_row in enumerate(csv_reader):
+                for k, v_cell in zip(gvars['headers'],v_row):
+                    try:
+                        if k == 'i': v_cell = int(v_cell)
+                        else: v_cell = float(v_cell)
+                    except: pass
+                    all_results[k].append(v_cell)
+            try:
+                i_start = i_row
+                compute = False
+            except:
+                i_start = 0
+                compute = True
+            new_file = False
+    else:
+        new_file = True
+        i_start = 0
+        compute = True
+
+    pline = PipeLine(*args,**kwargs)
+
+    i_comb = 0
+    i_newres = 0
+    try:
+        with open(all_results_ffn,'a',newline='') as f:
+            writer = csv.writer(f)
+            if new_file: writer.writerow([s for s in gvars['headers']])
+            all_comb = _siter(itpar, STEPSW)
+
+            for ip, fsl in all_comb: # iterate through all combinations
+
+                if compute:
+                    stepar = _make_stepar(ip, STEPSW)
+                    result_raw = pline.run(stepar)
+                    result = result_raw.data[next(iter(result_raw.data))]
+                    all_results, iter_result = _append_results( result, all_results, ip, fsl,
+                                                                i_comb, gvars )
+                    writer.writerow(iter_result)
+
+                    if i_newres == max_newres: raise breakloops()
+                    i_newres +=1
+                else:
+                    compute = i_comb == i_start
+                i_comb += 1
+    except breakloops: print(f'\nStopped at {i_newres+1} new results.')
+
+    all_results_df = pd.DataFrame(all_results).set_index('i')
+    if gvars['verbose']:
+        toc = time() - start_time
+        toc_fmt = timedelta(seconds=toc)
+        print('computation time =',str(toc_fmt)[:-3])
+        print(f'Total number of results = {all_results_df.shape[0]}')
+
+    return all_results_df
