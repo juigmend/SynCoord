@@ -35,7 +35,7 @@ def red1D( ptdin, par ):
         (syncoord.ptdata.PtData): Data out.
     '''
     if par['method'] == 'speed':
-        return ptdata.apply( ptdin, sc.ndarr.tder, dim=par['dim'] )
+        return ptdata.apply( ptdin, ndarr.tder, dim=par['dim'] )
     elif par['method'] == 'norms':
         n1 = ptdata.norm( ptdin, order=1, axis=-par['dim'] )
         n2 = ptdata.norm( ptdin, order=2, axis=-par['dim'] )
@@ -43,6 +43,12 @@ def red1D( ptdin, par ):
     elif (par['method'] is not None) and (par['method'] in 'zyx'):
         return ptdata.select( ptdin, axis='zyx'.index(par['method']) )
     else: return ptdin
+
+def filtred( ptdin, par ):
+    '''
+    Filter and reduce to  1 dimension.
+    '''
+    return red1D( filt( ptdin, par ), par )
 
 def phase( ptdin, par ):
     '''
@@ -159,8 +165,8 @@ def stats( ptdin, par ):
             Optional:
                 kwargs: Arguments for the functions.
                     If func is 'secstats' the default for 'statnames' is 'mean".
-                return_type (str): 'last' (default) to return only the last result of par['func'] if
-                                    it is a list; 'all' for a dict of results of all processes.
+                return_type (str): 'last' (default) to return only the last result of par['func']
+                                    if it is a list; 'all' for a dict of results of all processes.
     Returns:
         If par['func'] is str or return_type is 'last':
             d (syncoord.ptdata.PtData): Data out.
@@ -250,7 +256,7 @@ class PipeLine:
         else: matlab = None
         steps = ["filt", "red1D", "phase", "sync","stats"]
         self.data = dict.fromkeys(['input'] + steps + ['output'])
-        self.data['input'] = None
+        self.__status = {'steps_init':False}
         if args:
             if isinstance(args[0], ptdata.PtData): self.data['input'] = args[0]
             elif kwargs: self.data['input'] = ptdata.load(*args,**kwargs)
@@ -262,11 +268,12 @@ class PipeLine:
         '''
         Run a pipeline accorptding to specified steps and their parameters.
         Args:
-            stepar (dict): Ordered steps and their parameters for the pipeline. Steps are the
+            stepar (dict): Parameters for steps of the pipeline. Steps are the
                 dict's keys and parameters are a dict of keyword args or None, to functions
                 in syncoord._sc which are executed in the following order:
-                    Function names: "filt", "red1D", "phase", "sync", "stats".
-                For details see help(syncoord.FUNCTION_NAME)
+                    "filt", "red1D", "phase", "sync", "stats"
+                Steps "filt" and "red1D" may be combined in step "filtred".
+                For details of the fucntions see help(syncoord.FUNCTION_NAME)
                 The parameters' dict may include a dict "vis" with visualisation options,
                 or True for default settings.
                 Other optional arguments:
@@ -282,6 +289,15 @@ class PipeLine:
         Returns:
             (syncoord.ptdata.PtData): Resulting data.
         '''
+        if self.__status['steps_init'] != True:
+            if 'filtred' in stepar:
+                steps = ["filtred","phase","sync","stats"]
+                new_data_dict = dict.fromkeys(['input'] + steps + ['output'])
+                new_data_dict['input'] = self.data['input']
+                self.data = new_data_dict
+                self.par = dict.fromkeys(steps)
+        else: self.__status['steps_init'] = True
+
         if sanitise:
             if stepar['sync']['method'] in ['GXWT']:
                 if stepar['red1D'] not in [None,False]:
@@ -291,8 +307,6 @@ class PipeLine:
                 if stepar['phase'] not in [None,False]:
                     if sanitise is True: stepar['phase'] = None
                     elif sanitise == 'halt': halt('"phase" is an invalid step for WCT and GXWT')
-
-        stepar['stats']['return_type'] = 'all'
 
         if isinstance(gvis,dict):
             gvis_sw = True
@@ -331,13 +345,8 @@ class PipeLine:
                     self.par[st] = deepcopy(stepar[st])
                 self.data[st] = d
 
-            
-            print('st =',st)
-            
             if ((st == 'sync') or (st == 'stats')) and (vismrg is True):
-                
-                print('vismrg is True')
-                
+                stepar['stats']['return_type'] = 'all'
                 if st == 'sync':
                     funcn = []
                     p = stepar['stats']['func']
