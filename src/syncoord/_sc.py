@@ -517,7 +517,7 @@ def multicombo(*args,**kwargs):
         return sgrid
 
     def _siter(itpar, STEPSW):
-        ''' Note: The final step returns the results '''
+        '''Note: The final step returns the results'''
         for sm in itpar[('sync','method')]:
             final_step_lbl = tuple(STEPSW[sm].keys())[-1]
             sgrid_1 = _make_sgrid(itpar, sm, STEPSW, final_step_lbl, sgrid_order=1)
@@ -532,6 +532,7 @@ def multicombo(*args,**kwargs):
                     iter_param_2 = dict(zip(sgrid_2.keys(), v_2))
                     # iter_param_2: all parameters selected except for final step
                     sgrid_3 = _make_sgrid(itpar, sm, STEPSW, final_step_lbl, sgrid_order=3)
+                    final_step_check = final_step_lbl # label indicates the final step starts
 
                     # iterate final step's mains:
                     for v_3 in itertools.product(*sgrid_3.values()):
@@ -542,7 +543,8 @@ def multicombo(*args,**kwargs):
                         # iterate final step's specs:
                         for v_4 in itertools.product(*sgrid_4.values()):
                             iter_param_4 = {**iter_param_2, **dict(zip(sgrid_4.keys(), v_4))}
-                            yield iter_param_4, final_step_lbl
+                            yield iter_param_4, final_step_check
+                            if final_step_check: final_step_check = None
 
     def _make_stepar(iter_param, STEPSW):
         sm = iter_param[('sync','method')]
@@ -554,29 +556,32 @@ def multicombo(*args,**kwargs):
                 stepar[k_sp[0]][k_sp[1]] = v_sp
         return stepar
 
-    def _append_results( result, all_results, iter_param, final_step_lbl, i_comb, gvars ):
-        for arv in all_results.values():
-            arv = arv.append('-')
-        for k_sp, v_sp in iter_param.items():
-            if k_sp[0] == final_step_lbl:
-                if k_sp in gvars['rlbl']:
-                    these_lbl = gvars['rlbl'][k_sp]
-                    if isinstance(these_lbl,list):
-                        for ie, e in enumerate(these_lbl):
-                            all_results[ e ][-1] = result[ie]
-                    else: all_results[ these_lbl ][-1] = result
-            else:
-                if k_sp in gvars['rlbl']:
+    def _append_results( result, all_results, iter_param, final_step_start, final_step_lbl,
+                         i_comb, gvars ):
+        if final_step_start:
+            for arv in all_results.values(): arv = arv.append('-')
+            for k_sp, v_sp in iter_param.items():
+                if (k_sp in gvars['rlbl']) and (k_sp[0] != final_step_lbl):
                     all_results[ gvars['rlbl'][k_sp] ][-1] = v_sp
-        all_results['i'][-1] = i_comb
+            all_results['i'][-1] = i_comb
+
+        for k_sp, v_sp in iter_param.items():
+            if (k_sp in gvars['rlbl']) and (k_sp[0] == final_step_lbl):
+                these_lbl = gvars['rlbl'][k_sp]
+                if isinstance(these_lbl,list):
+                    for ie, e in enumerate(these_lbl):
+                        all_results[ e ][-1] = result[ie]
+                else: all_results[ these_lbl ][-1] = result
+        return all_results
+
+    def _save_print_results(all_results, writer, gvars):
         iter_result = [ all_results[h][-1] for h in gvars['headers'] ]
+        writer.writerow(iter_result)
         if gvars['verbose'] == 2:
             iter_result_fmt = [ v if isinstance(v,str)
-                                else '-' if v is None
                                 else ':'.join([str(u) for u in v]) if isinstance(v,list)
                                 else f'{v:,.3g}' for v in iter_result[1:] ]
-            print(', '.join([str(i_comb)] + iter_result_fmt))
-        return all_results, iter_result
+            print(', '.join([str(iter_result[0])] + iter_result_fmt))
 
     STEPSW = {}
     STEPSW['r'] = {'filtred':True,'phase':True,'sync':True,'stats':True}
@@ -616,41 +621,46 @@ def multicombo(*args,**kwargs):
                     all_results[k].append(v_cell)
             try:
                 i_start = i_row
-                compute = False
+                start_compute = False
             except:
                 i_start = 0
-                compute = True
+                start_compute = True
             new_file = False
     else:
         new_file = True
         i_start = 0
-        compute = True
+        start_compute = True
 
     pline = PipeLine(*args,**kwargs)
 
-    i_comb = 0
-    i_newres = 0
+    i_comb = -1
+    i_newres = -1
+    savpr_res = False
     try:
         with open(all_results_ffn,'a',newline='') as f:
             writer = csv.writer(f)
             if new_file: writer.writerow([s for s in gvars['headers']])
             all_comb = _siter(itpar, STEPSW)
 
-            for ip, fsl in all_comb: # iterate through all combinations
+            for ip, fsc in all_comb: # iterate through all combinations
 
+                if fsc: # beginning of final step
+                    i_comb += 1 # combination count doesn't include final step
+                    compute = start_compute
                 if compute:
                     stepar = _make_stepar(ip, STEPSW)
                     result_raw = pline.run(stepar)
                     result = result_raw.data[next(iter(result_raw.data))]
-                    all_results, iter_result = _append_results( result, all_results, ip, fsl,
-                                                                i_comb, gvars )
-                    writer.writerow(iter_result)
-
-                    if i_newres == max_newres: raise breakloops()
-                    i_newres +=1
+                    if fsc:
+                        fsl = fsc # final step label at the beginning of final step
+                        if savpr_res: _save_print_results(all_results, writer, gvars)
+                        savpr_res = True
+                        if i_newres == max_newres: raise breakloops()
+                        i_newres +=1
+                    all_results = _append_results( result, all_results, ip, fsc, fsl,
+                                                   i_comb, gvars )
                 else:
-                    compute = i_comb == i_start
-                i_comb += 1
+                    start_compute = i_comb == i_start
     except breakloops: print(f'\nStopped at {i_newres+1} new results.')
 
     all_results_df = pd.DataFrame(all_results).set_index('i')
