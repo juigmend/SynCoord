@@ -14,6 +14,20 @@ class SubField:
     '''
     pass
 
+class breakall(Exception):
+        '''
+        Break nested loops and flow control blocks.
+        Example:
+            try:
+                for a in A:
+                    for b in B:
+                      if CONDITION:
+                          raise breakall()
+            except breakall:
+                print('broken')
+        '''
+        pass
+
 def evstr(a):
     if a == 'none': return None
     elif ':' in a: return [float(s) for s in a.split(':')]
