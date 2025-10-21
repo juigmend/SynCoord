@@ -462,8 +462,7 @@ def multicombo(*args,**kwargs):
                      labels become headers of the table, in the same order as in the dict.
                      The results are from the last step of the pipeline. If more than one result is
                      produced for a combination of parameters, their corresponding labels should be
-                     in a list. The keys are the same as for itpar, but with a prepended element:
-                     'par' for parameter, or 'res' for result.
+                     in a list. The keys are the same as for itpar.
         results_folder (str): Folder where to save the resulting table.
         Optional:
             max_newres (int): Maximum number of new results. Useful for testing.
