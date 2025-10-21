@@ -518,7 +518,7 @@ def multicombo(*args,**kwargs):
         return sgrid
 
     def _siter(itpar, STEPSW):
-
+        ''' Note: The final step returns the results '''
         for sm in itpar[('sync','method')]:
             final_step_lbl = tuple(STEPSW[sm].keys())[-1]
             sgrid_1 = _make_sgrid(itpar, sm, STEPSW, final_step_lbl, sgrid_order=1)
@@ -559,19 +559,16 @@ def multicombo(*args,**kwargs):
         for arv in all_results.values():
             arv = arv.append('-')
         for k_sp, v_sp in iter_param.items():
-            k_sp_list = list(k_sp)
             if k_sp[0] == final_step_lbl:
-                k_res = tuple(['res'] + k_sp_list)
-                if k_res in gvars['rlbl']:
-                    these_lbl = gvars['rlbl'][k_res]
+                if k_sp in gvars['rlbl']:
+                    these_lbl = gvars['rlbl'][k_sp]
                     if isinstance(these_lbl,list):
                         for ie, e in enumerate(these_lbl):
                             all_results[ e ][-1] = result[ie]
                     else: all_results[ these_lbl ][-1] = result
             else:
-                k_par = tuple(['par'] + k_sp_list)
-                if k_par in gvars['rlbl']:
-                    all_results[ gvars['rlbl'][k_par] ][-1] = v_sp
+                if k_sp in gvars['rlbl']:
+                    all_results[ gvars['rlbl'][k_sp] ][-1] = v_sp
         all_results['i'][-1] = i_comb
         iter_result = [ all_results[h][-1] for h in gvars['headers'] ]
         if gvars['verbose'] == 2:
