@@ -472,8 +472,6 @@ def multicombo(*args,**kwargs):
     Returns:
         (pandas.DataFrame): Tabulated results.
     '''
-    class breakloops(Exception): pass
-
     def _flat_unique_dict_values(d):
         def _notin(a,b):
             if a not in b: b.append(a)
@@ -600,7 +598,7 @@ def multicombo(*args,**kwargs):
 
     if not isinstance(itpar[('sync','method')],list):
         itpar[('sync','method')] = [itpar[('sync','method')]]
-    if max_newres is None: max_newres = -1
+    if max_newres is None: max_newres = -2
     elif max_newres > 0: max_newres = max_newres-1
     else: raise Exception('max_newres should be None or greater than 0')
 
@@ -655,13 +653,16 @@ def multicombo(*args,**kwargs):
                         fsl = fsc # final step label at the beginning of final step
                         if savpr_res: _save_print_results(all_results, writer, gvars)
                         savpr_res = True
-                        if i_newres == max_newres: raise breakloops()
+                        if i_newres == max_newres: raise utils.breakall()
                         i_newres +=1
                     all_results = _append_results( result, all_results, ip, fsc, fsl,
                                                    i_comb, gvars )
                 else:
                     start_compute = i_comb == i_start
-    except breakloops: print(f'\nStopped at {i_newres+1} new results.')
+
+            if savpr_res: # for the last row
+                _save_print_results(all_results, writer, gvars)
+    except utils.breakall: print(f'\nStopped at {i_newres+1} new results.')
 
     all_results_df = pd.DataFrame(all_results).set_index('i')
     if gvars['verbose']:
