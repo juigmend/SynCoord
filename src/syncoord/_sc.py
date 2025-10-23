@@ -45,8 +45,8 @@ def red1D( ptdin, par ):
         n1 = ptdata.norm( ptdin, order=1, axis=-par['dim'] )
         n2 = ptdata.norm( ptdin, order=2, axis=-par['dim'] )
         return ptdata.apply2( n1, n2, np.add )
-    elif (par['method'] is not None) and (par['method'] in 'zyx'):
-        return ptdata.select( ptdin, axis='zyx'.index(par['method']) )
+    elif (par['method'] is not None) and (par['method'] in 'xyz'):
+        return ptdata.select( ptdin, axis='xyz'.index(par['method']) )
     else: return ptdin
 
 def filtred( ptdin, par ):
