@@ -183,34 +183,33 @@ def kuramoto_r(arr_nd):
         r_list.append( abs( sum([(np.e ** (1j * angle)) for angle in phi]) / n_pts ) )
     return np.array(r_list)
 
-def cluster_phase_rho(arr_2d):
+def cluster_phase_rho(arr_2d, group=False):
     '''
-    Cluster phase.
+    Cluster phase Rho (phase closeness).
     Args:
         arr_2d (numpy.ndarray): Phase angles. 2-D array with dimensions [signals, frames].
+        Optional:
+            group (bool): If True return Rho fro group. Default = False
     Returns:
-        rho_group_i (numpy.ndarray): The quantity rho, computed for each signal at each time step.
-        rho_group (numpy.ndarray): The quantity rho averaged over time.
+        rho (numpy.ndarray): Rho for each signal, averaged over time.
+        If group is True:
+            rho_group_i (numpy.ndarray): Rho for the group, continuous.
+            rho_group (numpy.ndarray): Rho for the group, averaged over time.
     References:
         https://www.frontiersin.org/journals/physiology/articles/10.3389/fphys.2012.00405/full
         https://github.com/cslab-hub/multiSyncPy/blob/main/multiSyncPy/synchrony_metrics.py
     '''
-    phases = arr_2d
-    # Group level:
-    q_dash = np.nanmean( np.exp(phases * 1j), axis=0 )
-    q = np.arctan2(q_dash.imag, q_dash.real)
-
-    # Individual level:
-    phi = phases - q
-    phi_bar_dash = np.nanmean( np.exp(phi * 1j), axis=1 )
-    phi_bar = np.arctan2(phi_bar_dash.imag, phi_bar_dash.real)
-    # rho = np.abs(phi_bar_dash) # what is this?
-
-    # Group level:
-    rho_group_i = np.abs( np.nanmean( np.exp((phi - phi_bar[:, None]) * 1j), axis=0 ) )
-    rho_group = np.nanmean( rho_group_i )
-
-    return rho_group_i, rho_group
+    q_dash = np.nanmean( np.exp(arr_2d * 1j), axis=0 ) # Kuramoto Order Parameter r, complex
+    q = np.arctan2(q_dash.imag, q_dash.real) # Kuramoto Order Parameter r, radians
+    phi = arr_2d - q # relative phase of each signal, radians
+    phi_bar_dash = np.nanmean(np.exp(phi*1j),axis=1) # mean rel. phase of each signal, complex
+    rho = np.abs(phi_bar_dash) # inverse squared circular variance of the rel. phases (phi)
+    if group is True:
+        phi_bar = np.arctan2(phi_bar_dash.imag, phi_bar_dash.real) # mean rel. ph. each signal, rad.
+        rho_group_i = np.abs( np.nanmean( np.exp((phi - phi_bar[:, None]) * 1j), axis=0 ) )
+        rho_group = np.nanmean( rho_group_i )
+        return rho, rho_group_i, rho_group
+    elif group is False: return rho
 
 def phasediff( phi_1, phi_2 ):
     '''
