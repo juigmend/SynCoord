@@ -574,7 +574,9 @@ def multicombo(*args,**kwargs):
 
     def _save_print_results(all_results, writer, gvars):
         iter_result = [ all_results[h][-1] for h in gvars['headers'] ]
-        writer.writerow(iter_result)
+        
+        # writer.writerow(iter_result)
+        
         if gvars['verbose'] == 2:
             iter_result_fmt = [ v if isinstance(v,str)
                                 else ':'.join([str(u) for u in v]) if isinstance(v,list)
@@ -596,8 +598,12 @@ def multicombo(*args,**kwargs):
     max_newres = kwargs.get('max_newres',None)
     gvars['verbose'] = kwargs.get('verbose',False)
 
-    if not isinstance(itpar[('sync','method')],list):
-        itpar[('sync','method')] = [itpar[('sync','method')]]
+    for k,v in itpar.items():
+        # if (k[1] == 'method') and not (isinstance(v,list)): v = [v] # TO-DO: SEEMS NOT NECESSARY
+        if k[0] == 'stats':
+            if k[1] not in ['main','func','spec']:
+                ass_stats = f'itpar[{k}] should not be a list'
+                assert not isinstance(v,list), ass_stats
     if max_newres is None: max_newres = -2
     elif max_newres > 0: max_newres = max_newres-1
     else: raise Exception('max_newres should be None or greater than 0')
