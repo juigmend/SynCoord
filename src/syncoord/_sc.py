@@ -681,14 +681,14 @@ def multicombo(*args,**kwargs):
                 if compute:
                     stepar = _make_stepar(ip, STEPSW)
                     
-                    print('stepar:')
-                    for k,v in stepar.items(): print('   ',k,':',v)
+                    # print('stepar:')
+                    # for k,v in stepar.items(): print('   ',k,':',v)
                     
                     result_raw = pline.run(stepar)
                     result = result_raw.data[next(iter(result_raw.data))]
                     
-                    print('result =',result)
-                    print()
+                    # print('result =',result)
+                    # print()
                     
                     if fsc:
                         fsl = fsc # final step label at the beginning of final step
