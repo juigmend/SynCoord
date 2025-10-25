@@ -218,10 +218,18 @@ def stats( ptdin, par ):
 # PRIVATE FUNCTIONS:
 
 def _vis_dictargs(ptd, vpar, key, **kwargs):
+    
+    
+    # print('vpar =',vpar)
+    # print(ptd.data[0])
+    
     if vpar:
         if key is None: vpar_n = vpar
         elif key in vpar: vpar_n = vpar[key]
         else: return
+        
+        # print('vpar_n:\n',vpar_n,'\n')
+        
         if isinstance(vpar_n,dict): spax = ptd.visualise(**vpar_n,**kwargs)
         elif vpar_n: spax = ptd.visualise(**kwargs)
         try: return spax
@@ -309,7 +317,7 @@ class PipeLine:
                     if sanitise is True: stepar['red1D'] = None
                     elif sanitise == 'halt': halt('"red1D" is an invalid step for GXWT')
             if stepar['sync']['method'] in ['WCT', 'GXWT']:
-                if stepar['phase'] not in [None,False]:
+                if ('phase' in stepar) and (stepar['phase'] not in [None,False]):
                     if sanitise is True: stepar['phase'] = None
                     elif sanitise == 'halt': halt('"phase" is an invalid step for WCT and GXWT')
 
@@ -331,109 +339,116 @@ class PipeLine:
 
         d = self.data['input']
         for st in self.par:
-            assert st in stepar, f'"{st}" is not an allowed key'
-            if gvis_sw and (stepar[st] is not None):
-                if folderpath: gvis['savepath'] = f'{folderpath}/{st}'
-                if ('vis' in stepar[st]) and (stepar[st]['vis'] is not None):
-                    if stepar[st]['vis'] is True: stepar[st]['vis'] = gvis
-                    else: stepar[st]['vis'] = {**stepar[st]['vis'],**gvis}
-                if ('visint' in stepar[st]) and (stepar[st]['visint'] is not None):
-                    if stepar[st]['visint'] is True: stepar[st]['visint'] = gvis
-                    else: stepar[st]['visint'] = {**stepar[st]['visint'],**gvis}
-            if stepar[st] == self.par[st]:
-                if self.data[st]: d = self.data[st]
-            else:
-                if stepar[st] is not None:
-                    if verbose: print('computing',st,'...')
-                    fstr = st + '(d, stepar[st])'
-                    d = eval(fstr)
-                    self.par[st] = deepcopy(stepar[st])
-                self.data[st] = d
+            if st in stepar:
+                
+                # print('st =',st)
+                
+                if gvis_sw and (stepar[st] is not None):
+                    if folderpath: gvis['savepath'] = f'{folderpath}/{st}'
+                    if ('vis' in stepar[st]) and (stepar[st]['vis'] is not None):
+                        if stepar[st]['vis'] is True: stepar[st]['vis'] = gvis
+                        else: stepar[st]['vis'] = {**stepar[st]['vis'],**gvis}
+                    if ('visint' in stepar[st]) and (stepar[st]['visint'] is not None):
+                        if stepar[st]['visint'] is True: stepar[st]['visint'] = gvis
+                        else: stepar[st]['visint'] = {**stepar[st]['visint'],**gvis}
+                if stepar[st] == self.par[st]:
+                    if self.data[st]: d = self.data[st]
+                else:
+                    if stepar[st] is not None:
+                        if verbose: print('computing',st,'...')
+                        fstr = st + '(d, stepar[st])'
+                        d = eval(fstr)
+                        self.par[st] = deepcopy(stepar[st])
+                    self.data[st] = d
 
-            if ((st == 'sync') or (st == 'stats')) and (vismrg is True):
-                stepar['stats']['return_type'] = 'all'
-                if st == 'sync':
-                    funcn = []
-                    p = stepar['stats']['func']
-                    for n in ['secstats','corr']:
-                        funcn.append( (n in p) or (n in [p]))
-                if st == 'stats':
-                    try: printd = stepar[st]['vis']['printd']
-                    except: printd = False
-                    if funcn[1]:
-                        corrkind = stepar[st].get('kind','Kendall')
-                        if corrkind == 'Kendall': corrsymbol = 'Tau'
-                        else: raise Exception(f'"kind" = {corrkind} not available')
-                if stepar['stats'].get('cont',False):
-                    assert sum(funcn) == 1, ''.join([ '"cont" for either "func" "secstats" or ',
-                                                      '"corr", not both' ])
+                if ((st == 'sync') or (st == 'stats')) and (vismrg is True):
+                    stepar['stats']['return_type'] = 'all'
                     if st == 'sync':
-                        if 'vis' not in stepar[st]: stepar[st]['vis'] = {}
-                        stepar[st]['vis']['retspax'] = True
-                        if funcn[0]: d_vis = d
-                        elif funcn[1]:
-                            d_vis = d.copy()
-                            for k in d_vis.data:
-                                d_vis.data[k] = ndarr.rescale(d_vis.data[k])
-                        spax = _vis_dictargs(d_vis, stepar[st], 'vis')
-                    elif st == 'stats':
-                        for k in d.data:
-                            assert len(spax[k]) == 1, ''.join([ 'Cannot merge visualisation of sync ',
-                                'and stats when there are more than one dimensions of sync data.'])
-                            ax = spax[k][0]
-                            if funcn[0]:
-                                if printd:
-                                    n_frames = d.data[k].shape[-1]
-                                    discrete_secs = []
-                                    fr = d.topinfo['trimmed_sections_frames'][k]
-                                    idx_secends = fr + [n_frames]
-                                    i_start = 0
-                                    for i_end in idx_secends:
-                                        section = d.data[k][...,i_start:i_end]
-                                        item = section[np.isfinite(section)][0].item()
-                                        discrete_secs.append(item)
-                                        i_start = i_end
-                                    print(np.round(discrete_secs,3))
-                                ax.plot(d.data[k],linewidth=3)
-                            elif funcn[1]:
-                                if printd:
-                                    print(f'{corrsymbol} =',round(d.data[k][0],3))
-                                    print(_pvdisp(d.data[k][1]))
-                                arr = ndarr.rescale( stepar[st].pop('arr') )
-                                secs = d.topinfo.trimmed_sections_frames[0]
-                                shape = [int(ax.get_xlim()[1])]
-                                carr = ndarr.constant_secs(arr, secs, shape, last=True)
-                                nanmask = np.isnan(self.data['sync'].data[0])
-                                carr[nanmask] = np.nan
-                                ax.plot(carr,linewidth=2)
-                else: # merged visualisation with discrete sections
+                        funcn = []
+                        p = stepar['stats']['func']
+                        for n in ['secstats','corr']:
+                            funcn.append( (n in p) or (n in [p]))
+                        
+                        # print('\n**** sync')
+                        _vis_dictargs(d, stepar[st], 'vis')
+                    
                     if st == 'stats':
-                        if sum(funcn) == 2:
-                            dsc = ptdata.PtData(d['secstats'].topinfo)
-                            for k in d['secstats'].data:
-                                sync_secmeans_rs = ndarr.rescale( d['secstats'].data[k] )
-                                arr_rs = ndarr.rescale(stepar[st]['arr'])
-                                if printd:
-                                    print(f'{corrsymbol} =',round(d['corr'].data[k][0],3))
-                                    print(_pvdisp(d['corr'].data[k][1]))
-                                dsc.data[k] = np.array([sync_secmeans_rs, arr_rs])
-                            dsc_vis = { **gvis, 'vistype':'cline', 'sections':False,
-                                        'x_ticklabelling':'index' }
-                            try: del dsc_vis['savepath']
-                            except: pass
-                            spax = dsc.visualise( retspax=True, **dsc_vis )
-                            lbl_1 = 'rescaled ' + stepar['sync']['method']
-                            lbl_2 = 'rescaled ' + stepar['stats'].get('arrlbl','arr')
-                            lbl_fs = gvis.get('fontsize',1) * 10
-                            for k in d['secstats'].data:
+                        try: printd = stepar[st]['vis']['printd']
+                        except: printd = False
+                        if funcn[1]:
+                            corrkind = stepar[st].get('kind','Kendall')
+                            if corrkind == 'Kendall': corrsymbol = 'Tau'
+                            else: raise Exception(f'"kind" = {corrkind} not available')
+                    if stepar['stats'].get('cont',False):
+                        assert sum(funcn) == 1, ''.join([ '"cont" for either "func" "secstats" or ',
+                                                          '"corr", not both' ])
+                        if st == 'sync':
+                            if 'vis' not in stepar[st]: stepar[st]['vis'] = {}
+                            stepar[st]['vis']['retspax'] = True
+                            if funcn[0]: d_vis = d
+                            elif funcn[1]:
+                                d_vis = d.copy()
+                                for k in d_vis.data:
+                                    d_vis.data[k] = ndarr.rescale(d_vis.data[k])
+                            spax = _vis_dictargs(d_vis, stepar[st], 'vis')
+                        elif st == 'stats':
+                            for k in d.data:
+                                assert len(spax[k]) == 1, ''.join([ 'Cannot merge visualisation of '
+                                    'sync and stats when more than one dimension of sync data.' ])
                                 ax = spax[k][0]
-                                ax.legend([lbl_1, lbl_2], fontsize=lbl_fs)
-                try: ax.figure.savefig(stepar[st]['vis']['savepath'] + '.png')
-                except: pass
-            else:
-                if isinstance(d,dict):
-                    for v in d.values(): _vis_dictargs(v, stepar[st], 'vis')
-                else: _vis_dictargs(d, stepar[st], 'vis')
+                                if funcn[0]:
+                                    if printd:
+                                        n_frames = d.data[k].shape[-1]
+                                        discrete_secs = []
+                                        fr = d.topinfo['trimmed_sections_frames'][k]
+                                        idx_secends = fr + [n_frames]
+                                        i_start = 0
+                                        for i_end in idx_secends:
+                                            section = d.data[k][...,i_start:i_end]
+                                            item = section[np.isfinite(section)][0].item()
+                                            discrete_secs.append(item)
+                                            i_start = i_end
+                                        print(np.round(discrete_secs,3))
+                                    ax.plot(d.data[k],linewidth=3)
+                                elif funcn[1]:
+                                    if printd:
+                                        print(f'{corrsymbol} =',round(d.data[k][0],3))
+                                        print(_pvdisp(d.data[k][1]))
+                                    arr = ndarr.rescale( stepar[st].pop('arr') )
+                                    secs = d.topinfo.trimmed_sections_frames[0]
+                                    shape = [int(ax.get_xlim()[1])]
+                                    carr = ndarr.constant_secs(arr, secs, shape, last=True)
+                                    nanmask = np.isnan(self.data['sync'].data[0])
+                                    carr[nanmask] = np.nan
+                                    ax.plot(carr,linewidth=2)
+                    else: # merged visualisation with discrete sections
+                        if st == 'stats':
+                            if sum(funcn) == 2:
+                                dsc = ptdata.PtData(d['secstats'].topinfo)
+                                for k in d['secstats'].data:
+                                    sync_secmeans_rs = ndarr.rescale( d['secstats'].data[k] )
+                                    arr_rs = ndarr.rescale(stepar[st]['arr'])
+                                    if printd:
+                                        print(f'{corrsymbol} =',round(d['corr'].data[k][0],3))
+                                        print(_pvdisp(d['corr'].data[k][1]))
+                                    dsc.data[k] = np.array([sync_secmeans_rs, arr_rs])
+                                dsc_vis = { **gvis, 'vistype':'cline', 'sections':False,
+                                            'x_ticklabelling':'index' }
+                                try: del dsc_vis['savepath']
+                                except: pass
+                                spax = dsc.visualise( retspax=True, **dsc_vis )
+                                lbl_1 = 'rescaled ' + stepar['sync']['method']
+                                lbl_2 = 'rescaled ' + stepar['stats'].get('arrlbl','arr')
+                                lbl_fs = gvis.get('fontsize',1) * 10
+                                for k in d['secstats'].data:
+                                    ax = spax[k][0]
+                                    ax.legend([lbl_1, lbl_2], fontsize=lbl_fs)
+                    try: ax.figure.savefig(stepar[st]['vis']['savepath'] + '.png')
+                    except: pass
+                else:
+                    if isinstance(d,dict):
+                        for v in d.values(): _vis_dictargs(v, stepar[st], 'vis')
+                    else: _vis_dictargs(d, stepar[st], 'vis')
         self.data['output'] = d
         return d
 
@@ -487,31 +502,33 @@ def multicombo(*args,**kwargs):
         sgrid = {}
         for k_itpar in itpar:
 
-            if sgrid_order < 3: final_step_sw = k_itpar[0] != final_step_lbl
-            else: final_step_sw =  k_itpar[0] == final_step_lbl
+            if k_itpar == ('sync', 'method'): sgrid[k_itpar] = [sm]
+            else:
+                if sgrid_order < 3: final_step_sw = k_itpar[0] != final_step_lbl
+                else: final_step_sw =  k_itpar[0] == final_step_lbl
 
-            if (STEPSW[sm][k_itpar[0]] is True) and final_step_sw:
+                if (STEPSW[sm][k_itpar[0]] is True) and final_step_sw:
 
-                if sgrid_order in [1,3]:
-                    if 'spec' in k_itpar: get_this = False
-                    else: get_this = True
+                    if sgrid_order in [1,3]:
+                        if 'spec' in k_itpar: get_this = False
+                        else: get_this = True
 
-                elif sgrid_order in [2,4]:
-                    if 'main' in k_itpar:
-                        mpar_val = itpar[(k_itpar[0],itpar[(k_itpar)])]
-                        if sgrid_order == 2: get_this = True
+                    elif sgrid_order in [2,4]:
+                        if 'main' in k_itpar:
+                            mpar_val = itpar[(k_itpar[0],itpar[(k_itpar)])]
+                            if sgrid_order == 2: get_this = True
+                            else: get_this = False
+                        elif ('spec' in k_itpar) and (mpar_val in k_itpar):
+                            get_this = True
+                        elif 'spec' not in k_itpar: get_this = True
                         else: get_this = False
-                    elif ('spec' in k_itpar) and (mpar_val in k_itpar):
-                        get_this = True
-                    elif 'spec' not in k_itpar: get_this = True
-                    else: get_this = False
 
-                else: raise Exception('wrong sgrid_order')
+                    else: raise Exception('wrong sgrid_order')
 
-                if get_this:
-                    this_itpar = deepcopy(itpar[k_itpar])
-                    if not isinstance(itpar[k_itpar],list): this_itpar = [this_itpar]
-                    sgrid[k_itpar] = this_itpar
+                    if get_this:
+                        this_itpar = deepcopy(itpar[k_itpar])
+                        if not isinstance(itpar[k_itpar],list): this_itpar = [this_itpar]
+                        sgrid[k_itpar] = this_itpar
         return sgrid
 
     def _siter(itpar, STEPSW):
@@ -546,12 +563,14 @@ def multicombo(*args,**kwargs):
 
     def _make_stepar(iter_param, STEPSW):
         sm = iter_param[('sync','method')]
-        stepar = {st:{} for st,sw in STEPSW[sm].items() if sw is True}
+        stepar = {}
         for k_sp, v_sp in iter_param.items():
             if k_sp[1] == 'spec':
                 k_sp = tuple( v for i,v in enumerate(k_sp) if i not in [1,2] )
             if (STEPSW[sm][k_sp[0]] is True) and ('main' not in k_sp) and (len(k_sp) > 1):
-                stepar[k_sp[0]][k_sp[1]] = v_sp
+                # stepar[k_sp[0]][k_sp[1]] = v_sp
+                try: stepar[k_sp[0]] = {**stepar[k_sp[0]], k_sp[1]:v_sp}
+                except (KeyError): stepar[k_sp[0]] = {k_sp[1]:v_sp}
         return stepar
 
     def _append_results( result, all_results, iter_param, final_step_start, final_step_lbl,
@@ -574,21 +593,19 @@ def multicombo(*args,**kwargs):
 
     def _save_print_results(all_results, writer, gvars):
         iter_result = [ all_results[h][-1] for h in gvars['headers'] ]
-        
-        # writer.writerow(iter_result)
-        
+        writer.writerow(iter_result)
         if gvars['verbose'] == 2:
             iter_result_fmt = [ v if isinstance(v,str)
                                 else ':'.join([str(u) for u in v]) if isinstance(v,list)
                                 else f'{v:,.3g}' for v in iter_result[1:] ]
             print(', '.join([str(iter_result[0])] + iter_result_fmt))
 
-    STEPSW = {}
-    STEPSW['r'] = {'filtred':True,'phase':True,'sync':True,'stats':True}
-    STEPSW['Rho'] = {'filtred':True,'phase':True,'sync':True,'stats':True}
-    STEPSW['PLV'] = {'filtred':True,'phase':True,'sync':True,'stats':True}
-    STEPSW['WCT'] = {'filtred':True,'phase':False,'sync':True,'stats':True}
-    STEPSW['GXWT'] = {'filtred':False,'phase':False,'sync':True,'stats':True}
+    STEPSW = {} # TO-DO: implement this as an argument?
+    STEPSW['r'] = {'filt':True,'red1D':True,'phase':True,'sync':True,'stats':True}
+    STEPSW['Rho'] = {'filt':True,'red1D':True,'phase':True,'sync':True,'stats':True}
+    STEPSW['PLV'] = {'filt':True,'red1D':True,'phase':True,'sync':True,'stats':True}
+    STEPSW['WCT'] = {'filt':False,'red1D':True,'phase':False,'sync':True,'stats':True}
+    STEPSW['GXWT'] = {'filt':False,'red1D':False,'phase':False,'sync':True,'stats':True}
 
     gvars = {}
     itpar = kwargs.pop('itpar')
@@ -598,8 +615,18 @@ def multicombo(*args,**kwargs):
     max_newres = kwargs.get('max_newres',None)
     gvars['verbose'] = kwargs.get('verbose',False)
 
+    if 'filtred' in itpar:
+        ass_filtred = 'When using "filtred", neither "filt" nor "red1D" should be part of "itpar".'
+        assert ('filt' not in itpar) and ('red1D' not in itpar), ass_filtred
+        for k,v in STEPSW.items():
+            if k != 'GXWT':
+                if 'filt' in v: del v['filt']
+                if 'red1D' in v: del v['red1D']
+                v = {'filtred': True, **v}
+
     for k,v in itpar.items():
-        # if (k[1] == 'method') and not (isinstance(v,list)): v = [v] # TO-DO: SEEMS NOT NECESSARY
+        if (k[1] == 'method') and not (isinstance(v,list)):
+            itpar[k] = [itpar[k]] # TO-DO: SEEMS NOT NECESSARY
         if k[0] == 'stats':
             if k[1] not in ['main','func','spec']:
                 ass_stats = f'itpar[{k}] should not be a list'
@@ -653,8 +680,16 @@ def multicombo(*args,**kwargs):
                     compute = start_compute
                 if compute:
                     stepar = _make_stepar(ip, STEPSW)
+                    
+                    print('stepar:')
+                    for k,v in stepar.items(): print('   ',k,':',v)
+                    
                     result_raw = pline.run(stepar)
                     result = result_raw.data[next(iter(result_raw.data))]
+                    
+                    print('result =',result)
+                    print()
+                    
                     if fsc:
                         fsl = fsc # final step label at the beginning of final step
                         if savpr_res: _save_print_results(all_results, writer, gvars)
