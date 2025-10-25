@@ -233,7 +233,8 @@ def phaselock( a1, a2, axis=-1 ):
         (numpy.ndarray): Phase-locking values.
     '''
     diff_complex = np.exp(complex(0,1)*(a1-a2))
-    plv_result = np.abs(np.nansum(diff_complex,axis=axis))/diff_complex.shape[axis]
+    len_nonan = diff_complex.shape[axis] - np.isnan(diff_complex).sum()
+    plv_result = np.abs(np.nansum(diff_complex,axis=axis))/len_nonan
     return plv_result
 
 def plv( arrs, window_length=None, window_step=1, mode='same', sections=None, axis=-1, ):
