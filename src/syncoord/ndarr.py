@@ -223,7 +223,7 @@ def phasediff( phi_1, phi_2 ):
 
 def phaselock( a1, a2, axis=-1 ):
     '''
-    Phase-Locking Value for two vectors of phase angles.
+    Phase-Locking Value for two vectors of phase angles. NaN values are omitted.
     Args:
         a1, a2 (numpy.ndarray,list): phase angles.
         Optional:
@@ -234,8 +234,8 @@ def phaselock( a1, a2, axis=-1 ):
     '''
     diff_complex = np.exp(complex(0,1)*(a1-a2))
     len_nonan = diff_complex.shape[axis] - np.isnan(diff_complex).sum()
-    plv_result = np.abs(np.nansum(diff_complex,axis=axis))/len_nonan
-    return plv_result
+    if len_nonan == 0: return np.nan
+    else: return np.abs(np.nansum(diff_complex,axis=axis))/len_nonan
 
 def plv( arrs, window_length=None, window_step=1, mode='same', sections=None, axis=-1, ):
     '''
