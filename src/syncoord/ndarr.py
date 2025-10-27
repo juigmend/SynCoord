@@ -512,21 +512,15 @@ def section_stats( arr_nd, idx_sections, fps=None, **kwargs):
         margins_f = None
     elif isinstance(margins,list):
         if isinstance(margins[0],list):
-            
             if fps: margins_f = [ [ round(v*fps) for v in nl ] for nl in margins ]
             else: margins_f = margins
-             
         else:
-            
             if fps: mmf = [ round(margins[0] * fps), round(margins[1] * fps) ]
             else: mmf = margins
-            
             margins_f = [ mmf for i in range(n_sections) ]
     elif isinstance(margins,(float,int)):
-        
         if fps: mf = round(margins * fps)
         else: mf = margins
-        
         margins_f = [ [mf,mf] for i in range(n_sections) ]
     elif (isinstance(margins,str)) and (margins == 'secsfromnan'):
         margins_f = margins
@@ -545,9 +539,6 @@ def section_stats( arr_nd, idx_sections, fps=None, **kwargs):
                                   'difference of more than one frame.' ])
                 raise Exception(exmsg)
             margins_f = [ [mf,mf] for i in range(n_sections) ]
-        
-        print('margins_f =',margins_f)
-        
         for i_stat in range(n_stats):
             this_statname = statnames[i_stat]
             for i_sec in range(n_sections):
