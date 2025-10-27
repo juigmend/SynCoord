@@ -225,10 +225,10 @@ def phaselock( a1, a2, axis=-1 ):
     '''
     Phase-Locking Value for two vectors of phase angles. NaN values are omitted.
     Args:
-        a1, a2 (numpy.ndarray,list): phase angles.
+        a1, a2 (numpy.ndarray,list): Phase angles.
         Optional:
             axis (int): Dimension to which the operation will be applied.
-            Note: axis is a dimension of the N-D array. The rightmost axis (-1) is the fastest changing.
+            Note: Axis is a dimension of the N-D array. The rightmost axis (-1) is the fastest changing.
     Returns:
         (numpy.ndarray): Phase-locking values.
     '''
@@ -463,21 +463,21 @@ def isochronal_sections( data_list, idx_sections, last=False, axis=-1 ):
     idx_isochr_sections = list(range(length_section,length_section*n_sections+1,length_section))
     return isochr_data, idx_isochr_sections
 
-def section_stats( arr_nd, idx_sections, fps, **kwargs):
+def section_stats( arr_nd, idx_sections, fps=None, **kwargs):
     '''
     Descriptive statistics for sections of an N-D array.
     Args:
         arr_nd (numpy.ndarray): N-D array
         idx_sections (list): index of the sections
-        fps (int): frames per second
         Optional:
-            last (bool): If True, last section starts at the last index.
+            fps (int): Frames per second. If omitted or None, margins unit will be frames.
             margins (float,list[float],str). Trim at the beginning and ending.
-                     If float: Same trim bor beginning and ending (s).
-                     If list[float]: Trims for beginning and ending (s). Nested lists for sections.
+                     If float: Same trim bor beginning and ending.
+                     If list[float]: Trims for beginning and ending. Nested lists for sections.
                      If str: 'secsfromnan' to automatically determine margins for sections from NaN
                              at the beginning and end of data, which should be the same size or
                              differ by at most one frame.
+            last (bool): If True, last section starts at the last index.
             axis (int): Dimension to apply the process.
             omitnan (bool): Omit NaN. Default = True.
             statnames (str,list[str]): Statistics to compute. Default is all.
@@ -494,6 +494,7 @@ def section_stats( arr_nd, idx_sections, fps, **kwargs):
     omitnan = kwargs.get('omitnan',True)
     statnames = kwargs.get('statnames',['mean','median','min','max','std'])
     cont = kwargs.get('cont',False)
+    margins_unit = kwargs.get('margins_unit','s')
 
     assert isinstance(cont,bool), 'wrong type for arg. "cont"'
     if isinstance(statnames,str): statnames = [statnames]
@@ -506,12 +507,21 @@ def section_stats( arr_nd, idx_sections, fps, **kwargs):
         margins_f = None
     elif isinstance(margins,list):
         if isinstance(margins[0],list):
-            margins_f = [ [ round(v*fps) for v in nl ] for nl in margins ]
+            
+            if fps: margins_f = [ [ round(v*fps) for v in nl ] for nl in margins ]
+            else: margins_f = margins
+             
         else:
-            mmf = [ round(margins[0] * fps), round(margins[1] * fps) ]
+            
+            if fps: mmf = [ round(margins[0] * fps), round(margins[1] * fps) ]
+            else: mmf = margins
+            
             margins_f = [ mmf for i in range(n_sections) ]
     elif isinstance(margins,(float,int)):
-        mf = round(margins * fps)
+        
+        if fps: mf = round(margins * fps)
+        else: mf = margins
+        
         margins_f = [ [mf,mf] for i in range(n_sections) ]
     elif (isinstance(margins,str)) and (margins == 'secsfromnan'):
         margins_f = margins
@@ -530,6 +540,9 @@ def section_stats( arr_nd, idx_sections, fps, **kwargs):
                                   'difference of more than one frame.' ])
                 raise Exception(exmsg)
             margins_f = [ [mf,mf] for i in range(n_sections) ]
+        
+        print('margins_f =',margins_f)
+        
         for i_stat in range(n_stats):
             this_statname = statnames[i_stat]
             for i_sec in range(n_sections):

@@ -605,6 +605,9 @@ def fourier( ptdata, window_duration, **kwargs ):
 
     dd_in = ptdata.data
     dd_out = {}
+    
+    margin_f = {}
+    
     for k in dd_in:
         fps = ptdata.topinfo.loc[k,'fps']
         if 'fps' not in kwargs: wl = round(window_duration * fps)
@@ -614,6 +617,9 @@ def fourier( ptdata, window_duration, **kwargs ):
         rdif = abs(np.mean(freq_bins_rounded-np.round(freq_bins_rounded)))
         if rdif < 0.001: freq_bins_rounded = np.round(freq_bins_rounded,0).astype(int)
         freq_bins_labels[k] = [f'bin {i}: {f} Hz' for i,f in enumerate(freq_bins_rounded)]
+        
+        margin_f[k] = wl/2
+        
 
     dim_names = ptdata.names.dim.copy()
     dim_labels = ptdata.labels.dim.copy()
@@ -634,7 +640,11 @@ def fourier( ptdata, window_duration, **kwargs ):
         vis['vistype'] = 'imshow'
     dim_names.insert(-1,'frequency')
     vis['y_ticks'] = freq_bins
-    other = {'freq_bins':freq_bins}
+    
+    other = {**ptdata.other, 'freq_bins':freq_bins}
+    if 'margins_f' not in other: other['margins_f'] = {}
+    other['margins_f']['phase'] = margin_f
+    
 
     fft_result = PtData(topinfo)
     fft_result.names.main = main_name
@@ -648,7 +658,7 @@ def fourier( ptdata, window_duration, **kwargs ):
     return fft_result
 
 def plv( ptdata, windows, window_hop=None, pairs_axis=0,
-            fixed_axes=None, plv_axis=-1, mode='same', verbose=False ):
+         fixed_axes=None, plv_axis=-1, mode='same', verbose=False ):
     '''
     Pairwise Phase-Locking Values upon moving window or sections.
     Args:
@@ -692,6 +702,9 @@ def plv( ptdata, windows, window_hop=None, pairs_axis=0,
     new_fps = []
     dd_in = ptdata.data
     dd_out = {}
+    
+    margin_f = {}
+    
     c = 1
     for k in dd_in:
         if verbose:
@@ -707,12 +720,20 @@ def plv( ptdata, windows, window_hop=None, pairs_axis=0,
         plvkwargs = {}
         fps = ptdata.topinfo.loc[k,'fps']
         if slidingw:
-            plvkwargs['window_length'] = round(windows * fps)
+            wl = round(windows * fps)
+            plvkwargs['window_length'] = wl
+            
+            margin_f[k] = wl/2
+            
             if window_hop:
                 plvkwargs['window_step'] = round(window_hop * fps)
                 new_fps.append(fps/plvkwargs['window_step'])
             plvkwargs['mode'] = mode
+
         else:
+            
+            margin_f[k] = 0
+            
             sections = ptdata.topinfo.trimmed_sections_frames[k]
             n_frames = dd_in[k].shape[plv_axis]
             new_fps.append( fps * (len(sections)+1) / n_frames )
@@ -749,7 +770,11 @@ def plv( ptdata, windows, window_hop=None, pairs_axis=0,
     dimel_labels[pairs_axis] = ['pair '+str(p) for p in pairs_idx]
     if groupby == -1: vistype = 'line'
     else: vistype = 'imshow'
-
+    
+    other = deepcopy(ptdata.other)
+    if 'margins_f' not in other: other['margins_f'] = {}
+    other['margins_f']['plv'] = margin_f
+    
     plvdata = PtData(topinfo)
     plvdata.names.main = 'Pairwise Phase-Locking Value' + plv_lbl
     plvdata.names.dim = dim_names
@@ -762,7 +787,9 @@ def plv( ptdata, windows, window_hop=None, pairs_axis=0,
         plvdata.vis['y_ticks'] = ptdata.other['freq_bins'].copy()
     if (not slidingw) and (vistype == 'line'):
         plvdata.vis = {**plvdata.vis, 'vistype':'cline', 'sections':False, 'x_ticklabelling':'index'}
-    plvdata.other = ptdata.other.copy()
+    
+    plvdata.other = other
+    
     return plvdata
 
 def wct( ptdata, minmaxf, pairs_axis, fixed_axes, **kwargs ):
@@ -1329,10 +1356,13 @@ def secstats( ptdata, **kwargs ):
         Optional:
             last (bool): If True (default), last section is from last sections' index to end.
             margins (int,list[int],dict). Trim at the beginning and ending, in seconds.
-                     If scalar: Same trim bor beginning and ending.
+                     If scalar: Same trim for beginning and ending.
                      If list: Trims for beginning and ending. Nested lists for sections.
                      If dict: Items correspond to N-D data arrays, keys are same as ptdata.data
                               (and as in ptdata.topinfo), and values are lists.
+                     If str:
+                         'secsfromnan': Determine margins from NaN.
+                         'useprev': Use the sum of margins in object ptdata.other.margins
             axis (int): Dimension upon which to run the process.
             statnames (str,list[str]): Statistics to compute. Default is all.
                      Available options: 'mean','median','min','max','std'.
@@ -1340,6 +1370,17 @@ def secstats( ptdata, **kwargs ):
     Returns:
         New PtData object.
     '''
+    
+    margins_in_kwargs = 'margins' in kwargs
+    if margins_in_kwargs and isinstance(kwargs['margins'],str) and kwargs['margins'] == 'useprev':
+        kwargs['margins'] = dict.fromkeys(ptdata.topinfo.index,0)
+        for k_1 in ptdata.topinfo.index:
+            for k_2 in ptdata.other['margins_f']:
+                kwargs['margins'][k_1] += ptdata.other['margins_f'][k_2][k_1]
+                kwargs['margins'][k_1] =  round(kwargs['margins'][k_1])
+        fps = None
+    else: fps = True
+        
     cont = kwargs.get('cont',False)
     if not 'statnames' in kwargs:
         kwargs['statnames'] = [ 'mean','median','min','max','std' ]
@@ -1350,13 +1391,13 @@ def secstats( ptdata, **kwargs ):
     if not sections_appaxis_exist:
         raise Exception(  f"Colummn ''{lbl_topinfo_sec}' for axis {axis} \
                            not found in ptdata.topinfo" )
-    margins_dict = ('margins' in kwargs) and isinstance(kwargs['margins'],dict)
+    margins_is_dict = margins_in_kwargs and isinstance(kwargs['margins'],dict)
     dd_in = ptdata.data
     dd_out = {}
     for k in dd_in:
         idx_sections = ptdata.topinfo[lbl_topinfo_sec].loc[k]
-        fps = ptdata.topinfo['fps'].loc[k]
-        if margins_dict: kwargs['margins'] = kwargs['margins'][k]
+        if fps: fps = ptdata.topinfo['fps'].loc[k]
+        if margins_is_dict: kwargs['margins'] = kwargs['margins'][k]
         dd_out[k] = ndarr.section_stats( dd_in[k], idx_sections, fps, **kwargs )
 
     dim_names = deepcopy(ptdata.names.dim)
