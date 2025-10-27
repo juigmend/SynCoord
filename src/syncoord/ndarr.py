@@ -233,8 +233,14 @@ def phaselock( a1, a2, axis=-1 ):
         (numpy.ndarray): Phase-locking values.
     '''
     diff_complex = np.exp(complex(0,1)*(a1-a2))
-    len_nonan = diff_complex.shape[axis] - np.isnan(diff_complex).sum()
-    if len_nonan == 0: return np.nan
+    nan_margins = np.isnan(diff_complex).sum(axis=axis)
+    if isinstance(nan_margins,float): nan_margins = [nan_margins]
+    assert np.all(nan_margins == nan_margins[0]), 'Number of NaN is not equal in all vectors.'
+    len_nonan = diff_complex.shape[axis] - nan_margins[0]
+    if len_nonan == 0:
+        empty_arr = np.empty(diff_complex.shape[:axis])
+        empty_arr.fill(np.nan)
+        return empty_arr
     else: return np.abs(np.nansum(diff_complex,axis=axis))/len_nonan
 
 def plv( arrs, window_length=None, window_step=1, mode='same', sections=None, axis=-1, ):
@@ -255,7 +261,6 @@ def plv( arrs, window_length=None, window_step=1, mode='same', sections=None, ax
         Array whose dimensions depend on the input dimensions.
     '''
     assert isinstance(arrs,list) and len(arrs)==2, 'The first argument should be a list of two arrays.'
-
     if window_length: return slwin(arrs, phaselock, window_length, window_step, mode=mode, axis=axis)
     elif sections: return apply_to_sections( arrs, phaselock, sections, axis=axis )
     else: raise Exception( 'Either "window_length" or "sections" can should have a value' )
