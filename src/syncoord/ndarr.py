@@ -223,7 +223,8 @@ def phasediff( phi_1, phi_2 ):
 
 def phaselock( a1, a2, axis=-1 ):
     '''
-    Phase-Locking Value for two vectors of phase angles. NaN values are omitted.
+    Phase-Locking Value for two vectors of phase angles.
+    NaN values are omitted but number of NaN have to be the same in both vectors.
     Args:
         a1, a2 (numpy.ndarray,list): Phase angles.
         Optional:
@@ -234,7 +235,7 @@ def phaselock( a1, a2, axis=-1 ):
     '''
     diff_complex = np.exp(complex(0,1)*(a1-a2))
     nan_margins = np.isnan(diff_complex).sum(axis=axis)
-    if not isinstance(nan_margins,list): nan_margins = [nan_margins]
+    if isinstance(nan_margins,np.int64): nan_margins = [nan_margins]
     assert np.all(nan_margins == nan_margins[0]), 'Number of NaN is not equal in all vectors.'
     len_nonan = diff_complex.shape[axis] - nan_margins[0]
     if len_nonan == 0:
