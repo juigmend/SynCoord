@@ -592,7 +592,6 @@ def fourier( ptdata, window_duration, **kwargs ):
         New PtData object.
     '''
     mode = kwargs.get('mode')
-
     if mode and (mode=='valid'):
         topinfo = utils.trim_topinfo_start(ptdata,window_duration/2)
     else:
@@ -605,9 +604,7 @@ def fourier( ptdata, window_duration, **kwargs ):
 
     dd_in = ptdata.data
     dd_out = {}
-    
     margin_f = {}
-    
     for k in dd_in:
         fps = ptdata.topinfo.loc[k,'fps']
         if 'fps' not in kwargs: wl = round(window_duration * fps)
@@ -617,9 +614,7 @@ def fourier( ptdata, window_duration, **kwargs ):
         rdif = abs(np.mean(freq_bins_rounded-np.round(freq_bins_rounded)))
         if rdif < 0.001: freq_bins_rounded = np.round(freq_bins_rounded,0).astype(int)
         freq_bins_labels[k] = [f'bin {i}: {f} Hz' for i,f in enumerate(freq_bins_rounded)]
-        
         margin_f[k] = wl/2
-        
 
     dim_names = ptdata.names.dim.copy()
     dim_labels = ptdata.labels.dim.copy()
@@ -640,11 +635,9 @@ def fourier( ptdata, window_duration, **kwargs ):
         vis['vistype'] = 'imshow'
     dim_names.insert(-1,'frequency')
     vis['y_ticks'] = freq_bins
-    
     other = {**ptdata.other, 'freq_bins':freq_bins}
     if 'margins_f' not in other: other['margins_f'] = {}
-    other['margins_f']['phase'] = margin_f
-    
+    other['margins_f']['fourier'] = margin_f
 
     fft_result = PtData(topinfo)
     fft_result.names.main = main_name
@@ -689,7 +682,7 @@ def plv( ptdata, windows, window_hop=None, pairs_axis=0,
     Returns:
         New PtData object.
     '''
-    assert isinstance(windows,(float,int)) or (isinstance(windows,str) and windows=='sections'),\
+    assert isinstance(windows,(float,int)) or ((isinstance(windows,str) and windows=='sections')), \
     'Wrong value for argument "windows".'
     if isinstance(windows,(float,int)):
         slidingw = True
@@ -702,9 +695,7 @@ def plv( ptdata, windows, window_hop=None, pairs_axis=0,
     new_fps = []
     dd_in = ptdata.data
     dd_out = {}
-    
     margin_f = {}
-    
     c = 1
     for k in dd_in:
         if verbose:
@@ -722,18 +713,13 @@ def plv( ptdata, windows, window_hop=None, pairs_axis=0,
         if slidingw:
             wl = round(windows * fps)
             plvkwargs['window_length'] = wl
-            
             margin_f[k] = wl/2
-            
             if window_hop:
                 plvkwargs['window_step'] = round(window_hop * fps)
                 new_fps.append(fps/plvkwargs['window_step'])
             plvkwargs['mode'] = mode
 
         else:
-            
-            margin_f[k] = 0
-            
             sections = ptdata.topinfo.trimmed_sections_frames[k]
             n_frames = dd_in[k].shape[plv_axis]
             new_fps.append( fps * (len(sections)+1) / n_frames )
@@ -742,10 +728,9 @@ def plv( ptdata, windows, window_hop=None, pairs_axis=0,
         dd_out[k], pairs_idx, _ = ndarr.apply_to_pairs( dd_in[k], ndarr.plv,
                                                         pairs_axis, fixed_axes=fixed_axes,
                                                         verbose=verbose, **plvkwargs )
-    topinfo = ptdata.topinfo
+    topinfo = deepcopy(ptdata.topinfo)
     if slidingw and (mode == 'valid'): topinfo = utils.trim_topinfo_start(ptdata,windows/2)
     if (not slidingw) or (slidingw and window_hop):
-        topinfo = deepcopy(topinfo)
         if 'trimmed_sections_frames' in topinfo:
             new_sec = []
             for o,n,s in zip(topinfo['fps'],new_fps,topinfo['trimmed_sections_frames']):
@@ -770,11 +755,12 @@ def plv( ptdata, windows, window_hop=None, pairs_axis=0,
     dimel_labels[pairs_axis] = ['pair '+str(p) for p in pairs_idx]
     if groupby == -1: vistype = 'line'
     else: vistype = 'imshow'
-    
     other = deepcopy(ptdata.other)
-    if 'margins_f' not in other: other['margins_f'] = {}
-    other['margins_f']['plv'] = margin_f
-    
+    if slidingw:
+        if 'margins_f' not in other: other['margins_f'] = {}
+        other['margins_f']['plv'] = margin_f
+    elif 'margins_f' in other: del other['margins_f']
+
     plvdata = PtData(topinfo)
     plvdata.names.main = 'Pairwise Phase-Locking Value' + plv_lbl
     plvdata.names.dim = dim_names
@@ -787,9 +773,7 @@ def plv( ptdata, windows, window_hop=None, pairs_axis=0,
         plvdata.vis['y_ticks'] = ptdata.other['freq_bins'].copy()
     if (not slidingw) and (vistype == 'line'):
         plvdata.vis = {**plvdata.vis, 'vistype':'cline', 'sections':False, 'x_ticklabelling':'index'}
-    
     plvdata.other = other
-    
     return plvdata
 
 def wct( ptdata, minmaxf, pairs_axis, fixed_axes, **kwargs ):
@@ -1362,7 +1346,8 @@ def secstats( ptdata, **kwargs ):
                               (and as in ptdata.topinfo), and values are lists.
                      If str:
                          'secsfromnan': Determine margins from NaN.
-                         'useprev': Use the sum of margins in object ptdata.other.margins
+                         'useprev': Use the sum of margins (in frames) in object
+                                    ptdata.other.margins, if it exists.
             axis (int): Dimension upon which to run the process.
             statnames (str,list[str]): Statistics to compute. Default is all.
                      Available options: 'mean','median','min','max','std'.
@@ -1370,17 +1355,19 @@ def secstats( ptdata, **kwargs ):
     Returns:
         New PtData object.
     '''
-    
+    fps = True
     margins_in_kwargs = 'margins' in kwargs
-    if margins_in_kwargs and isinstance(kwargs['margins'],str) and kwargs['margins'] == 'useprev':
-        kwargs['margins'] = dict.fromkeys(ptdata.topinfo.index,0)
-        for k_1 in ptdata.topinfo.index:
-            for k_2 in ptdata.other['margins_f']:
-                kwargs['margins'][k_1] += ptdata.other['margins_f'][k_2][k_1]
-                kwargs['margins'][k_1] =  round(kwargs['margins'][k_1])
-        fps = None
-    else: fps = True
-        
+    if margins_in_kwargs and isinstance(kwargs['margins'],str) and (kwargs['margins'] == 'useprev'):
+        margins_is_dict = margins_in_kwargs and isinstance(kwargs['margins'],dict)
+        if ('margins_f' in ptdata.other):
+            kwargs['margins'] = dict.fromkeys(ptdata.topinfo.index,0)
+            for k_1 in ptdata.topinfo.index:
+                for k_2 in ptdata.other['margins_f']:
+                    kwargs['margins'][k_1] += ptdata.other['margins_f'][k_2][k_1]
+                    kwargs['margins'][k_1] =  round(kwargs['margins'][k_1])
+            fps = None
+        else: del kwargs['margins']
+
     cont = kwargs.get('cont',False)
     if not 'statnames' in kwargs:
         kwargs['statnames'] = [ 'mean','median','min','max','std' ]
@@ -1389,9 +1376,8 @@ def secstats( ptdata, **kwargs ):
     sections_appaxis_exist = f'trimmed_sections_{appaxis_lbl}s' in ptdata.topinfo.columns
     lbl_topinfo_sec = f'trimmed_sections_{appaxis_lbl}s'
     if not sections_appaxis_exist:
-        raise Exception(  f"Colummn ''{lbl_topinfo_sec}' for axis {axis} \
-                           not found in ptdata.topinfo" )
-    margins_is_dict = margins_in_kwargs and isinstance(kwargs['margins'],dict)
+        raise Exception( ''.join([ f"Colummn ''{lbl_topinfo_sec}' for axis {axis}",
+                                    "not found in ptdata.topinfo" ]))
     dd_in = ptdata.data
     dd_out = {}
     for k in dd_in:
