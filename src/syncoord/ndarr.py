@@ -244,27 +244,33 @@ def phaselock( a1, a2, axis=-1 ):
         return empty_arr
     else: return np.abs(np.nansum(diff_complex,axis=axis))/len_nonan
 
-def plv( arrs, window_length=None, window_step=1, mode='same', sections=None, axis=-1, ):
+def plv( arrs, **kwargs ):
     '''
     Pairwise Phase-Locking Values upon a moving window or sections.
     Args:
         arrs (list): Two 1-D arrays with the same length.
         Optional:
             window_length (int): Length of the window vector (frames).
-            window_step (int): Window step (frames).
-            mode (str): 'same' (post-process zero-padded) or 'valid'.
+            window_step (int): Window step (frames). Default = 1
+            mode (str): 'same' (post-process zero-padded,default) or 'valid'.
             sections (list): Sections (frames). Invalid if window_length has a value. If this
                              argument has a value, all optional arguments above are invalid.
-            axis (int): Dimension to apply the process.
+            axis (int): Dimension to apply the process. Default = -1
                 Note: Axis is a dimension of the N-D array.
                       The rightmost axis (-1) changes most frequently.
     Returns:
         Array whose dimensions depend on the input dimensions.
     '''
+    window_length = kwargs.get('window_length',None)
+    window_step = kwargs.get('window_step',1)
+    mode = kwargs.get('mode','same')
+    sections = kwargs.get('sections',None)
+    axis = kwargs.get('axis',-1)
+
     assert isinstance(arrs,list) and len(arrs)==2, 'The first argument should be a list of two arrays.'
     if window_length: return slwin(arrs, phaselock, window_length, window_step, mode=mode, axis=axis)
     elif sections: return apply_to_sections( arrs, phaselock, sections, axis=axis )
-    else: raise Exception( 'Either "window_length" or "sections" can should have a value' )
+    else: raise Exception( 'Either "window_length" or "sections" should have a value' )
 
 def wct( arrlist, minmaxf, fps, **kwargs ):
     '''
