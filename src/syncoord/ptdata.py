@@ -447,7 +447,7 @@ def smooth( ptdata,**kwargs ):
                 for f in cutoff_freq:
                     if isinstance(f,list):
                         raise Exception( 'When bandwidth is specified, the elements of \
-                                          cutoff_freq should be scalars, not nested lists.' )
+                                          cutoff_freq should be numerical, not nested lists.' )
                     else:
                         bp_freq.append( [v if (v>0) else 0.001 for v in [f-bw_half,f+bw_half]] )
                 cutoff_freq = bp_freq
@@ -650,8 +650,7 @@ def fourier( ptdata, window_duration, **kwargs ):
     fft_result.other = other
     return fft_result
 
-def plv( ptdata, windows, window_hop=None, pairs_axis=0,
-         fixed_axes=None, plv_axis=-1, mode='same', verbose=False ):
+def plv( ptdata, windows, **kwargs ):
     '''
     Pairwise Phase-Locking Values upon moving window or sections.
     Args:
@@ -659,11 +658,16 @@ def plv( ptdata, windows, window_hop=None, pairs_axis=0,
                 N-D arrays should have at least 2 dimensions.
         windows (float,str): Window length in seconds for sliding window or 'sections'.
         Optional:
+            
+            margins (str). Margin for windows' or sections' beginning and end. Default = None
+                 'useprev': Use the sum of margins (in frames) in object
+                            ptdata.other.margins, if it exists.
+            
             window_hop (float): Sliding window's step in seconds. None for a step of 1 frame.
-            pairs_axis (int): Dimension to form the pairs.
+            pairs_axis (int): Dimension to form the pairs. Default = 0
             fixed_axes (int,list[int]): Dimension or dimensions passed to the windowed PLV function.
                        Default is [-2,-1] if N-D array dimensions are 3 or more; -1 if 2 dimensions.
-            plv_axis (int): Dimension to perform the PLV function.
+            plv_axis (int): Dimension to perform the PLV function. Default = -1
                       For example:
                           data.shape = (4,1,15,9000)
                           pairs_axis = 0:
@@ -675,13 +679,31 @@ def plv( ptdata, windows, window_hop=None, pairs_axis=0,
                               each of the 15 vectors.
                 Note: axis is a dimension of the N-D array.
                       The rightmost axis (-1) is the fastest changing.
-            mode (str): 'same' (post-process zero-padded, same size as input) or 'valid'.
+            mode (str): 'same' (post-process zero-padded, same size as input, default) or 'valid'.
                         Note: If mode='valid', the sections (ptdata.topinfo['Sections'] and
                         ptdata.topinfo['trimmed_sections_frames']) will be shifted accordingly.
-            verbose (bool): Display progress.
+            verbose (bool): Display progress. Default = False
     Returns:
         New PtData object.
     '''
+    window_hop = kwargs.get('window_hop',None)
+    margins = kwargs.get('margins',None)
+    pairs_axis = kwargs.get('pairs_axis',0)
+    fixed_axes = kwargs.get('fixed_axes',None)
+    plv_axis = kwargs.get('plv_axis',-1)
+    mode = kwargs.get('mode','same')
+    verbose = kwargs.get('verbose',False)
+    
+    assert (margins is None) or (margins in ['useprev']), 'Wrong value for argument "margins".'
+    if margins == 'useprev':
+        if 'margins_f' in ptdata.other:
+            margins_f_dict = dict.fromkeys(ptdata.topinfo.index,0)
+            for k_1 in ptdata.topinfo.index:
+                for k_2 in ptdata.other['margins_f']:
+                    margins_f_dict[k_1] += ptdata.other['margins_f'][k_2][k_1]
+                margins_f_dict[k_1] =  round(margins_f_dict[k_1])
+        else: raise Exception("No margins_f in ptdata.other: arg. margins = 'useprev' invalid.")
+    
     assert isinstance(windows,(float,int)) or ((isinstance(windows,str) and windows=='sections')), \
     'Wrong value for argument "windows".'
     if isinstance(windows,(float,int)):
@@ -718,18 +740,36 @@ def plv( ptdata, windows, window_hop=None, pairs_axis=0,
                 plvkwargs['window_step'] = round(window_hop * fps)
                 new_fps.append(fps/plvkwargs['window_step'])
             plvkwargs['mode'] = mode
-
         else:
-            sections = ptdata.topinfo.trimmed_sections_frames[k]
-            n_frames = dd_in[k].shape[plv_axis]
-            new_fps.append( fps * (len(sections)+1) / n_frames )
+            length_frames = dd_in[k].shape[plv_axis]
+            sections = ptdata.topinfo.trimmed_sections_frames[k].copy()
+            
+            print('1) sections:',sections)
+            
+            if margins:
+                sections = [0] + sections + [length_frames]
+                if margins == 'useprev':
+                    sections_list = []
+                    mf = margins_f_dict[k]
+                    
+                    print('mf =',mf)
+                    
+                    for i,v in enumerate(sections[:-1]):
+                        sections_list.append([ v + mf , sections[i+1] - mf ])
+                    sections = sections_list
+            
+            print('2) sections:',sections,'\n')
+            
             plvkwargs['sections'] = sections
+            new_fps.append( fps * (len(sections)+1) / length_frames )
+            
         plvkwargs['axis'] = plv_axis
         dd_out[k], pairs_idx, _ = ndarr.apply_to_pairs( dd_in[k], ndarr.plv,
                                                         pairs_axis, fixed_axes=fixed_axes,
                                                         verbose=verbose, **plvkwargs )
-    topinfo = deepcopy(ptdata.topinfo)
+
     if slidingw and (mode == 'valid'): topinfo = utils.trim_topinfo_start(ptdata,windows/2)
+    else: topinfo = deepcopy(ptdata.topinfo)
     if (not slidingw) or (slidingw and window_hop):
         if 'trimmed_sections_frames' in topinfo:
             new_sec = []
@@ -756,7 +796,7 @@ def plv( ptdata, windows, window_hop=None, pairs_axis=0,
     if groupby == -1: vistype = 'line'
     else: vistype = 'imshow'
     other = deepcopy(ptdata.other)
-    if slidingw:
+    if slidingw or (margins is None):
         if 'margins_f' not in other: other['margins_f'] = {}
         other['margins_f']['plv'] = margin_f
     elif 'margins_f' in other: del other['margins_f']
@@ -1339,13 +1379,13 @@ def secstats( ptdata, **kwargs ):
         ptdata (PtData): Data object. See documentation for syncoord.ptdata.PtData
         Optional:
             last (bool): If True (default), last section is from last sections' index to end.
-            margins (int,list[int],dict). Trim at the beginning and ending, in seconds.
-                     If scalar: Same trim for beginning and ending.
+            margins (int,float,list[int],dict,str). Trim at the beginning and ending, in seconds.
+                     If int or float: Same trim for beginning and ending.
                      If list: Trims for beginning and ending. Nested lists for sections.
                      If dict: Items correspond to N-D data arrays, keys are same as ptdata.data
                               (and as in ptdata.topinfo), and values are lists.
                      If str:
-                         'secsfromnan': Determine margins from NaN.
+                         'fromnan': Determine margins from NaN.
                          'useprev': Use the sum of margins (in frames) in object
                                     ptdata.other.margins, if it exists.
             axis (int): Dimension upon which to run the process.
@@ -1358,15 +1398,15 @@ def secstats( ptdata, **kwargs ):
     fps = True
     margins_in_kwargs = 'margins' in kwargs
     if margins_in_kwargs and isinstance(kwargs['margins'],str) and (kwargs['margins'] == 'useprev'):
-        margins_is_dict = margins_in_kwargs and isinstance(kwargs['margins'],dict)
-        if ('margins_f' in ptdata.other):
+        if 'margins_f' in ptdata.other:
             kwargs['margins'] = dict.fromkeys(ptdata.topinfo.index,0)
             for k_1 in ptdata.topinfo.index:
                 for k_2 in ptdata.other['margins_f']:
                     kwargs['margins'][k_1] += ptdata.other['margins_f'][k_2][k_1]
-                    kwargs['margins'][k_1] =  round(kwargs['margins'][k_1])
+                kwargs['margins'][k_1] =  round(kwargs['margins'][k_1])
             fps = None
         else: del kwargs['margins']
+    margins_is_dict = margins_in_kwargs and isinstance(kwargs['margins'],dict)
 
     cont = kwargs.get('cont',False)
     if not 'statnames' in kwargs:

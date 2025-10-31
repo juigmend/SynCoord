@@ -253,8 +253,13 @@ def plv( arrs, **kwargs ):
             window_length (int): Length of the window vector (frames).
             window_step (int): Window step (frames). Default = 1
             mode (str): 'same' (post-process zero-padded,default) or 'valid'.
-            sections (list): Sections (frames). Invalid if window_length has a value. If this
-                             argument has a value, all optional arguments above are invalid.
+            sections (list,list[list]): Sections (frames). Invalid if window_length has a value.
+                If this argument has a value, all optional arguments above are invalid.
+                If list: Index of inner boundaries of sections.
+                If nested lists: Indices of boundaries for each section.
+            Only if sections is not None:
+                beginning (bool): If True, sections[0] is the beginning boundary. Default = False
+                last (bool): If True, last section from last sections' index to end. Default = True
             axis (int): Dimension to apply the process. Default = -1
                 Note: Axis is a dimension of the N-D array.
                       The rightmost axis (-1) changes most frequently.
@@ -265,11 +270,14 @@ def plv( arrs, **kwargs ):
     window_step = kwargs.get('window_step',1)
     mode = kwargs.get('mode','same')
     sections = kwargs.get('sections',None)
+    beginning = kwargs.get('beginning',False)
+    last = kwargs.get('last',True)
     axis = kwargs.get('axis',-1)
 
     assert isinstance(arrs,list) and len(arrs)==2, 'The first argument should be a list of two arrays.'
     if window_length: return slwin(arrs, phaselock, window_length, window_step, mode=mode, axis=axis)
-    elif sections: return apply_to_sections( arrs, phaselock, sections, axis=axis )
+    elif sections: return apply_to_sections( arrs, phaselock, sections,
+                                             beginning=beginning, last=last, axis=axis )
     else: raise Exception( 'Either "window_length" or "sections" should have a value' )
 
 def wct( arrlist, minmaxf, fps, **kwargs ):
@@ -486,7 +494,7 @@ def section_stats( arr_nd, idx_sections, fps=None, **kwargs):
             margins (float,list[float],str). Trim at the beginning and ending.
                      If float: Same trim bor beginning and ending.
                      If list[float]: Trims for beginning and ending. Nested lists for sections.
-                     If str: 'secsfromnan' to automatically determine margins for sections from NaN
+                     If str: 'fromnan' to automatically determine margins for sections from NaN
                              at the beginning and end of data, which should be the same size or
                              differ by at most one frame.
             last (bool): If True, last section starts at the last index.
@@ -529,7 +537,7 @@ def section_stats( arr_nd, idx_sections, fps=None, **kwargs):
         if fps: mf = round(margins * fps)
         else: mf = margins
         margins_f = [ [mf,mf] for i in range(n_sections) ]
-    elif (isinstance(margins,str)) and (margins == 'secsfromnan'):
+    elif (isinstance(margins,str)) and (margins == 'fromnan'):
         margins_f = margins
     else: raise Exception('Invalid value for "margins".')
 
@@ -871,28 +879,47 @@ def apply_dimgroup( arr_in, func, exaxes=None, i_out=0, n_out='all' ):
             else: output = funcret
     return output
 
-def apply_to_sections( arrs, func, sections, axis=-1, **kwargs ):
+def apply_to_sections( arrs, func, sections, beginning=False, last=True, axis=-1, **kwargs ):
     '''
-    Apply a function to each section.
+    Apply a function to each section of two arrays with equal dimensions.
     Args:
         arrs (list[numpy.ndarray]): Two arrays with the same dimensions (shape).
         func (callable): A function.
-        sections (list): Index of sections' boundaries (without 0 and the length of the arrays).
+        sections (list,list[list]): Sections' boundaries.
+            If list: Index of inner boundaries of sections (without beginning and ending) unless
+                     optional arguments 'beginning' or 'last' are specified.
+            If nested lists: Indices of boundaries for each section.
         Optional:
+            If sections is not a nested list:
+                beginning (bool): If True, sections[0] is the beginning boundary. Default = False
+                last (bool): If True, last section from last sections' index to end. Default = True
             kwargs: Keyword arguments or dict to be passed to func.
     Returns:
         Array whose dimensions depend on func.
     '''
     assert arrs[0].shape == arrs[1].shape, "Input arrays don't have the same shape."
-    n_frames = arrs[0].shape[axis]
+    if isinstance(sections[0],list):
+        idx_starts = []
+        idx_ends = []
+        for s in sections:
+            idx_starts.append(s[0])
+            idx_ends.append(s[1])
+    else:
+        idx_starts = sections.copy()
+        idx_ends = sections.copy()
+        if beginning is False: idx_starts = [0] + idx_starts
+        if last is True: idx_ends += [arrs[0].shape[axis]]
     kwargs['axis'] = axis
-    idx_secs = sections + [n_frames]
-    i_start_sec = 0
     result = []
-    for i_end_sec in idx_secs:
+    for i_start_sec, i_end_sec in zip(idx_starts, idx_ends):
+        
+        print('i_start_sec, i_end_sec =',i_start_sec,',',i_end_sec)
+        
         a = np.take(arrs[0], range(i_start_sec,i_end_sec), axis=axis)
         b = np.take(arrs[1], range(i_start_sec,i_end_sec), axis=axis)
         plv_result = func(a,b,**kwargs)
         result.append(plv_result)
-        i_start_sec = i_end_sec
+    
+    print('apply_to_sections: result =',np.array(result).T,'\n')
+    
     return np.array(result).T
