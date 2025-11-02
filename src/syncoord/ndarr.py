@@ -912,14 +912,8 @@ def apply_to_sections( arrs, func, sections, beginning=False, last=True, axis=-1
     kwargs['axis'] = axis
     result = []
     for i_start_sec, i_end_sec in zip(idx_starts, idx_ends):
-        
-        print('i_start_sec, i_end_sec =',i_start_sec,',',i_end_sec)
-        
         a = np.take(arrs[0], range(i_start_sec,i_end_sec), axis=axis)
         b = np.take(arrs[1], range(i_start_sec,i_end_sec), axis=axis)
         plv_result = func(a,b,**kwargs)
         result.append(plv_result)
-    
-    print('apply_to_sections: result =',np.array(result).T,'\n')
-    
     return np.array(result).T
