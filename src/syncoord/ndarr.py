@@ -124,7 +124,7 @@ def fourier_transform( arr_nd, window_length, window_step=1, fps=None, output='s
         arr_nd (numpy.ndarray): N-D array
         window_length (int): length of the FFT window, in seconds if the fps parameter is given.
         Options:
-            window_step (int): Step or "hop" of the moving window.
+            window_step (int): Step of the moving window in frames.
             fps (int): frames per second
             output (str): 'phase'(radians), 'amplitude', 'spectrum' (complex)
             window_shape (str): name of the window shape (eg.'hann'). See help(scipy.signal.windows)
@@ -674,7 +674,7 @@ def slwin( arrs, func, window_length, window_step=1, mode='same', padding='nan',
         arrs (numpy.ndarray,list[numpy.ndarray]): One or two 1-D or N-D array(s) with same dimensions.
         func (Callable): Function to apply, with one or two required inputs (consistent with arrs).
         window_length (int): Length of the window vector.
-        window_step (int): Step or "hop" of the moving window.
+        window_step (int): Step of the moving window in frames.
         Optional kwargs:
             mode (str): 'same' (post-process padding) or 'valid'.
             padding (str): 'nan' (default) or 'zero'
