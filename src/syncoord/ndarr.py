@@ -115,15 +115,16 @@ def peaks_to_phase( arr_nd, endstart=False, axis=-1, **kwargs ):
         return phi
     return np.apply_along_axis(pks2ph,axis,arr_nd,endstart,**kwargs)
 
-def fourier_transform( arr_nd, window_length, fps=None, output='spectrum', window_shape=None,
-                       mode='same', padding='nan', first_fbin=1, axis=-1 ):
+def fourier_transform( arr_nd, window_length, window_step=1, fps=None, output='spectrum',
+                       window_shape=None, mode='same', padding='nan', first_fbin=1, axis=-1 ):
     '''
     Wrapper for scipy.fft.rfft
-    Fast Fourier transform for a signal of real numbers.
+    Sliding-window Fast Fourier Transform for a signal of real numbers.
     Args:
         arr_nd (numpy.ndarray): N-D array
         window_length (int): length of the FFT window, in seconds if the fps parameter is given.
         Options:
+            window_step (int): Step or "hop" of the moving window.
             fps (int): frames per second
             output (str): 'phase'(radians), 'amplitude', 'spectrum' (complex)
             window_shape (str): name of the window shape (eg.'hann'). See help(scipy.signal.windows)
@@ -145,25 +146,26 @@ def fourier_transform( arr_nd, window_length, fps=None, output='spectrum', windo
         fft_window = window_func(window_length)
     do_pad = mode=='same'
 
-    def fourier_( sig, fft_window, window_length, do_pad, first_fbin, output ):
+    def fourier_( sig, fft_window, window_length, window_step, do_pad, first_fbin, output ):
         fft_result = []
-        for i_window in range(len(sig)-window_length):
+        for i_window in range(0, len(sig) - window_length, window_step):
             this_window = sig[ i_window : i_window+window_length] * fft_window
             this_spectrum = rfft(this_window)[first_fbin:]
             if output == 'spectrum': fft_result.append(this_spectrum)
             elif output == 'amplitude': fft_result.append(np.abs(this_spectrum))
-            elif output == 'phase': fft_result.append( np.angle(this_spectrum) )
+            elif output == 'phase': fft_result.append(np.angle(this_spectrum))
         fft_result = np.array(fft_result).T
         if do_pad:
-            dif = len(sig) - fft_result.shape[1]
+            dif = len(sig)/window_step  - fft_result.shape[1]
             margin = np.floor(dif/2).astype(int)
             if padding == 'nan': padval = np.nan
             elif padding == 'zero': padval = 0
             pad_width_tuple = ((0,0),(margin, margin + int(dif%2) ))
             fft_result = np.pad( fft_result, pad_width_tuple, constant_values=padval )
         return fft_result
-    return np.apply_along_axis( fourier_, axis, arr_nd, fft_window, window_length, do_pad,
-                                first_fbin, output )
+
+    return np.apply_along_axis( fourier_, axis, arr_nd, fft_window, window_length, window_step,
+                                do_pad, first_fbin, output )
 
 def kuramoto_r(arr_nd):
     '''
