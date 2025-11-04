@@ -608,18 +608,19 @@ def fourier( ptdata, window_duration, **kwargs ):
     margin_f = {}
     for k in dd_in:
         fps = ptdata.topinfo.loc[k,'fps']
+        if 'fps' not in kwargs: wl = round(window_duration * fps)
         if window_hop:
             if window_hop is not None:
                 kwargs['window_step'] = round(window_hop * fps)
                 new_fps.append(fps/kwargs['window_step'])
-        if 'fps' not in kwargs: wl = round(window_duration * fps)
+            margin_f[k] = wl/(2 * kwargs['window_step'])
+        else: margin_f[k] = wl/2
         dd_out[k] = ndarr.fourier_transform(dd_in[k], wl,**kwargs)
         freq_bins[k] = np.abs(( fftfreq(wl)*fps )[first_fbin:np.floor(wl/2 + 1).astype(int)])
         freq_bins_rounded = np.round(freq_bins[k],2)
         rdif = abs(np.mean(freq_bins_rounded-np.round(freq_bins_rounded)))
         if rdif < 0.001: freq_bins_rounded = np.round(freq_bins_rounded,0).astype(int)
         freq_bins_labels[k] = [f'bin {i}: {f} Hz' for i,f in enumerate(freq_bins_rounded)]
-        margin_f[k] = wl/2
 
     if mode and (mode=='valid'): topinfo = utils.trim_topinfo_start(ptdata,window_duration/2)
     else: topinfo = deepcopy(ptdata.topinfo)
