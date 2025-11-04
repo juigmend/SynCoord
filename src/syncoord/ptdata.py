@@ -1466,6 +1466,7 @@ def secstats( ptdata, **kwargs ):
         dim_names.insert(axis,'statistics')
         dim_labels.insert(axis,'stats')
         dimel_labels.insert(axis,kwargs['statnames'])
+    other = {**ptdata.other,'secstats':kwargs['statnames']}
 
     sextats = PtData(ptdata.topinfo)
     sextats.names.main = main_name
@@ -1475,7 +1476,7 @@ def secstats( ptdata, **kwargs ):
     sextats.labels.dimel = dimel_labels
     sextats.data = dd_out
     sextats.vis = vis
-    sextats.other = ptdata.other.copy()
+    sextats.other = other
     return sextats
 
 def corr( ptdata, arr, **kwargs):
