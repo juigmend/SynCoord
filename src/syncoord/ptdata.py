@@ -585,28 +585,33 @@ def fourier( ptdata, window_duration, **kwargs ):
         ptdata (PtData): Data object. See documentation for syncoord.ptdata.PtData
         window_duration (float): Length of the FFT window (seconds) unless fps = None.
         Optional:
-            **kwargs: Input parameters. See documentation for syncoord.ndarr.fourier_transform
+            window_hop (float): Sliding window's hop in seconds.
+            **kwargs: Other input parameters. See help(syncoord.ndarr.fourier_transform)
             Note: If mode='valid', the sections (ptdata.topinfo['Sections'] and
                   ptdata.topinfo['trimmed_sections_frames']) will be shifted accordingly.
     Returns:
         New PtData object.
     '''
+    window_hop = kwargs.pop('window_hop',None)
     mode = kwargs.get('mode')
-    if mode and (mode=='valid'):
-        topinfo = utils.trim_topinfo_start(ptdata,window_duration/2)
-    else:
-        topinfo = ptdata.topinfo
-
     first_fbin = kwargs.get('first_fbin',1)
+
+    if window_hop and ('window_step' in kwargs):
+        raise Exception("args. window_hop and window_step cannnot be input at te same time")
+    if (window_hop is None) and ('window_step' not in kwargs): kwargs['window_step'] = 1
     freq_bins = {}
     freq_bins_labels = {}
     wl = window_duration
-
+    new_fps = []
     dd_in = ptdata.data
     dd_out = {}
     margin_f = {}
     for k in dd_in:
         fps = ptdata.topinfo.loc[k,'fps']
+        if window_hop:
+            if window_hop is not None:
+                kwargs['window_step'] = round(window_hop * fps)
+                new_fps.append(fps/kwargs['window_step'])
         if 'fps' not in kwargs: wl = round(window_duration * fps)
         dd_out[k] = ndarr.fourier_transform(dd_in[k], wl,**kwargs)
         freq_bins[k] = np.abs(( fftfreq(wl)*fps )[first_fbin:np.floor(wl/2 + 1).astype(int)])
@@ -615,6 +620,16 @@ def fourier( ptdata, window_duration, **kwargs ):
         if rdif < 0.001: freq_bins_rounded = np.round(freq_bins_rounded,0).astype(int)
         freq_bins_labels[k] = [f'bin {i}: {f} Hz' for i,f in enumerate(freq_bins_rounded)]
         margin_f[k] = wl/2
+
+    if mode and (mode=='valid'): topinfo = utils.trim_topinfo_start(ptdata,window_duration/2)
+    else: topinfo = deepcopy(ptdata.topinfo)
+    if window_hop:
+        if 'trimmed_sections_frames' in topinfo:
+            new_sec = []
+            for o,n,s in zip(topinfo['fps'],new_fps,topinfo['trimmed_sections_frames']):
+                new_sec.append( [ round(v*n/o) for v in s ] )
+            topinfo['trimmed_sections_frames'] = new_sec
+            topinfo['fps'] = new_fps
 
     dim_names = ptdata.names.dim.copy()
     dim_labels = ptdata.labels.dim.copy()
@@ -662,7 +677,7 @@ def plv( ptdata, windows, **kwargs ):
                 Valid only if windows == 'sections'. Default = None
                 'useprev': Use the sum of margins (in frames) in object
                            ptdata.other.margins, if it exists.
-            window_hop (float): Sliding window's step in seconds. None for a step of 1 frame.
+            window_hop (float): Sliding window's step or "hop" in seconds. None for 1-frame step.
             pairs_axis (int): Dimension to form the pairs. Default = 0
             fixed_axes (int,list[int]): Dimension or dimensions passed to the windowed PLV function.
                        Default is [-2,-1] if N-D array dimensions are 3 or more; -1 if 2 dimensions.
@@ -685,7 +700,7 @@ def plv( ptdata, windows, **kwargs ):
     Returns:
         New PtData object.
     '''
-    window_hop = kwargs.get('window_hop',None)
+    window_hop = kwargs.pop('window_hop',None)
     sec_margins = kwargs.get('sec_margins',None)
     pairs_axis = kwargs.get('pairs_axis',0)
     fixed_axes = kwargs.get('fixed_axes',None)
@@ -723,10 +738,9 @@ def plv( ptdata, windows, **kwargs ):
                 margins_f_dict[k_1] =  round(margins_f_dict[k_1])
         else: raise Exception("No margins_f in ptdata.other: arg. sec_margins = 'useprev' invalid.")
 
-    if not window_hop: window_step = 1
-    else: window_step = None
+    plvkwargs = {}
+    if window_hop is None: plvkwargs['window_step'] = 1
     if verbose: c = 1
-
     new_fps = []
     dd_in = ptdata.data
     dd_out = {}
@@ -741,13 +755,12 @@ def plv( ptdata, windows, **kwargs ):
                 fixed_axes = -1
             if dd_in[k].ndim < 2:
                 raise Exception('number of dimensions in data arrays should be at least 2')
-        plvkwargs = {}
         fps = ptdata.topinfo.loc[k,'fps']
         if slidingw:
             wl = round(windows * fps)
             plvkwargs['window_length'] = wl
             margin_f[k] = wl/2
-            if window_hop:
+            if window_hop is not None:
                 plvkwargs['window_step'] = round(window_hop * fps)
                 new_fps.append(fps/plvkwargs['window_step'])
             plvkwargs['mode'] = mode
