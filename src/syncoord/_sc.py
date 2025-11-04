@@ -74,15 +74,15 @@ def phase( ptdin, par ):
     elif par['method'] == 'FFT':
         if isinstance(par['fft_freq'],list): fft_win_s = 1/par['fft_freq'][0]
         else: fft_win_s = 1/par['fft_freq']
-        phi = ptdata.fourier( ptdin, fft_win_s, output='phase', mode='same' )
+        whop = par.get('window_hop',None)
+        phi = ptdata.fourier( ptdin, fft_win_s, window_hop=whop, output='phase', mode='same' )
         if isinstance(par['fft_freq'],list):
             i_min_f = np.argmin(np.abs(par['fft_freq'][0] - phi.other['freq_bins'][0]))
             i_max_f = np.argmin(np.abs(par['fft_freq'][1] - phi.other['freq_bins'][0]))
             sel_freq_bin = slice(i_min_f, i_max_f+1)
         else: sel_freq_bin = 0
         pdout = ptdata.select( phi, frequency=sel_freq_bin )
-        margin = fft_win_s
-    pdout.other['phase'] = { 'margin' : margin }
+        margin = fft_win_s/2
     return pdout
 
 def sync( ptdin, par ):
@@ -119,7 +119,7 @@ def sync( ptdin, par ):
         sync_1 = ptdata.rho( ptdin )
 
     elif par['method'] == 'PLV':
-        plv_pairwise = ptdata.plv( ptdin, par['windows'] )
+        plv_pairwise = ptdata.plv(ptdin, par['windows'], sec_margins=par.get('sec_margins',None))
         _vis_dictargs(plv_pairwise, visint, None)
         sync_1 = ptdata.aggrax( plv_pairwise, function='mean' )
 
@@ -189,15 +189,8 @@ def stats( ptdin, par ):
     except: pass
     d = ptdin
     stres = {}
-
     if 'secstats' in par['func']:
         if 'statnames' not in kwargs: kwargs['statnames'] = 'mean'
-        yes_secmargins = ['$r$',r'$\rho$']
-        not_secmargins = ['PLV','WCT','GXWT']
-        if 'margins' not in kwargs:
-            if d.labels.main in ['$r$',r'$\rho$','PLV']: kwargs['margins'] = 'secsfromnan'
-            elif d.labels.main in ['WCT','GXWT']: kwargs['margins'] = None
-            else: raise Exception(f'Invalild PtData.labels.main : {d.labels.main}')
         d = ptdata.secstats( d, **kwargs )
         stres['secstats'] = d
 
@@ -218,18 +211,10 @@ def stats( ptdin, par ):
 # PRIVATE FUNCTIONS:
 
 def _vis_dictargs(ptd, vpar, key, **kwargs):
-    
-    
-    # print('vpar =',vpar)
-    # print(ptd.data[0])
-    
     if vpar:
         if key is None: vpar_n = vpar
         elif key in vpar: vpar_n = vpar[key]
         else: return
-        
-        # print('vpar_n:\n',vpar_n,'\n')
-        
         if isinstance(vpar_n,dict): spax = ptd.visualise(**vpar_n,**kwargs)
         elif vpar_n: spax = ptd.visualise(**kwargs)
         try: return spax
@@ -340,9 +325,6 @@ class PipeLine:
         d = self.data['input']
         for st in self.par:
             if st in stepar:
-                
-                # print('st =',st)
-                
                 if gvis_sw and (stepar[st] is not None):
                     if folderpath: gvis['savepath'] = f'{folderpath}/{st}'
                     if ('vis' in stepar[st]) and (stepar[st]['vis'] is not None):
@@ -351,7 +333,7 @@ class PipeLine:
                     if ('visint' in stepar[st]) and (stepar[st]['visint'] is not None):
                         if stepar[st]['visint'] is True: stepar[st]['visint'] = gvis
                         else: stepar[st]['visint'] = {**stepar[st]['visint'],**gvis}
-                if stepar[st] == self.par[st]:
+                if (stepar[st] == self.par[st]) and (st != 'stats'):
                     if self.data[st]: d = self.data[st]
                 else:
                     if stepar[st] is not None:
@@ -368,10 +350,7 @@ class PipeLine:
                         p = stepar['stats']['func']
                         for n in ['secstats','corr']:
                             funcn.append( (n in p) or (n in [p]))
-                        
-                        # print('\n**** sync')
                         _vis_dictargs(d, stepar[st], 'vis')
-                    
                     if st == 'stats':
                         try: printd = stepar[st]['vis']['printd']
                         except: printd = False
@@ -425,10 +404,17 @@ class PipeLine:
                         if st == 'stats':
                             if sum(funcn) == 2:
                                 dsc = ptdata.PtData(d['secstats'].topinfo)
+                                if printd:
+                                    stat_lbl_raw = d['secstats'].other['secstats']
+                                    if not isinstance(stat_lbl_raw,list): stat_lbl_raw = [stat_lbl_raw]
+                                    stat_lbl_str = ', '.join([s+'s' for s in stat_lbl_raw])
                                 for k in d['secstats'].data:
-                                    sync_secmeans_rs = ndarr.rescale( d['secstats'].data[k] )
+                                    these_secstats = d['secstats'].data[k]
+                                    sync_secmeans_rs = ndarr.rescale( these_secstats )
                                     arr_rs = ndarr.rescale(stepar[st]['arr'])
                                     if printd:
+                                        secmeans_rnd = np.round(these_secstats,3).tolist()
+                                        print(f"sections' {stat_lbl_str} =",secmeans_rnd)
                                         print(f'{corrsymbol} =',round(d['corr'].data[k][0],3))
                                         print(_pvdisp(d['corr'].data[k][1]))
                                     dsc.data[k] = np.array([sync_secmeans_rs, arr_rs])
@@ -568,7 +554,6 @@ def multicombo(*args,**kwargs):
             if k_sp[1] == 'spec':
                 k_sp = tuple( v for i,v in enumerate(k_sp) if i not in [1,2] )
             if (STEPSW[sm][k_sp[0]] is True) and ('main' not in k_sp) and (len(k_sp) > 1):
-                # stepar[k_sp[0]][k_sp[1]] = v_sp
                 try: stepar[k_sp[0]] = {**stepar[k_sp[0]], k_sp[1]:v_sp}
                 except (KeyError): stepar[k_sp[0]] = {k_sp[1]:v_sp}
         return stepar
@@ -593,7 +578,9 @@ def multicombo(*args,**kwargs):
 
     def _save_print_results(all_results, writer, gvars):
         iter_result = [ all_results[h][-1] for h in gvars['headers'] ]
+        
         writer.writerow(iter_result)
+        
         if gvars['verbose'] == 2:
             iter_result_fmt = [ v if isinstance(v,str)
                                 else ':'.join([str(u) for u in v]) if isinstance(v,list)
@@ -674,15 +661,17 @@ def multicombo(*args,**kwargs):
             all_comb = _siter(itpar, STEPSW)
 
             for ip, fsc in all_comb: # iterate through all combinations
-
+                
+                print('i =',i_comb+1)
+                
                 if fsc: # beginning of final step
                     i_comb += 1 # combination count doesn't include final step
                     compute = start_compute
                 if compute:
                     stepar = _make_stepar(ip, STEPSW)
                     
-                    # print('stepar:')
-                    # for k,v in stepar.items(): print('   ',k,':',v)
+                    print('stepar:')
+                    for k,v in stepar.items(): print('   ',k,':',v)
                     
                     result_raw = pline.run(stepar)
                     result = result_raw.data[next(iter(result_raw.data))]
