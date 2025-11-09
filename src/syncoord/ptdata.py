@@ -675,7 +675,7 @@ def plv( ptdata, windows, **kwargs ):
         windows (float,str): Window length in seconds for sliding window or 'sections'.
         Optional:
             sec_margins (str): Margin for sections' beginning and end.
-                Valid only if windows == 'sections'. Default = None
+                Valid only if windows ='sections'. Default = None
                 'useprev': Use the sum of margins (in frames) in object
                            ptdata.other.margins, if it exists.
             window_hop (float): Sliding window's step or "hop" in seconds. None for 1-frame step.
