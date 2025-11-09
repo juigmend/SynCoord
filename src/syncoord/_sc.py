@@ -119,7 +119,9 @@ def sync( ptdin, par ):
         sync_1 = ptdata.rho( ptdin )
 
     elif par['method'] == 'PLV':
-        plv_pairwise = ptdata.plv(ptdin, par['windows'], sec_margins=par.get('sec_margins',None))
+        sec_margins = par.get('sec_margins',None)
+        if (not isinstance(par['windows'],str)) and (sec_margins is not None): sec_margins = None
+        plv_pairwise = ptdata.plv(ptdin, par['windows'], sec_margins=sec_margins)
         _vis_dictargs(plv_pairwise, visint, None)
         sync_1 = ptdata.aggrax( plv_pairwise, function='mean' )
 
@@ -193,6 +195,10 @@ def stats( ptdin, par ):
         if 'statnames' not in kwargs: kwargs['statnames'] = 'mean'
         d = ptdata.secstats( d, **kwargs )
         stres['secstats'] = d
+        
+        # print('secstats =',d.data[0])
+        # print()
+        
 
     if 'corr' in par['func']:
         arr = kwargs.pop('arr')
@@ -662,7 +668,7 @@ def multicombo(*args,**kwargs):
 
             for ip, fsc in all_comb: # iterate through all combinations
                 
-                print('i =',i_comb+1)
+                # print('i =',i_comb+1)
                 
                 if fsc: # beginning of final step
                     i_comb += 1 # combination count doesn't include final step
@@ -670,15 +676,11 @@ def multicombo(*args,**kwargs):
                 if compute:
                     stepar = _make_stepar(ip, STEPSW)
                     
-                    print('stepar:')
-                    for k,v in stepar.items(): print('   ',k,':',v)
+                    # print('stepar:')
+                    # for k,v in stepar.items(): print('   ',k,':',v)
                     
                     result_raw = pline.run(stepar)
                     result = result_raw.data[next(iter(result_raw.data))]
-                    
-                    # print('result =',result)
-                    # print()
-                    
                     if fsc:
                         fsl = fsc # final step label at the beginning of final step
                         if savpr_res: _save_print_results(all_results, writer, gvars)
