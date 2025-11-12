@@ -172,18 +172,18 @@ def stats( ptdin, par ):
             Optional:
                 kwargs: Arguments for the functions.
                     If func is 'secstats' the default for 'statnames' is 'mean".
-                return_type (str): 'last' (default) to return only the last result of par['func']
+                return_results (str): 'last' (default) to return only the last result of par['func']
                                     if it is a list; 'all' for a dict of results of all processes.
     Returns:
-        If par['func'] is str or return_type is 'last':
+        If par['func'] is str or return_results is 'last':
             d (syncoord.ptdata.PtData): Data out.
         If par['func'] is list:
             stres (dict): Keys are as the input functions. Values are PtData objects.
     '''
     funcs = ['secstats', 'corr']
     if isinstance(par['func'],str): par['func'] = [par['func']]
-    if 'return_type' in par: return_type = par.pop('return_type')
-    else: return_type = 'last'
+    if 'return_results' in par: return_results = par.pop('return_results')
+    else: return_results = 'last'
     for f in par['func']: assert f in funcs, f"par['func'] = {par['func']} is invalid."
     kwargs = par.copy()
     del kwargs['func']
@@ -195,11 +195,6 @@ def stats( ptdin, par ):
         if 'statnames' not in kwargs: kwargs['statnames'] = 'mean'
         d = ptdata.secstats( d, **kwargs )
         stres['secstats'] = d
-        
-        # print('secstats =',d.data[0])
-        # print()
-        
-
     if 'corr' in par['func']:
         arr = kwargs.pop('arr')
         if kwargs.get('cont',False):
@@ -210,8 +205,8 @@ def stats( ptdin, par ):
         d = ptdata.corr( d, arr, **kwargs )
         stres['corr'] = d
 
-    if (len(par['func']) == 1) or (return_type == 'last'): return d
-    elif return_type == 'all': return stres
+    if (len(par['func']) == 1) or (return_results == 'last'): return d
+    elif return_results == 'all': return stres
 
 # .............................................................................
 # PRIVATE FUNCTIONS:
@@ -350,7 +345,7 @@ class PipeLine:
                     self.data[st] = d
 
                 if ((st == 'sync') or (st == 'stats')) and (vismrg is True):
-                    stepar['stats']['return_type'] = 'all'
+                    stepar['stats']['return_results'] = 'all'
                     if st == 'sync':
                         funcn = []
                         p = stepar['stats']['func']
@@ -472,12 +467,15 @@ def multicombo(*args,**kwargs):
                      in a list. The keys are the same as for itpar.
         results_folder (str): Folder where to save the resulting table.
         Optional:
+            round_dec (int): Decimals to round results. Default = None
+            save_file (bool): For testing. Default = True
             max_newres (int): Maximum number of new results. Useful for testing.
             verbose (int): 0 = Don't print anything (default);
                            1 = Print computation time and total number of results;
                            2 = As 1 and also print last result while running. Useful for testing.
     Returns:
-        (pandas.DataFrame): Tabulated results.
+        tuple(pandas.DataFrame): Tabulated results (non-rounded, rounded). If round_dec is None,
+                                 then the rounded dataframe is the same as the non-rounded.
     '''
     def _flat_unique_dict_values(d):
         def _notin(a,b):
@@ -577,21 +575,31 @@ def multicombo(*args,**kwargs):
             if (k_sp in gvars['rlbl']) and (k_sp[0] == final_step_lbl):
                 these_lbl = gvars['rlbl'][k_sp]
                 if isinstance(these_lbl,list):
-                    for ie, e in enumerate(these_lbl):
-                        all_results[ e ][-1] = result[ie]
+                    for i_e, e in enumerate(these_lbl):
+
+                        if isinstance(e,list):
+                            if len(e) == 1:
+                                this_result = result[ i_e ]
+                                all_results[ e[i_e] ][-1] = this_result
+                            else:
+                                for i_el, el in enumerate(e):
+                                    this_result = result[ i_e ][ i_el ]
+                                    all_results[ el ][-1] = this_result
+                        else:
+                            this_result = result[ i_e ]
+                            all_results[ e ][-1] = result[ i_e ]
                 else: all_results[ these_lbl ][-1] = result
         return all_results
 
     def _save_print_results(all_results, writer, gvars):
-        iter_result = [ all_results[h][-1] for h in gvars['headers'] ]
-        
-        writer.writerow(iter_result)
-        
-        if gvars['verbose'] == 2:
-            iter_result_fmt = [ v if isinstance(v,str)
-                                else ':'.join([str(u) for u in v]) if isinstance(v,list)
-                                else f'{v:,.3g}' for v in iter_result[1:] ]
-            print(', '.join([str(iter_result[0])] + iter_result_fmt))
+        if (gvars['save_file'] is True) or (gvars['verbose'] == 2):
+            iter_result = [ all_results[h][-1] for h in gvars['headers'] ]
+            if gvars['save_file'] is True: writer.writerow(iter_result)
+            if gvars['verbose'] == 2:
+                iter_result_fmt = [ v if isinstance(v,str)
+                                    else ':'.join([str(u) for u in v]) if isinstance(v,list)
+                                    else f'{v:,.3g}' for v in iter_result[1:] ]
+                print(', '.join([str(iter_result[0])] + iter_result_fmt))
 
     STEPSW = {} # TO-DO: implement this as an argument?
     STEPSW['r'] = {'filt':True,'red1D':True,'phase':True,'sync':True,'stats':True}
@@ -606,6 +614,8 @@ def multicombo(*args,**kwargs):
     gvars['rlbl'] = kwargs.pop('rlbl')
     results_folder = kwargs.pop('results_folder')
     max_newres = kwargs.get('max_newres',None)
+    round_dec = kwargs.pop('round_dec',None)
+    gvars['save_file'] = kwargs.pop('save_file',True)
     gvars['verbose'] = kwargs.get('verbose',False)
 
     if 'filtred' in itpar:
@@ -629,6 +639,12 @@ def multicombo(*args,**kwargs):
     else: raise Exception('max_newres should be None or greater than 0')
 
     gvars['headers'] = ['i'] + _flat_unique_dict_values(gvars['rlbl'])
+    new_headers = []
+    for h in gvars['headers']:
+        if isinstance(h,list):
+            for e in h: new_headers.append(e)
+        else: new_headers.append(h)
+    gvars['headers'] = new_headers
     all_results = {k:[] for k in gvars['headers']}
     all_results_ffn = results_folder + '/all_results.csv'
     if gvars['verbose']: start_time = time()
@@ -667,26 +683,23 @@ def multicombo(*args,**kwargs):
             all_comb = _siter(itpar, STEPSW)
 
             for ip, fsc in all_comb: # iterate through all combinations
-                
-                # print('i =',i_comb+1)
-                
                 if fsc: # beginning of final step
                     i_comb += 1 # combination count doesn't include final step
                     compute = start_compute
                 if compute:
-                    stepar = _make_stepar(ip, STEPSW)
-                    
-                    # print('stepar:')
-                    # for k,v in stepar.items(): print('   ',k,':',v)
-                    
-                    result_raw = pline.run(stepar)
-                    result = result_raw.data[next(iter(result_raw.data))]
                     if fsc:
                         fsl = fsc # final step label at the beginning of final step
                         if savpr_res: _save_print_results(all_results, writer, gvars)
                         savpr_res = True
                         if i_newres == max_newres: raise utils.breakall()
                         i_newres +=1
+                    stepar = _make_stepar(ip, STEPSW)
+                    result_raw = pline.run(stepar)
+                    if isinstance(result_raw,dict):
+                        result = []
+                        for v in result_raw.values():
+                            result.append(v.data[next(iter(v.data))])
+                    else: result = result_raw.data[next(iter(result_raw.data))]
                     all_results = _append_results( result, all_results, ip, fsc, fsl,
                                                    i_comb, gvars )
                 else:
@@ -696,11 +709,24 @@ def multicombo(*args,**kwargs):
                 _save_print_results(all_results, writer, gvars)
     except utils.breakall: print(f'\nStopped at {i_newres+1} new results.')
 
-    all_results_df = pd.DataFrame(all_results).set_index('i')
+    all_res_df = pd.DataFrame(all_results).set_index('i')
+    if round_dec:
+        all_res_r_df = deepcopy(all_res_df)
+        all_res_r_df = all_res_r_df.round(round_dec)
+        def _rounder_list(a,r): return [round(v,r) for v in a]
+        for lbl_col in all_res_r_df:
+            do_round = True
+            if isinstance(all_res_r_df.loc[0,lbl_col],list): _rounder = _rounder_list
+            elif isinstance(all_res_r_df.loc[0,lbl_col],np.ndarray): _rounder =  np.round
+            else: do_round = False
+            if do_round:
+                for i_rc, rc in enumerate(all_res_r_df[lbl_col]):
+                    all_res_r_df.at[i_rc,lbl_col] = _rounder(rc,round_dec)
+    else: all_res_r_df = all_res_df
     if gvars['verbose']:
         toc = time() - start_time
         toc_fmt = timedelta(seconds=toc)
         print('computation time =',str(toc_fmt)[:-3])
-        print(f'Total number of results = {all_results_df.shape[0]}')
+        print(f'Total number of results = {all_res_df.shape[0]}')
 
-    return all_results_df
+    return all_res_df, all_res_r_df
