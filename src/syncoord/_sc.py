@@ -204,7 +204,6 @@ def stats( ptdin, par ):
             arr = ndarr.constant_secs(arr, secs, shape, last=True)
         d = ptdata.corr( d, arr, **kwargs )
         stres['corr'] = d
-
     if (len(par['func']) == 1) or (return_results == 'last'): return d
     elif return_results == 'all': return stres
 
@@ -467,7 +466,7 @@ def multicombo(*args,**kwargs):
                      in a list. The keys are the same as for itpar.
         results_folder (str): Folder where to save the resulting table.
         Optional:
-            round_dec (int): Decimals to round results. Default = None
+            round_dec (int): Decimals to round results. Default = 3
             save_file (bool): For testing. Default = True
             max_newres (int): Maximum number of new results. Useful for testing.
             verbose (int): 0 = Don't print anything (default);
@@ -570,13 +569,11 @@ def multicombo(*args,**kwargs):
                 if (k_sp in gvars['rlbl']) and (k_sp[0] != final_step_lbl):
                     all_results[ gvars['rlbl'][k_sp] ][-1] = v_sp
             all_results['i'][-1] = i_comb
-
         for k_sp, v_sp in iter_param.items():
             if (k_sp in gvars['rlbl']) and (k_sp[0] == final_step_lbl):
                 these_lbl = gvars['rlbl'][k_sp]
                 if isinstance(these_lbl,list):
                     for i_e, e in enumerate(these_lbl):
-
                         if isinstance(e,list):
                             if len(e) == 1:
                                 this_result = result[ i_e ]
@@ -596,9 +593,15 @@ def multicombo(*args,**kwargs):
             iter_result = [ all_results[h][-1] for h in gvars['headers'] ]
             if gvars['save_file'] is True: writer.writerow(iter_result)
             if gvars['verbose'] == 2:
-                iter_result_fmt = [ v if isinstance(v,str)
-                                    else ':'.join([str(u) for u in v]) if isinstance(v,list)
-                                    else f'{v:,.3g}' for v in iter_result[1:] ]
+                iter_result_fmt = []
+                for v in iter_result[1:]:
+                    if isinstance(v,str): v_fmt = v
+                    elif isinstance(v,list): v_fmt = ':'.join([str(u) for u in v])
+                    elif isinstance(v,np.ndarray):
+                        v_fmt = '[' + ','.join([str(round(u,gvars['round_dec'])) for u in v]) + ']'
+                    elif v is None: v_fmt = 'none'
+                    else: v_fmt = str(round(v,gvars['round_dec']))
+                    iter_result_fmt.append(v_fmt)
                 print(', '.join([str(iter_result[0])] + iter_result_fmt))
 
     STEPSW = {} # TO-DO: implement this as an argument?
@@ -614,7 +617,7 @@ def multicombo(*args,**kwargs):
     gvars['rlbl'] = kwargs.pop('rlbl')
     results_folder = kwargs.pop('results_folder')
     max_newres = kwargs.get('max_newres',None)
-    round_dec = kwargs.pop('round_dec',None)
+    gvars['round_dec'] = kwargs.pop('round_dec',3)
     gvars['save_file'] = kwargs.pop('save_file',True)
     gvars['verbose'] = kwargs.get('verbose',False)
 
@@ -710,9 +713,9 @@ def multicombo(*args,**kwargs):
     except utils.breakall: print(f'\nStopped at {i_newres+1} new results.')
 
     all_res_df = pd.DataFrame(all_results).set_index('i')
-    if round_dec:
+    if gvars['round_dec']:
         all_res_r_df = deepcopy(all_res_df)
-        all_res_r_df = all_res_r_df.round(round_dec)
+        all_res_r_df = all_res_r_df.round(gvars['round_dec'])
         def _rounder_list(a,r): return [round(v,r) for v in a]
         for lbl_col in all_res_r_df:
             do_round = True
@@ -721,7 +724,7 @@ def multicombo(*args,**kwargs):
             else: do_round = False
             if do_round:
                 for i_rc, rc in enumerate(all_res_r_df[lbl_col]):
-                    all_res_r_df.at[i_rc,lbl_col] = _rounder(rc,round_dec)
+                    all_res_r_df.at[i_rc,lbl_col] = _rounder(rc,gvars['round_dec'])
     else: all_res_r_df = all_res_df
     if gvars['verbose']:
         toc = time() - start_time
