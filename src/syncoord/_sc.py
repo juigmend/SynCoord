@@ -723,12 +723,20 @@ def multicombo(*args,**kwargs):
         all_res_r_df = all_res_r_df.round(gvars['round_dec'])
         def _rounder_list(a,r): return [round(v,r) for v in a]
         for lbl_col in all_res_r_df:
+            fc = all_res_r_df.loc[0,lbl_col]
             do_round = True
-            if isinstance(all_res_r_df.loc[0,lbl_col],list): _rounder = _rounder_list
-            elif isinstance(all_res_r_df.loc[0,lbl_col],np.ndarray): _rounder =  np.round
+            if isinstance(fc,list): _rounder = _rounder_list
+            elif isinstance(fc,np.ndarray): _rounder =  np.round
+            elif fc and isinstance(fc,str) and (fc[0] == '['):
+                from json import loads
+                _rounder = _rounder_list
             else: do_round = False
             if do_round:
                 for i_rc, rc in enumerate(all_res_r_df[lbl_col]):
+                    if (rc is not None) and isinstance(rc,str) and (rc[0] == '['):
+                        reps = {' ]':']', ' ':',', '  ]':']', ',,':','}
+                        for k,v in reps.items(): rc = rc.replace(k,v)
+                        rc = loads(rc)
                     all_res_r_df.at[i_rc,lbl_col] = _rounder(rc,gvars['round_dec'])
     else: all_res_r_df = all_res_df
     if gvars['verbose']:
