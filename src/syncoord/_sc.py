@@ -381,12 +381,12 @@ class PipeLine:
                                         discrete_secs = []
                                         fr = d.topinfo['trimmed_sections_frames'][k]
                                         idx_secends = fr + [n_frames]
-                                        i_start = 0
+                                        gvars['i_start'] = 0
                                         for i_end in idx_secends:
-                                            section = d.data[k][...,i_start:i_end]
+                                            section = d.data[k][...,gvars['i_start']:i_end]
                                             item = section[np.isfinite(section)][0].item()
                                             discrete_secs.append(item)
-                                            i_start = i_end
+                                            gvars['i_start'] = i_end
                                         print(np.round(discrete_secs,3))
                                     ax.plot(d.data[k],linewidth=3)
                                 elif funcn[1]:
@@ -464,10 +464,9 @@ def multicombo(*args,**kwargs):
                      The results are from the last step of the pipeline. If more than one result is
                      produced for a combination of parameters, their corresponding labels should be
                      in a list. The keys are the same as for itpar.
-        results_folder (str): Folder where to save the resulting table.
         Optional:
+            results_folder (str): Folder where to save the resulting table.
             round_dec (int): Decimals to round results. Default = 3
-            save_file (bool): For testing. Default = True
             max_newres (int): Maximum number of new results. Useful for testing.
             verbose (int): 0 = Don't print anything (default);
                            1 = Print computation time and total number of results;
@@ -589,9 +588,9 @@ def multicombo(*args,**kwargs):
         return all_results
 
     def _save_print_results(all_results, writer, gvars):
-        if (gvars['save_file'] is True) or (gvars['verbose'] == 2):
+        if writer or (gvars['verbose'] == 2):
             iter_result = [ all_results[h][-1] for h in gvars['headers'] ]
-            if gvars['save_file'] is True: writer.writerow(iter_result)
+            if writer: writer.writerow(iter_result)
             if gvars['verbose'] == 2:
                 iter_result_fmt = []
                 for v in iter_result[1:]:
@@ -604,6 +603,36 @@ def multicombo(*args,**kwargs):
                     iter_result_fmt.append(v_fmt)
                 print(', '.join([str(iter_result[0])] + iter_result_fmt))
 
+    def _main(itpar, STEPSW, pline, all_results, gvars, writer=None):
+        global i_newres
+        i_comb = -1
+        savpr_res = False
+        all_comb = _siter(itpar, STEPSW)
+        fsl = None
+        for ip, fsc in all_comb: # iterate through all combinations
+            if fsc: # beginning of final step
+                i_comb += 1 # combination count doesn't include final step
+            if gvars['start_compute']:
+                if fsc:
+                    fsl = fsc # final step label at the beginning of final step
+                    if savpr_res: _save_print_results(all_results, writer, gvars)
+                    savpr_res = True
+                    if i_newres == max_newres: raise utils.breakall()
+                    i_newres +=1
+                stepar = _make_stepar(ip, STEPSW)
+                result_raw = pline.run(stepar)
+                if isinstance(result_raw,dict):
+                    result = []
+                    for v in result_raw.values():
+                        result.append(v.data[next(iter(v.data))])
+                else: result = result_raw.data[next(iter(result_raw.data))]
+                all_results = _append_results( result, all_results, ip, fsc, fsl,
+                                               i_comb, gvars )
+            else: gvars['start_compute'] = i_comb == gvars['i_start']
+        if savpr_res: # for the last row
+            _save_print_results(all_results, writer, gvars)
+        return all_results
+
     STEPSW = {} # TO-DO: implement this as an argument?
     STEPSW['r'] = {'filt':True,'red1D':True,'phase':True,'sync':True,'stats':True}
     STEPSW['Rho'] = {'filt':True,'red1D':True,'phase':True,'sync':True,'stats':True}
@@ -615,11 +644,12 @@ def multicombo(*args,**kwargs):
     itpar = kwargs.pop('itpar')
     strvar = kwargs.get('strvar',None)
     gvars['rlbl'] = kwargs.pop('rlbl')
-    results_folder = kwargs.pop('results_folder')
+    results_folder = kwargs.pop('results_folder',None)
     max_newres = kwargs.get('max_newres',None)
     gvars['round_dec'] = kwargs.pop('round_dec',3)
-    gvars['save_file'] = kwargs.pop('save_file',True)
     gvars['verbose'] = kwargs.get('verbose',False)
+    if results_folder is None: save_file = False
+    else: save_file = True
 
     if 'filtred' in itpar:
         ass_filtred = 'When using "filtred", neither "filt" nor "red1D" should be part of "itpar".'
@@ -649,67 +679,42 @@ def multicombo(*args,**kwargs):
         else: new_headers.append(h)
     gvars['headers'] = new_headers
     all_results = {k:[] for k in gvars['headers']}
-    all_results_ffn = results_folder + '/all_results.csv'
     if gvars['verbose']: start_time = time()
-    if path.isfile(all_results_ffn):
-        with open(all_results_ffn,'r',newline='') as f:
-            csv_reader = csv.reader(f)
-            next(csv_reader, None)  # skip headers
-            for i_row,v_row in enumerate(csv_reader):
-                for k, v_cell in zip(gvars['headers'],v_row):
-                    try:
-                        if k == 'i': v_cell = int(v_cell)
-                        else: v_cell = float(v_cell)
-                    except: pass
-                    all_results[k].append(v_cell)
-            try:
-                i_start = i_row
-                start_compute = False
-            except:
-                i_start = 0
-                start_compute = True
-            new_file = False
-    else:
-        new_file = True
-        i_start = 0
-        start_compute = True
+
+    new_file = True
+    gvars['i_start'] = 0
+    gvars['start_compute'] = True
+    if save_file:
+        all_results_ffn = results_folder + '/all_results.csv'
+        if path.isfile(all_results_ffn):
+            with open(all_results_ffn,'r',newline='') as f:
+                csv_reader = csv.reader(f)
+                next(csv_reader, None)  # skip headers
+                for i_row,v_row in enumerate(csv_reader):
+                    for k, v_cell in zip(gvars['headers'],v_row):
+                        try:
+                            if k == 'i': v_cell = int(v_cell)
+                            else: v_cell = float(v_cell)
+                        except: pass
+                        all_results[k].append(v_cell)
+                try:
+                    gvars['i_start'] = i_row
+                    gvars['start_compute'] = False
+                except:
+                    gvars['i_start'] = 0
+                    gvars['start_compute'] = True
+                new_file = False
 
     pline = PipeLine(*args,**kwargs)
-
-    i_comb = -1
+    global i_newres
     i_newres = -1
-    savpr_res = False
     try:
-        with open(all_results_ffn,'a',newline='') as f:
-            writer = csv.writer(f)
-            if new_file: writer.writerow([s for s in gvars['headers']])
-            all_comb = _siter(itpar, STEPSW)
-
-            for ip, fsc in all_comb: # iterate through all combinations
-                if fsc: # beginning of final step
-                    i_comb += 1 # combination count doesn't include final step
-                    compute = start_compute
-                if compute:
-                    if fsc:
-                        fsl = fsc # final step label at the beginning of final step
-                        if savpr_res: _save_print_results(all_results, writer, gvars)
-                        savpr_res = True
-                        if i_newres == max_newres: raise utils.breakall()
-                        i_newres +=1
-                    stepar = _make_stepar(ip, STEPSW)
-                    result_raw = pline.run(stepar)
-                    if isinstance(result_raw,dict):
-                        result = []
-                        for v in result_raw.values():
-                            result.append(v.data[next(iter(v.data))])
-                    else: result = result_raw.data[next(iter(result_raw.data))]
-                    all_results = _append_results( result, all_results, ip, fsc, fsl,
-                                                   i_comb, gvars )
-                else:
-                    start_compute = i_comb == i_start
-
-            if savpr_res: # for the last row
-                _save_print_results(all_results, writer, gvars)
+        if save_file:
+            with open(all_results_ffn,'a',newline='') as f:
+                writer = csv.writer(f)
+                if new_file: writer.writerow([s for s in gvars['headers']])
+                all_results = _main(itpar, STEPSW, pline, all_results, gvars, writer=writer)
+        else: all_results = _main(itpar, STEPSW, pline, all_results, gvars)
     except utils.breakall: print(f'\nStopped at {i_newres+1} new results.')
 
     all_res_df = pd.DataFrame(all_results).set_index('i')
